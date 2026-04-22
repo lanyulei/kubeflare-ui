@@ -1,6 +1,6 @@
 /* globals workbox */
 workbox.core.setCacheNameDetails({
-  prefix: 'antd-pro',
+  prefix: 'kubeflare',
   suffix: 'v5',
 });
 // Control all opened tabs ASAP

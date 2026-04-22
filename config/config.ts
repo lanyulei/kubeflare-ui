@@ -44,7 +44,7 @@ export default defineConfig({
   /**
    * @name 主题的配置
    * @description 虽然叫主题，但是其实只是 less 的变量设置
-   * @doc antd的主题设置 https://ant.design/docs/react/customize-theme-cn
+   * @doc 主题设置 https://kubeflare.io/docs/customize-theme
    * @doc umi 的 theme 配置 https://umijs.org/docs/api/config#theme
    */
   // theme: { '@primary-color': '#1DA57A' }
