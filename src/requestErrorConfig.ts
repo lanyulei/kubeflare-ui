@@ -1,109 +1,220 @@
-﻿import type { RequestOptions } from '@@/plugin-request/request';
+import type { RequestOptions } from '@@/plugin-request/request';
 import type { RequestConfig } from '@umijs/max';
-import { message, notification } from 'antd';
+import { getRequestInstance, history } from '@umijs/max';
+import { message } from 'antd';
+import {
+  clearAuthSession,
+  getAccessToken,
+  getCsrfToken,
+  setAuthSession,
+} from '@/utils/auth';
 
-// 错误处理方案： 错误类型
-enum ErrorShowType {
-  SILENT = 0,
-  WARN_MESSAGE = 1,
-  ERROR_MESSAGE = 2,
-  NOTIFICATION = 3,
-  REDIRECT = 9,
-}
-// 与后端约定的响应数据格式
-interface ResponseStructure {
-  success: boolean;
-  data: any;
-  errorCode?: number;
-  errorMessage?: string;
-  showType?: ErrorShowType;
-}
+type ApiErrorPayload = {
+  code?: number;
+  message?: string;
+  request_id?: string;
+};
 
-/**
- * @name 错误处理
- * pro 自带的错误处理， 可以在这里做自己的改动
- * @doc https://umijs.org/docs/max/request#配置
- */
+const loginPath = '/user/login';
+const successCode = 20000;
+const refreshPath = '/api/v1/auth/refresh';
+let refreshTask: Promise<API.AuthSession> | undefined;
+
+const createBizError = (payload?: Partial<API.ApiResponse<unknown>>) => {
+  const error: Error & { info?: ApiErrorPayload } = new Error(
+    payload?.message || '请求失败',
+  );
+  error.name = 'BizError';
+  error.info = {
+    code: payload?.code,
+    message: payload?.message,
+    request_id: payload?.request_id,
+  };
+  return error;
+};
+
+const isApiResponse = (data: unknown): data is API.ApiResponse<unknown> => {
+  return Boolean(
+    data && typeof (data as API.ApiResponse<unknown>).code === 'number',
+  );
+};
+
+const isAuthRequest = (url?: string) => {
+  if (!url) {
+    return false;
+  }
+
+  return ['/api/v1/auth/login', refreshPath].some((path) => url.includes(path));
+};
+
+const redirectToLogin = () => {
+  if (history.location.pathname === loginPath) {
+    return;
+  }
+
+  const redirect = `${history.location.pathname}${history.location.search || ''}`;
+  history.replace({
+    pathname: loginPath,
+    search: redirect ? `redirect=${encodeURIComponent(redirect)}` : '',
+  });
+};
+
+const refreshSession = async () => {
+  if (!refreshTask) {
+    const csrfToken = getCsrfToken();
+    const headers: Record<string, string> = {};
+
+    if (csrfToken) {
+      headers['X-Kubeflare-CSRF'] = csrfToken;
+    }
+
+    const refreshConfig = {
+      url: refreshPath,
+      method: 'POST',
+      withCredentials: true,
+      skipAuthRefresh: true,
+      skipAuthorization: true,
+      headers,
+    } as RequestOptions;
+
+    refreshTask = getRequestInstance()
+      .request<API.ApiResponse<API.AuthSession>>(refreshConfig)
+      .then((response) => {
+        const payload = response.data;
+
+        if (
+          !isApiResponse(payload) ||
+          payload.code !== successCode ||
+          !payload.data
+        ) {
+          throw createBizError(payload as API.ApiResponse<unknown>);
+        }
+
+        setAuthSession(payload.data as API.AuthSession);
+        return payload.data as API.AuthSession;
+      })
+      .finally(() => {
+        refreshTask = undefined;
+      });
+  }
+
+  return refreshTask;
+};
+
 export const errorConfig: RequestConfig = {
-  // 错误处理： umi@3 的错误处理方案。
   errorConfig: {
-    // 错误抛出
     errorThrower: (res) => {
-      const { success, data, errorCode, errorMessage, showType } =
-        res as unknown as ResponseStructure;
-      if (!success) {
-        const error: any = new Error(errorMessage);
-        error.name = 'BizError';
-        error.info = { errorCode, errorMessage, showType, data };
-        throw error; // 抛出自制的错误
+      const payload = res as API.ApiResponse<unknown>;
+      if (isApiResponse(payload) && payload.code !== successCode) {
+        throw createBizError(payload);
       }
     },
-    // 错误接收及处理
     errorHandler: (error: any, opts: any) => {
-      if (opts?.skipErrorHandler) throw error;
-      // 我们的 errorThrower 抛出的错误。
-      if (error.name === 'BizError') {
-        const errorInfo: ResponseStructure | undefined = error.info;
-        if (errorInfo) {
-          const { errorMessage, errorCode } = errorInfo;
-          switch (errorInfo.showType) {
-            case ErrorShowType.SILENT:
-              // do nothing
-              break;
-            case ErrorShowType.WARN_MESSAGE:
-              message.warning(errorMessage);
-              break;
-            case ErrorShowType.ERROR_MESSAGE:
-              message.error(errorMessage);
-              break;
-            case ErrorShowType.NOTIFICATION:
-              notification.open({
-                description: errorMessage,
-                message: errorCode,
-              });
-              break;
-            case ErrorShowType.REDIRECT:
-              // TODO: redirect
-              break;
-            default:
-              message.error(errorMessage);
-          }
-        }
-      } else if (error.response) {
-        // Axios 的错误
-        // 请求成功发出且服务器也响应了状态码，但状态代码超出了 2xx 的范围
-        message.error(`Response status:${error.response.status}`);
-      } else if (error.request) {
-        // 请求已经成功发起，但没有收到响应
-        // \`error.request\` 在浏览器中是 XMLHttpRequest 的实例，
-        // 而在node.js中是 http.ClientRequest 的实例
-        message.error('None response! Please retry.');
-      } else {
-        // 发送请求时出了点问题
-        message.error('Request error, please retry.');
+      if (opts?.skipErrorHandler) {
+        throw error;
       }
+
+      if (error.name === 'BizError') {
+        message.error(error.info?.message || error.message || '请求失败');
+        return;
+      }
+
+      const status = error?.response?.status;
+      if (status === 401) {
+        clearAuthSession();
+        redirectToLogin();
+        message.error('登录状态已失效，请重新登录');
+        return;
+      }
+
+      if (status === 403) {
+        message.error(error?.response?.data?.message || '无权限执行当前操作');
+        return;
+      }
+
+      if (status === 404) {
+        message.error(error?.response?.data?.message || '请求的资源不存在');
+        return;
+      }
+
+      if (status) {
+        message.error(error?.response?.data?.message || `请求失败(${status})`);
+        return;
+      }
+
+      if (error?.request) {
+        message.error('服务暂时不可用，请稍后重试');
+        return;
+      }
+
+      message.error(error?.message || '请求失败，请稍后重试');
     },
   },
-
-  // 请求拦截器
   requestInterceptors: [
     (config: RequestOptions) => {
-      // 拦截请求配置，进行个性化处理。
-      const url = config?.url?.concat('?token=123');
-      return { ...config, url };
+      const token = getAccessToken();
+      const csrfToken = getCsrfToken();
+      const method = (config.method || 'GET').toUpperCase();
+      const headers = {
+        ...(config.headers || {}),
+      } as Record<string, string>;
+
+      if (token && !config.skipAuthorization) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        headers['X-Kubeflare-CSRF'] = csrfToken;
+      }
+
+      return {
+        ...config,
+        withCredentials: true,
+        headers,
+      };
     },
   ],
-
-  // 响应拦截器
   responseInterceptors: [
-    (response) => {
-      // 拦截响应数据，进行个性化处理
-      const { data } = response as unknown as ResponseStructure;
+    [
+      async (response) => {
+        if (response.status === 204) {
+          return response;
+        }
 
-      if (data?.success === false) {
-        message.error('请求失败！');
-      }
-      return response;
-    },
+        if (
+          isApiResponse(response.data) &&
+          response.data.code !== successCode
+        ) {
+          throw createBizError(response.data);
+        }
+
+        return response;
+      },
+      async (error: any) => {
+        const status = error?.response?.status;
+        const originalConfig = error?.config || error?.response?.config;
+
+        if (
+          status !== 401 ||
+          !originalConfig ||
+          originalConfig._kubeflareRetry ||
+          originalConfig.skipAuthRefresh ||
+          isAuthRequest(originalConfig.url)
+        ) {
+          return Promise.reject(error);
+        }
+
+        originalConfig._kubeflareRetry = true;
+
+        try {
+          await refreshSession();
+          return getRequestInstance().request(originalConfig);
+        } catch (refreshError) {
+          clearAuthSession();
+          redirectToLogin();
+          return Promise.reject(refreshError);
+        }
+      },
+    ],
   ],
 };

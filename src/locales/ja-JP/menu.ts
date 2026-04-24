@@ -4,6 +4,7 @@ export default {
   'menu.home': 'ホーム',
   'menu.admin': '管理者',
   'menu.admin.sub-page': 'サブページ',
+  'menu.admin.users': 'ユーザー管理',
   'menu.login': 'ログイン',
   'menu.register': '登録',
   'menu.register-result': '登録結果',

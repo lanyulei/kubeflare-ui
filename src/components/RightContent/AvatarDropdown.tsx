@@ -1,15 +1,12 @@
-import {
-  LogoutOutlined,
-  SettingOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+import { LogoutOutlined, SettingOutlined } from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
 import type { MenuProps } from 'antd';
 import { Spin } from 'antd';
 import { createStyles } from 'antd-style';
 import React from 'react';
 import { flushSync } from 'react-dom';
-import { outLogin } from '@/services/kubeflare/api';
+import { logout } from '@/services/kubeflare/api';
+import { clearAuthSession } from '@/utils/auth';
 import HeaderDropdown from '../HeaderDropdown';
 
 export type GlobalHeaderRightProps = {
@@ -20,7 +17,11 @@ export type GlobalHeaderRightProps = {
 export const AvatarName = () => {
   const { initialState } = useModel('@@initialState');
   const { currentUser } = initialState || {};
-  return <span className="anticon">{currentUser?.name}</span>;
+  return (
+    <span className="anticon">
+      {currentUser?.nickname || currentUser?.username}
+    </span>
+  );
 };
 
 const useStyles = createStyles(({ token }) => {
@@ -45,29 +46,28 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
   menu,
   children,
 }) => {
-  /**
-   * 退出登录，并且将当前的 url 保存
-   */
+  const { styles } = useStyles();
+  const { initialState, setInitialState } = useModel('@@initialState');
+
   const loginOut = async () => {
-    await outLogin();
+    try {
+      await logout(undefined, {
+        skipErrorHandler: true,
+      });
+    } catch (_error) {
+    } finally {
+      clearAuthSession();
+    }
+
     const { search, pathname } = window.location;
-    const urlParams = new URL(window.location.href).searchParams;
     const searchParams = new URLSearchParams({
       redirect: pathname + search,
     });
-    /** 此方法会跳转到 redirect 参数所在的位置 */
-    const redirect = urlParams.get('redirect');
-    // Note: There may be security issues, please note
-    if (window.location.pathname !== '/user/login' && !redirect) {
-      history.replace({
-        pathname: '/user/login',
-        search: searchParams.toString(),
-      });
-    }
+    history.replace({
+      pathname: '/user/login',
+      search: searchParams.toString(),
+    });
   };
-  const { styles } = useStyles();
-
-  const { initialState, setInitialState } = useModel('@@initialState');
 
   const onMenuClick: MenuProps['onClick'] = (event) => {
     const { key } = event;
@@ -75,10 +75,13 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
       flushSync(() => {
         setInitialState((s) => ({ ...s, currentUser: undefined }));
       });
-      loginOut();
+      void loginOut();
       return;
     }
-    history.push(`/account/${key}`);
+
+    if (key === 'settings') {
+      history.push('/account/settings');
+    }
   };
 
   const loading = (
@@ -99,18 +102,13 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
 
   const { currentUser } = initialState;
 
-  if (!currentUser || !currentUser.name) {
+  if (!currentUser?.username) {
     return loading;
   }
 
   const menuItems = [
     ...(menu
       ? [
-          {
-            key: 'center',
-            icon: <UserOutlined />,
-            label: '个人中心',
-          },
           {
             key: 'settings',
             icon: <SettingOutlined />,

@@ -4,6 +4,7 @@ export default {
   'menu.home': 'خانه',
   'menu.admin': 'مدیر',
   'menu.admin.sub-page': 'زیر صفحه',
+  'menu.admin.users': 'کاربران',
   'menu.login': 'ورود',
   'menu.register': 'ثبت نام',
   'menu.register-result': 'ثبت نام نتیجه',

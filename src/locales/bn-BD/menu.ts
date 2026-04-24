@@ -4,6 +4,7 @@ export default {
   'menu.home': 'নীড়',
   'menu.admin': 'অ্যাডমিন',
   'menu.admin.sub-page': 'উপ-পৃষ্ঠা',
+  'menu.admin.users': 'ব্যবহারকারী',
   'menu.login': 'প্রবেশ',
   'menu.register': 'নিবন্ধন',
   'menu.register-result': 'নিবন্ধনে ফলাফল',

@@ -10,7 +10,11 @@ import {
   Question,
   SelectLang,
 } from '@/components';
-import { currentUser as queryCurrentUser } from '@/services/kubeflare/api';
+import {
+  currentUser as queryCurrentUser,
+  refreshToken,
+} from '@/services/kubeflare/api';
+import { clearAuthSession, setAuthSession } from '@/utils/auth';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
 import '@ant-design/v5-patch-for-react-19';
@@ -18,9 +22,6 @@ import '@ant-design/v5-patch-for-react-19';
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
 
-/**
- * @see https://umijs.org/docs/api/runtime-config#getinitialstate
- * */
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
   currentUser?: API.CurrentUser;
@@ -29,36 +30,51 @@ export async function getInitialState(): Promise<{
 }> {
   const fetchUserInfo = async () => {
     try {
-      const msg = await queryCurrentUser({
+      const res = await queryCurrentUser({
         skipErrorHandler: true,
       });
-      return msg.data;
-    } catch (_error) {
-      history.push(loginPath);
+      return res.data;
+    } catch (error: any) {
+      if (error?.response?.status !== 401) {
+        clearAuthSession();
+        return undefined;
+      }
+
+      try {
+        const refreshRes = await refreshToken(undefined, {
+          skipErrorHandler: true,
+        });
+        setAuthSession(refreshRes.data);
+        return refreshRes.data.user;
+      } catch (_refreshError) {
+        clearAuthSession();
+        return undefined;
+      }
     }
-    return undefined;
   };
-  // 如果不是登录页面，执行
+
   const { location } = history;
-  if (
-    ![loginPath, '/user/register', '/user/register-result'].includes(
-      location.pathname,
-    )
-  ) {
-    const currentUser = await fetchUserInfo();
-    return {
-      fetchUserInfo,
-      currentUser,
-      settings: defaultSettings as Partial<LayoutSettings>,
-    };
+  const currentUser =
+    location.pathname === loginPath ? undefined : await fetchUserInfo();
+
+  if (!currentUser && location.pathname !== loginPath) {
+    history.replace({
+      pathname: loginPath,
+      search: location.pathname
+        ? `redirect=${encodeURIComponent(
+            `${location.pathname}${location.search || ''}`,
+          )}`
+        : '',
+    });
   }
+
   return {
     fetchUserInfo,
+    currentUser,
     settings: defaultSettings as Partial<LayoutSettings>,
   };
 }
 
-// ProLayout 支持的api https://procomponents.kubeflare.dev/components/layout
 export const layout: RunTimeLayoutConfig = ({
   initialState,
   setInitialState,
@@ -72,18 +88,26 @@ export const layout: RunTimeLayoutConfig = ({
       src: initialState?.currentUser?.avatar,
       title: <AvatarName />,
       render: (_, avatarChildren) => {
-        return <AvatarDropdown>{avatarChildren}</AvatarDropdown>;
+        return <AvatarDropdown menu>{avatarChildren}</AvatarDropdown>;
       },
     },
     waterMarkProps: {
-      content: initialState?.currentUser?.name,
+      content:
+        initialState?.currentUser?.nickname ||
+        initialState?.currentUser?.username,
     },
     footerRender: () => <Footer />,
     onPageChange: () => {
       const { location } = history;
-      // 如果没有登录，重定向到 login
       if (!initialState?.currentUser && location.pathname !== loginPath) {
-        history.push(loginPath);
+        history.replace({
+          pathname: loginPath,
+          search: location.pathname
+            ? `redirect=${encodeURIComponent(
+                `${location.pathname}${location.search || ''}`,
+              )}`
+            : '',
+        });
       }
     },
     bgLayoutImgList: [
@@ -108,11 +132,7 @@ export const layout: RunTimeLayoutConfig = ({
     ],
     links: [],
     menuHeaderRender: undefined,
-    // 自定义 403 页面
-    // unAccessible: <div>unAccessible</div>,
-    // 增加一个 loading 的状态
     childrenRender: (children) => {
-      // if (initialState?.loading) return <PageLoading />;
       return (
         <>
           {children}
@@ -136,12 +156,6 @@ export const layout: RunTimeLayoutConfig = ({
   };
 };
 
-/**
- * @name request 配置，可以配置错误处理
- * 它基于 axios 和 ahooks 的 useRequest 提供了一套统一的网络请求和错误处理方案。
- * @doc https://umijs.org/docs/max/request#配置
- */
 export const request: RequestConfig = {
-  baseURL: 'https://proapi.azurewebsites.net',
   ...errorConfig,
 };

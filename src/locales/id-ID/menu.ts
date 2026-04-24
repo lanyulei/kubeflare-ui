@@ -4,6 +4,7 @@ export default {
   'menu.home': 'Halaman Awal',
   'menu.admin': 'Admin',
   'menu.admin.sub-page': 'Sub-Halaman',
+  'menu.admin.users': 'Pengguna',
   'menu.login': 'Masuk',
   'menu.register': 'Pendaftaran',
   'menu.register-result': 'Hasil Pendaftaran',
