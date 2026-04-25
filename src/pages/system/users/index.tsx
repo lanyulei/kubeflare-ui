@@ -21,9 +21,9 @@ import {
   createUser,
   deleteUser,
   getUserList,
-  uploadFile,
   updateUser,
-} from '@/services/kubeflare/api'
+} from '@/services/kubeflare/system/users'
+import { uploadFile } from '@/services/kubeflare/upload'
 
 const usernameRules = [
   {

@@ -32,10 +32,10 @@ import {
   confirmCurrentUserMfa,
   disableCurrentUserMfa,
   setupCurrentUserMfa,
-  uploadFile,
   updateCurrentUser,
   updateCurrentUserPassword,
-} from '@/services/kubeflare/api';
+} from '@/services/kubeflare/account/settings';
+import { uploadFile } from '@/services/kubeflare/upload';
 
 type UpdateCurrentUserFormValues = API.UpdateCurrentUserParams & {
   avatar_upload?: UploadFile<API.UploadFileData>[];

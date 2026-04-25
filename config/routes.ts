@@ -20,7 +20,7 @@ export default [
     path: '/cluster',
     name: 'cluster',
     icon: 'cluster',
-    component: './system/clusters',
+    component: './clusters',
   },
   {
     path: '/system',

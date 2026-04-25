@@ -19,7 +19,7 @@ import { createStyles } from 'antd-style';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Footer } from '@/components';
-import { getCaptcha, login } from '@/services/kubeflare/api';
+import { getCaptcha, login } from '@/services/kubeflare/user/login';
 import { setAuthSession } from '@/utils/auth';
 import Settings from '../../../../config/defaultSettings';
 

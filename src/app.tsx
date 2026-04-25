@@ -12,8 +12,10 @@ import {
 } from '@/components';
 import {
   currentUser as queryCurrentUser,
+} from '@/services/kubeflare/account/settings';
+import {
   refreshToken,
-} from '@/services/kubeflare/api';
+} from '@/services/kubeflare/user/login';
 import { clearAuthSession, setAuthSession } from '@/utils/auth';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';

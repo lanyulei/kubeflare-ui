@@ -5,7 +5,7 @@ import { Spin } from 'antd';
 import { createStyles } from 'antd-style';
 import React from 'react';
 import { flushSync } from 'react-dom';
-import { logout } from '@/services/kubeflare/api';
+import { logout } from '@/services/kubeflare/user/login';
 import { clearAuthSession } from '@/utils/auth';
 import HeaderDropdown from '../HeaderDropdown';
 
