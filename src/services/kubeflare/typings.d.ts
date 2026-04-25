@@ -17,8 +17,7 @@ declare namespace API {
     email?: string
     phone?: string
     avatar?: string
-    remark?: string
-    is_admin: boolean
+    remarks?: string
     status: number
     mfa_enabled?: boolean
     create_time?: string
@@ -110,8 +109,7 @@ declare namespace API {
     email?: string
     phone?: string
     avatar?: string
-    remark?: string
-    is_admin?: boolean
+    remarks?: string
     status?: number
   }
 
@@ -122,8 +120,7 @@ declare namespace API {
     email?: string
     phone?: string
     avatar?: string
-    remark?: string
-    is_admin?: boolean
+    remarks?: string
     status?: number
   }
 

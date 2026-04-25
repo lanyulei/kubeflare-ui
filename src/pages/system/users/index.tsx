@@ -9,7 +9,6 @@ import {
   PageContainer,
   ProForm,
   ProFormRadio,
-  ProFormSwitch,
   ProFormText,
   ProFormTextArea,
   ProTable,
@@ -53,18 +52,6 @@ const passwordRules = [
   { min: 6, max: 72, message: '密码长度需在 6 到 72 位之间' },
 ]
 
-const optionalPasswordRules = [
-  {
-    validator: async (_: unknown, value?: string) => {
-      if (!value) {
-        return
-      }
-      if (value.length < 6 || value.length > 72) {
-        throw new Error('密码长度需在 6 到 72 位之间')
-      }
-    },
-  },
-]
 
 const nicknameRules = [
   { required: true, message: '请输入昵称' },
@@ -138,8 +125,7 @@ const buildBaseUserPayload = (values: UserFormValues) => {
     email: normalizeOptionalText(values.email),
     phone: normalizeOptionalText(values.phone),
     avatar: getAvatarValue(values),
-    remark: normalizeOptionalText(values.remark),
-    is_admin: values.is_admin ?? false,
+    remarks: normalizeOptionalText(values.remarks),
     status: Number(values.status ?? 1),
   }
 }
@@ -161,7 +147,7 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
         <ProFormText
           name="username"
           label={intl.formatMessage({
-            id: 'pages.admin.users.username',
+            id: 'pages.system.users.username',
             defaultMessage: '用户名',
           })}
           rules={usernameRules}
@@ -171,24 +157,23 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
         <ProFormText
           name="nickname"
           label={intl.formatMessage({
-            id: 'pages.admin.users.nickname',
+            id: 'pages.system.users.nickname',
             defaultMessage: '昵称',
           })}
           rules={nicknameRules}
         />
       </Col>
     </Row>
+    {!isEdit && (
     <Row gutter={16}>
       <Col xs={24} md={12}>
         <ProFormText.Password
           name="password"
           label={intl.formatMessage({
-            id: isEdit
-              ? 'pages.admin.users.password.optional'
-              : 'pages.admin.users.password',
-            defaultMessage: isEdit ? '新密码（留空则不修改）' : '密码',
+            id: 'pages.system.users.password',
+            defaultMessage: '密码',
           })}
-          rules={isEdit ? optionalPasswordRules : passwordRules}
+          rules={passwordRules}
         />
       </Col>
       <Col xs={24} md={12}>
@@ -196,7 +181,7 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
           name="confirm_password"
           dependencies={['password']}
           label={intl.formatMessage({
-            id: 'pages.admin.users.password.confirm',
+            id: 'pages.system.users.password.confirm',
             defaultMessage: '确认密码',
           })}
           rules={[
@@ -218,12 +203,13 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
         />
       </Col>
     </Row>
+    )}
     <Row gutter={16}>
       <Col xs={24} md={12}>
         <ProFormText
           name="email"
           label={intl.formatMessage({
-            id: 'pages.admin.users.email',
+            id: 'pages.system.users.email',
             defaultMessage: '邮箱',
           })}
           rules={emailRules}
@@ -233,7 +219,7 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
         <ProFormText
           name="phone"
           label={intl.formatMessage({
-            id: 'pages.admin.users.phone',
+            id: 'pages.system.users.phone',
             defaultMessage: '手机号',
           })}
         />
@@ -241,32 +227,23 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
     </Row>
     <Row gutter={16}>
       <Col xs={24} md={12}>
-        <ProFormSwitch
-          name="is_admin"
-          label={intl.formatMessage({
-            id: 'pages.admin.users.isAdmin',
-            defaultMessage: '管理员',
-          })}
-        />
-      </Col>
-      <Col xs={24} md={12}>
         <ProFormRadio.Group
           name="status"
           label={intl.formatMessage({
-            id: 'pages.admin.users.status',
+            id: 'pages.system.users.status',
             defaultMessage: '状态',
           })}
           options={[
             {
               label: intl.formatMessage({
-                id: 'pages.admin.users.status.enabled',
+                id: 'pages.system.users.status.enabled',
                 defaultMessage: '启用',
               }),
               value: 1,
             },
             {
               label: intl.formatMessage({
-                id: 'pages.admin.users.status.disabled',
+                id: 'pages.system.users.status.disabled',
                 defaultMessage: '禁用',
               }),
               value: 0,
@@ -279,7 +256,7 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
     <ProForm.Item
       name="avatar_upload"
       label={intl.formatMessage({
-        id: 'pages.admin.users.avatar',
+        id: 'pages.system.users.avatar',
         defaultMessage: '头像',
       })}
       valuePropName="fileList"
@@ -317,7 +294,7 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
           <PlusOutlined />
           <div style={{ marginTop: 8 }}>
             {intl.formatMessage({
-              id: 'pages.admin.users.avatar.upload',
+              id: 'pages.system.users.avatar.upload',
               defaultMessage: '上传头像',
             })}
           </div>
@@ -325,9 +302,9 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
       </Upload>
     </ProForm.Item>
     <ProFormTextArea
-      name="remark"
+      name="remarks"
       label={intl.formatMessage({
-        id: 'pages.admin.users.remark',
+        id: 'pages.system.users.remark',
         defaultMessage: '备注',
       })}
       fieldProps={{
@@ -339,7 +316,7 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
   </>
 )
 
-const UserAdminPage: React.FC = () => {
+const UserManagementPage: React.FC = () => {
   const intl = useIntl()
   const { message } = App.useApp()
   const actionRef = useRef<ActionType | null>(null)
@@ -352,21 +329,21 @@ const UserAdminPage: React.FC = () => {
   const columns: ProColumns<API.UserItem>[] = [
     {
       title: intl.formatMessage({
-        id: 'pages.admin.users.username',
+        id: 'pages.system.users.username',
         defaultMessage: '用户名',
       }),
       dataIndex: 'username',
     },
     {
       title: intl.formatMessage({
-        id: 'pages.admin.users.nickname',
+        id: 'pages.system.users.nickname',
         defaultMessage: '昵称',
       }),
       dataIndex: 'nickname',
     },
     {
       title: intl.formatMessage({
-        id: 'pages.admin.users.email',
+        id: 'pages.system.users.email',
         defaultMessage: '邮箱',
       }),
       dataIndex: 'email',
@@ -375,27 +352,14 @@ const UserAdminPage: React.FC = () => {
     },
     {
       title: intl.formatMessage({
-        id: 'pages.admin.users.phone',
+        id: 'pages.system.users.phone',
         defaultMessage: '手机号',
       }),
       dataIndex: 'phone',
     },
     {
       title: intl.formatMessage({
-        id: 'pages.admin.users.role',
-        defaultMessage: '角色',
-      }),
-      dataIndex: 'is_admin',
-      render: (_, record) =>
-        record.is_admin ? (
-          <Tag color="gold">Admin</Tag>
-        ) : (
-          <Tag>Member</Tag>
-        ),
-    },
-    {
-      title: intl.formatMessage({
-        id: 'pages.admin.users.status',
+        id: 'pages.system.users.status',
         defaultMessage: '状态',
       }),
       dataIndex: 'status',
@@ -403,14 +367,14 @@ const UserAdminPage: React.FC = () => {
         record.status === 1 ? (
           <Tag color="success">
             {intl.formatMessage({
-              id: 'pages.admin.users.status.enabled',
+              id: 'pages.system.users.status.enabled',
               defaultMessage: '启用',
             })}
           </Tag>
         ) : (
           <Tag color="default">
             {intl.formatMessage({
-              id: 'pages.admin.users.status.disabled',
+              id: 'pages.system.users.status.disabled',
               defaultMessage: '禁用',
             })}
           </Tag>
@@ -418,7 +382,7 @@ const UserAdminPage: React.FC = () => {
     },
     {
       title: intl.formatMessage({
-        id: 'pages.admin.users.updatedAt',
+        id: 'pages.system.users.updatedAt',
         defaultMessage: '更新时间',
       }),
       dataIndex: 'update_time',
@@ -427,7 +391,7 @@ const UserAdminPage: React.FC = () => {
     },
     {
       title: intl.formatMessage({
-        id: 'pages.admin.users.option',
+        id: 'pages.system.users.option',
         defaultMessage: '操作',
       }),
       valueType: 'option',
@@ -443,21 +407,21 @@ const UserAdminPage: React.FC = () => {
         >
           <EditOutlined />{' '}
           {intl.formatMessage({
-            id: 'pages.admin.users.edit',
+            id: 'pages.system.users.edit',
             defaultMessage: '编辑',
           })}
         </a>,
         <Popconfirm
           key="delete"
           title={intl.formatMessage({
-            id: 'pages.admin.users.delete.confirm',
+            id: 'pages.system.users.delete.confirm',
             defaultMessage: '确认删除该用户吗？',
           })}
           onConfirm={async () => {
             await deleteUser(record.id)
             message.success(
               intl.formatMessage({
-                id: 'pages.admin.users.delete.success',
+                id: 'pages.system.users.delete.success',
                 defaultMessage: '用户已删除',
               }),
             )
@@ -467,7 +431,7 @@ const UserAdminPage: React.FC = () => {
           <a>
             <DeleteOutlined />{' '}
             {intl.formatMessage({
-              id: 'pages.admin.users.delete',
+              id: 'pages.system.users.delete',
               defaultMessage: '删除',
             })}
           </a>
@@ -479,7 +443,7 @@ const UserAdminPage: React.FC = () => {
   return (
     <PageContainer
       title={intl.formatMessage({
-        id: 'pages.admin.users.title',
+        id: 'pages.system.users.title',
         defaultMessage: '用户管理',
       })}
     >
@@ -502,7 +466,7 @@ const UserAdminPage: React.FC = () => {
             onClick={() => setCreateVisible(true)}
           >
             {intl.formatMessage({
-              id: 'pages.admin.users.create',
+              id: 'pages.system.users.create',
               defaultMessage: '新建用户',
             })}
           </Button>
@@ -511,7 +475,7 @@ const UserAdminPage: React.FC = () => {
 
       <ModalForm<UserFormValues>
         title={intl.formatMessage({
-          id: 'pages.admin.users.create',
+          id: 'pages.system.users.create',
           defaultMessage: '新建用户',
         })}
         open={createVisible}
@@ -521,14 +485,13 @@ const UserAdminPage: React.FC = () => {
           onCancel: () => setCreateVisible(false),
         }}
         initialValues={{
-          is_admin: false,
           status: 1,
         }}
         onFinish={async (values) => {
           await createUser(buildCreateUserPayload(values))
           message.success(
             intl.formatMessage({
-              id: 'pages.admin.users.create.success',
+              id: 'pages.system.users.create.success',
               defaultMessage: '用户创建成功',
             }),
           )
@@ -542,7 +505,7 @@ const UserAdminPage: React.FC = () => {
 
       <ModalForm<UserFormValues>
         title={intl.formatMessage({
-          id: 'pages.admin.users.edit',
+          id: 'pages.system.users.edit',
           defaultMessage: '编辑用户',
         })}
         open={editVisible}
@@ -573,7 +536,7 @@ const UserAdminPage: React.FC = () => {
           })
           message.success(
             intl.formatMessage({
-              id: 'pages.admin.users.edit.success',
+              id: 'pages.system.users.edit.success',
               defaultMessage: '用户更新成功',
             }),
           )
@@ -589,4 +552,4 @@ const UserAdminPage: React.FC = () => {
   )
 }
 
-export default UserAdminPage
+export default UserManagementPage

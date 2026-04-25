@@ -3,7 +3,7 @@ import {
   LockOutlined,
   MailOutlined,
   PhoneOutlined,
-  PictureOutlined,
+  PlusOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -15,19 +15,97 @@ import {
 } from '@ant-design/pro-components';
 import { useIntl, useModel } from '@umijs/max';
 import { createStyles } from 'antd-style';
-import { App, Button, Col, Modal, QRCode, Row, Space, Typography } from 'antd';
+import type { UploadFile, UploadProps } from 'antd';
+import {
+  App,
+  Button,
+  Col,
+  Modal,
+  QRCode,
+  Row,
+  Space,
+  Typography,
+  Upload,
+} from 'antd';
 import React, { useState } from 'react';
 import {
   confirmCurrentUserMfa,
   disableCurrentUserMfa,
   setupCurrentUserMfa,
+  uploadFile,
   updateCurrentUser,
   updateCurrentUserPassword,
 } from '@/services/kubeflare/api';
 
+type UpdateCurrentUserFormValues = API.UpdateCurrentUserParams & {
+  avatar_upload?: UploadFile<API.UploadFileData>[];
+};
+
 type UpdatePasswordFormValues = API.UpdateCurrentUserPasswordParams & {
   confirm_password: string;
 };
+
+const avatarUploadProps: UploadProps = {
+  accept: 'image/*',
+  listType: 'picture-card',
+  maxCount: 1,
+  name: 'file',
+  beforeUpload: (file) => {
+    const isSupportedImage = [
+      'image/gif',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+    ].includes(file.type);
+
+    return isSupportedImage || Upload.LIST_IGNORE;
+  },
+  customRequest: async ({ file, onError, onSuccess }) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file as File);
+      const res = await uploadFile('avatar', formData);
+      onSuccess?.(res.data);
+    } catch (error) {
+      onError?.(error as Error);
+    }
+  },
+};
+
+const getInitialAvatarUpload = (avatar?: string) =>
+  avatar
+    ? [
+        {
+          uid: 'avatar',
+          name: 'avatar',
+          status: 'done' as const,
+          url: avatar,
+        },
+      ]
+    : [];
+
+const normalizeOptionalText = (value?: string) => {
+  const nextValue = value?.trim();
+  return nextValue || undefined;
+};
+
+const getAvatarValue = (values: UpdateCurrentUserFormValues) => {
+  const avatarFile = values.avatar_upload?.[0];
+  if (avatarFile?.status !== 'done') {
+    return undefined;
+  }
+
+  return normalizeOptionalText(avatarFile.response?.url || avatarFile.url);
+};
+
+const buildUpdateCurrentUserPayload = (
+  values: UpdateCurrentUserFormValues,
+): API.UpdateCurrentUserParams => ({
+  nickname: values.nickname.trim(),
+  email: normalizeOptionalText(values.email),
+  phone: normalizeOptionalText(values.phone),
+  avatar: getAvatarValue(values),
+});
 
 const useStyles = createStyles(() => ({
   mfaSetupContent: {
@@ -93,7 +171,7 @@ const AccountSettingsPage: React.FC = () => {
               defaultMessage: '基本信息',
             })}
           >
-            <ProForm<API.UpdateCurrentUserParams>
+            <ProForm<UpdateCurrentUserFormValues>
               submitter={{
                 searchConfig: {
                   submitText: intl.formatMessage({
@@ -106,10 +184,12 @@ const AccountSettingsPage: React.FC = () => {
                 nickname: currentUser?.nickname,
                 email: currentUser?.email,
                 phone: currentUser?.phone,
-                avatar: currentUser?.avatar,
+                avatar_upload: getInitialAvatarUpload(currentUser?.avatar),
               }}
               onFinish={async (values) => {
-                const res = await updateCurrentUser(values);
+                const res = await updateCurrentUser(
+                  buildUpdateCurrentUserPayload(values),
+                );
                 setInitialState((state) => ({
                   ...state,
                   currentUser: res.data,
@@ -190,16 +270,56 @@ const AccountSettingsPage: React.FC = () => {
                   prefix: <PhoneOutlined />,
                 }}
               />
-              <ProFormText
-                name="avatar"
+              <ProForm.Item
+                name="avatar_upload"
                 label={intl.formatMessage({
                   id: 'pages.account.settings.avatar',
-                  defaultMessage: '头像地址',
+                  defaultMessage: '头像',
                 })}
-                fieldProps={{
-                  prefix: <PictureOutlined />,
-                }}
-              />
+                valuePropName="fileList"
+                getValueFromEvent={(event: {
+                  fileList?: UploadFile<API.UploadFileData>[];
+                }) => event?.fileList}
+                rules={[
+                  {
+                    validator: async (
+                      _rule: unknown,
+                      fileList?: UploadFile<API.UploadFileData>[],
+                    ) => {
+                      const avatarFile = fileList?.[0];
+                      if (!avatarFile) {
+                        return;
+                      }
+                      if (avatarFile.status === 'uploading') {
+                        throw new Error('头像上传中，请稍后再提交');
+                      }
+                      if (avatarFile.status === 'error') {
+                        throw new Error('头像上传失败，请重新上传');
+                      }
+                      if (
+                        avatarFile.status === 'done' &&
+                        !normalizeOptionalText(
+                          avatarFile.response?.url || avatarFile.url,
+                        )
+                      ) {
+                        throw new Error('头像上传结果无效，请重新上传');
+                      }
+                    },
+                  },
+                ]}
+              >
+                <Upload {...avatarUploadProps}>
+                  <div>
+                    <PlusOutlined />
+                    <div style={{ marginTop: 8 }}>
+                      {intl.formatMessage({
+                        id: 'pages.account.settings.avatar.upload',
+                        defaultMessage: '上传头像',
+                      })}
+                    </div>
+                  </div>
+                </Upload>
+              </ProForm.Item>
             </ProForm>
           </ProCard>
         </Col>

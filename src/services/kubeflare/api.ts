@@ -46,14 +46,14 @@ export async function getCaptcha(options?: { [key: string]: any }) {
   })
 }
 
-/** 上传文件 POST /api/v1/uploads/:type */
+/** 上传文件 POST /api/v1/upload/:type */
 export async function uploadFile(
   type: string,
   body: FormData,
   options?: { [key: string]: any },
 ) {
   return request<API.ApiResponse<API.UploadFileData>>(
-    `/api/v1/uploads/${type}`,
+    `/api/v1/upload/${type}`,
     {
       method: 'POST',
       data: body,

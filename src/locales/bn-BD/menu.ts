@@ -2,7 +2,7 @@ export default {
   'menu.welcome': 'স্বাগতম',
   'menu.more-blocks': 'আরও ব্লক',
   'menu.home': 'নীড়',
-  'menu.system': 'অ্যাডমিন',
+  'menu.system': 'সিস্টেম',
   'menu.system.sub-page': 'উপ-পৃষ্ঠা',
   'menu.system.user': 'ব্যবহারকারী',
   'menu.login': 'প্রবেশ',

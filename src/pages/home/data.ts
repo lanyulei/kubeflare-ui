@@ -11,7 +11,6 @@ export const fallbackCurrentUser: API.CurrentUser = {
   nickname: '访客',
   avatar: 'https://gw.alipayobjects.com/zos/rmsportal/BiazfanxmamNRoxxVxka.png',
   email: 'antdesign@alipay.com',
-  is_admin: false,
   status: 1,
 };
 

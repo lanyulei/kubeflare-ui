@@ -3,6 +3,6 @@ export default function access(
 ) {
   const { currentUser } = initialState ?? {}
   return {
-    canAdmin: Boolean(currentUser?.is_admin),
+    canAccess: Boolean(currentUser),
   }
 }

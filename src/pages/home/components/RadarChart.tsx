@@ -93,6 +93,7 @@ const RadarChart = ({ data }: RadarChartProps) => {
         viewBox={`0 0 ${chart.size} ${chart.size}`}
         width={chart.size}
       >
+        <title>Radar chart</title>
         {chart.grids.map((points) => (
           <polygon className={styles.radarGrid} key={points} points={points} />
         ))}

@@ -99,7 +99,7 @@ export namespace API {
   };
 
   export type POST_API_LOGIN_ACCOUNT_PAYLOAD = {
-    /** example: admin */
+    /** example: user */
     username: string;
     /** example: ant.design */
     password: string;
@@ -114,7 +114,5 @@ export namespace API {
     status: string;
     /** example: account */
     type: string;
-    /** example: admin */
-    currentAuthority: string;
   };
 }

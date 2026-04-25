@@ -20,7 +20,6 @@ export default [
     path: '/system',
     name: 'system',
     icon: 'setting',
-    access: 'canAdmin',
     routes: [
       {
         path: '/system',
@@ -29,7 +28,7 @@ export default [
       {
         path: '/system/user',
         name: 'user',
-        component: './admin/users',
+        component: './system/users',
       },
     ],
   },

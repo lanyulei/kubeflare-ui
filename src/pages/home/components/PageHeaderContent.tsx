@@ -41,8 +41,6 @@ const PageHeaderContent = ({ currentUser }: PageHeaderContentProps) => {
           )}
         </div>
         <div>
-          {currentUser.is_admin ? 'Admin' : 'Member'}
-          {' | '}
           {currentUser.email || '-'}
         </div>
       </div>

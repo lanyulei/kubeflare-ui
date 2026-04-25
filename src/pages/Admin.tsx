@@ -4,13 +4,13 @@ import { useIntl } from '@umijs/max';
 import { Alert, Card, Typography } from 'antd';
 import React from 'react';
 
-const Admin: React.FC = () => {
+const SystemConsole: React.FC = () => {
   const intl = useIntl();
   return (
     <PageContainer
       content={intl.formatMessage({
-        id: 'pages.admin.subPage.title',
-        defaultMessage: 'This page can only be viewed by admin',
+        id: 'pages.system.subPage.title',
+        defaultMessage: 'Kubeflare system console',
       })}
     >
       <Card>
@@ -48,4 +48,4 @@ const Admin: React.FC = () => {
   );
 };
 
-export default Admin;
+export default SystemConsole;
