@@ -24,6 +24,8 @@ export default defineConfig({
    */
   hash: true,
 
+  devtool: false,
+
   publicPath: PUBLIC_PATH,
 
   /**

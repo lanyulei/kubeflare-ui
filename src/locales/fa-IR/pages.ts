@@ -112,7 +112,11 @@ export default {
   'pages.admin.users.password': 'رمز عبور',
   'pages.admin.users.password.optional':
     'رمز عبور جدید (در صورت خالی بودن تغییر نمی‌کند)',
+  'pages.admin.users.password.confirm': 'تأیید رمز عبور',
+  'pages.admin.users.avatar': 'آواتار',
+  'pages.admin.users.avatar.upload': 'بارگذاری آواتار',
   'pages.admin.users.isAdmin': 'مدیر',
+  'pages.admin.users.remark': 'یادداشت',
   'pages.account.settings.title': 'تنظیمات حساب',
   'pages.account.settings.profile': 'پروفایل',
   'pages.account.settings.save': 'ذخیره پروفایل',

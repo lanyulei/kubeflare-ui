@@ -114,7 +114,11 @@ export default {
   'pages.admin.users.password': 'Kata Sandi',
   'pages.admin.users.password.optional':
     'Kata sandi baru (kosongkan jika tidak diubah)',
+  'pages.admin.users.password.confirm': 'Konfirmasi Kata Sandi',
+  'pages.admin.users.avatar': 'Avatar',
+  'pages.admin.users.avatar.upload': 'Unggah Avatar',
   'pages.admin.users.isAdmin': 'Admin',
+  'pages.admin.users.remark': 'Catatan',
   'pages.account.settings.title': 'Pengaturan Akun',
   'pages.account.settings.profile': 'Profil',
   'pages.account.settings.save': 'Simpan Profil',

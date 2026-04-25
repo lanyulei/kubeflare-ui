@@ -115,7 +115,11 @@ export default {
   'pages.admin.users.password': 'Senha',
   'pages.admin.users.password.optional':
     'Nova senha (deixe em branco para manter a atual)',
+  'pages.admin.users.password.confirm': 'Confirmar Senha',
+  'pages.admin.users.avatar': 'Avatar',
+  'pages.admin.users.avatar.upload': 'Enviar Avatar',
   'pages.admin.users.isAdmin': 'Administrador',
+  'pages.admin.users.remark': 'Observação',
   'pages.account.settings.title': 'Configurações da Conta',
   'pages.account.settings.profile': 'Perfil',
   'pages.account.settings.save': 'Salvar Perfil',

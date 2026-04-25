@@ -17,18 +17,18 @@ export default [
     component: './home',
   },
   {
-    path: '/admin',
-    name: 'admin',
+    path: '/system',
+    name: 'system',
     icon: 'setting',
     access: 'canAdmin',
     routes: [
       {
-        path: '/admin',
-        redirect: '/admin/users',
+        path: '/system',
+        redirect: '/system/user',
       },
       {
-        path: '/admin/users',
-        name: 'users',
+        path: '/system/user',
+        name: 'user',
         component: './admin/users',
       },
     ],

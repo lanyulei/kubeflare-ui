@@ -17,6 +17,7 @@ declare namespace API {
     email?: string
     phone?: string
     avatar?: string
+    remark?: string
     is_admin: boolean
     status: number
     mfa_enabled?: boolean
@@ -61,6 +62,17 @@ declare namespace API {
     expires_in: number
   }
 
+  type UploadFileData = {
+    id: string
+    type: string
+    filename: string
+    original_name: string
+    content_type: string
+    size: number
+    url: string
+    created_at: string
+  }
+
   type UpdateCurrentUserParams = {
     nickname: string
     email?: string
@@ -98,6 +110,7 @@ declare namespace API {
     email?: string
     phone?: string
     avatar?: string
+    remark?: string
     is_admin?: boolean
     status?: number
   }
@@ -109,6 +122,7 @@ declare namespace API {
     email?: string
     phone?: string
     avatar?: string
+    remark?: string
     is_admin?: boolean
     status?: number
   }

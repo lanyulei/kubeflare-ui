@@ -46,6 +46,22 @@ export async function getCaptcha(options?: { [key: string]: any }) {
   })
 }
 
+/** 上传文件 POST /api/v1/uploads/:type */
+export async function uploadFile(
+  type: string,
+  body: FormData,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.UploadFileData>>(
+    `/api/v1/uploads/${type}`,
+    {
+      method: 'POST',
+      data: body,
+      ...(options || {}),
+    },
+  )
+}
+
 /** 获取当前用户 GET /api/v1/user/me */
 export async function currentUser(options?: { [key: string]: any }) {
   return request<API.ApiResponse<API.CurrentUser>>('/api/v1/user/me', {

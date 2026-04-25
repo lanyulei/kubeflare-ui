@@ -7,18 +7,22 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import {
   ModalForm,
   PageContainer,
-  ProFormSelect,
+  ProForm,
+  ProFormRadio,
   ProFormSwitch,
   ProFormText,
+  ProFormTextArea,
   ProTable,
 } from '@ant-design/pro-components'
 import { useIntl } from '@umijs/max'
-import { App, Button, Popconfirm, Space, Tag } from 'antd'
+import type { UploadFile, UploadProps } from 'antd'
+import { App, Button, Col, Popconfirm, Row, Tag, Upload } from 'antd'
 import React, { useRef, useState } from 'react'
 import {
   createUser,
   deleteUser,
   getUserList,
+  uploadFile,
   updateUser,
 } from '@/services/kubeflare/api'
 
@@ -37,6 +41,303 @@ const usernameRules = [
     message: '用户名仅支持字母、数字、点、下划线和中划线',
   },
 ]
+
+type UserFormValues = API.CreateUserParams &
+  API.UpdateUserParams & {
+    confirm_password?: string
+    avatar_upload?: UploadFile<API.UploadFileData>[]
+  }
+
+const passwordRules = [
+  { required: true, message: '请输入密码' },
+  { min: 6, max: 72, message: '密码长度需在 6 到 72 位之间' },
+]
+
+const optionalPasswordRules = [
+  {
+    validator: async (_: unknown, value?: string) => {
+      if (!value) {
+        return
+      }
+      if (value.length < 6 || value.length > 72) {
+        throw new Error('密码长度需在 6 到 72 位之间')
+      }
+    },
+  },
+]
+
+const nicknameRules = [
+  { required: true, message: '请输入昵称' },
+  { min: 1, max: 64, message: '昵称长度需在 1 到 64 位之间' },
+]
+
+const emailRules = [
+  {
+    type: 'email' as const,
+    message: '请输入合法的邮箱地址',
+  },
+]
+
+const avatarUploadProps: UploadProps = {
+  accept: 'image/*',
+  listType: 'picture-card',
+  maxCount: 1,
+  name: 'file',
+  beforeUpload: (file) => {
+    const isSupportedImage = [
+      'image/gif',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+    ].includes(file.type)
+
+    return isSupportedImage || Upload.LIST_IGNORE
+  },
+  customRequest: async ({ file, onError, onSuccess }) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file as File)
+      const res = await uploadFile('avatar', formData)
+      onSuccess?.(res.data)
+    } catch (error) {
+      onError?.(error as Error)
+    }
+  },
+}
+
+const getInitialAvatarUpload = (avatar?: string) =>
+  avatar
+    ? [
+        {
+          uid: 'avatar',
+          name: 'avatar',
+          status: 'done' as const,
+          url: avatar,
+        },
+      ]
+    : []
+
+const normalizeOptionalText = (value?: string) => {
+  const nextValue = value?.trim()
+  return nextValue || undefined
+}
+
+const getAvatarValue = (values: UserFormValues) => {
+  const avatarFile = values.avatar_upload?.[0]
+  if (avatarFile?.status !== 'done') {
+    return undefined
+  }
+
+  return normalizeOptionalText(avatarFile.response?.url || avatarFile.url)
+}
+
+const buildBaseUserPayload = (values: UserFormValues) => {
+  return {
+    username: values.username.trim(),
+    nickname: values.nickname.trim(),
+    email: normalizeOptionalText(values.email),
+    phone: normalizeOptionalText(values.phone),
+    avatar: getAvatarValue(values),
+    remark: normalizeOptionalText(values.remark),
+    is_admin: values.is_admin ?? false,
+    status: Number(values.status ?? 1),
+  }
+}
+
+const buildCreateUserPayload = (values: UserFormValues): API.CreateUserParams => ({
+  ...buildBaseUserPayload(values),
+  password: values.password.trim(),
+})
+
+const buildUpdateUserPayload = (values: UserFormValues): API.UpdateUserParams => ({
+  ...buildBaseUserPayload(values),
+  password: normalizeOptionalText(values.password),
+})
+
+const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) => (
+  <>
+    <Row gutter={16}>
+      <Col xs={24} md={12}>
+        <ProFormText
+          name="username"
+          label={intl.formatMessage({
+            id: 'pages.admin.users.username',
+            defaultMessage: '用户名',
+          })}
+          rules={usernameRules}
+        />
+      </Col>
+      <Col xs={24} md={12}>
+        <ProFormText
+          name="nickname"
+          label={intl.formatMessage({
+            id: 'pages.admin.users.nickname',
+            defaultMessage: '昵称',
+          })}
+          rules={nicknameRules}
+        />
+      </Col>
+    </Row>
+    <Row gutter={16}>
+      <Col xs={24} md={12}>
+        <ProFormText.Password
+          name="password"
+          label={intl.formatMessage({
+            id: isEdit
+              ? 'pages.admin.users.password.optional'
+              : 'pages.admin.users.password',
+            defaultMessage: isEdit ? '新密码（留空则不修改）' : '密码',
+          })}
+          rules={isEdit ? optionalPasswordRules : passwordRules}
+        />
+      </Col>
+      <Col xs={24} md={12}>
+        <ProFormText.Password
+          name="confirm_password"
+          dependencies={['password']}
+          label={intl.formatMessage({
+            id: 'pages.admin.users.password.confirm',
+            defaultMessage: '确认密码',
+          })}
+          rules={[
+            ({ getFieldValue }) => ({
+              validator: async (_, value) => {
+                const password = getFieldValue('password')
+                if (!password && !value) {
+                  return
+                }
+                if (!value) {
+                  throw new Error('请再次输入密码')
+                }
+                if (password !== value) {
+                  throw new Error('两次输入的密码不一致')
+                }
+              },
+            }),
+          ]}
+        />
+      </Col>
+    </Row>
+    <Row gutter={16}>
+      <Col xs={24} md={12}>
+        <ProFormText
+          name="email"
+          label={intl.formatMessage({
+            id: 'pages.admin.users.email',
+            defaultMessage: '邮箱',
+          })}
+          rules={emailRules}
+        />
+      </Col>
+      <Col xs={24} md={12}>
+        <ProFormText
+          name="phone"
+          label={intl.formatMessage({
+            id: 'pages.admin.users.phone',
+            defaultMessage: '手机号',
+          })}
+        />
+      </Col>
+    </Row>
+    <Row gutter={16}>
+      <Col xs={24} md={12}>
+        <ProFormSwitch
+          name="is_admin"
+          label={intl.formatMessage({
+            id: 'pages.admin.users.isAdmin',
+            defaultMessage: '管理员',
+          })}
+        />
+      </Col>
+      <Col xs={24} md={12}>
+        <ProFormRadio.Group
+          name="status"
+          label={intl.formatMessage({
+            id: 'pages.admin.users.status',
+            defaultMessage: '状态',
+          })}
+          options={[
+            {
+              label: intl.formatMessage({
+                id: 'pages.admin.users.status.enabled',
+                defaultMessage: '启用',
+              }),
+              value: 1,
+            },
+            {
+              label: intl.formatMessage({
+                id: 'pages.admin.users.status.disabled',
+                defaultMessage: '禁用',
+              }),
+              value: 0,
+            },
+          ]}
+          initialValue={1}
+        />
+      </Col>
+    </Row>
+    <ProForm.Item
+      name="avatar_upload"
+      label={intl.formatMessage({
+        id: 'pages.admin.users.avatar',
+        defaultMessage: '头像',
+      })}
+      valuePropName="fileList"
+      getValueFromEvent={(event: {
+        fileList?: UploadFile<API.UploadFileData>[]
+      }) => event?.fileList}
+      rules={[
+        {
+          validator: async (
+            _rule: unknown,
+            fileList?: UploadFile<API.UploadFileData>[],
+          ) => {
+            const avatarFile = fileList?.[0]
+            if (!avatarFile) {
+              return
+            }
+            if (avatarFile.status === 'uploading') {
+              throw new Error('头像上传中，请稍后再提交')
+            }
+            if (avatarFile.status === 'error') {
+              throw new Error('头像上传失败，请重新上传')
+            }
+            if (
+              avatarFile.status === 'done' &&
+              !normalizeOptionalText(avatarFile.response?.url || avatarFile.url)
+            ) {
+              throw new Error('头像上传结果无效，请重新上传')
+            }
+          },
+        },
+      ]}
+    >
+      <Upload {...avatarUploadProps}>
+        <div>
+          <PlusOutlined />
+          <div style={{ marginTop: 8 }}>
+            {intl.formatMessage({
+              id: 'pages.admin.users.avatar.upload',
+              defaultMessage: '上传头像',
+            })}
+          </div>
+        </div>
+      </Upload>
+    </ProForm.Item>
+    <ProFormTextArea
+      name="remark"
+      label={intl.formatMessage({
+        id: 'pages.admin.users.remark',
+        defaultMessage: '备注',
+      })}
+      fieldProps={{
+        rows: 3,
+        maxLength: 256,
+        showCount: true,
+      }}
+    />
+  </>
+)
 
 const UserAdminPage: React.FC = () => {
   const intl = useIntl()
@@ -194,9 +495,8 @@ const UserAdminPage: React.FC = () => {
             success: true,
           }
         }}
-        toolBarRender={() => [
+        headerTitle={
           <Button
-            key="create"
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => setCreateVisible(true)}
@@ -205,26 +505,27 @@ const UserAdminPage: React.FC = () => {
               id: 'pages.admin.users.create',
               defaultMessage: '新建用户',
             })}
-          </Button>,
-        ]}
+          </Button>
+        }
       />
 
-      <ModalForm<API.CreateUserParams>
+      <ModalForm<UserFormValues>
         title={intl.formatMessage({
           id: 'pages.admin.users.create',
           defaultMessage: '新建用户',
         })}
         open={createVisible}
+        width={650}
         modalProps={{
           destroyOnHidden: true,
           onCancel: () => setCreateVisible(false),
         }}
+        initialValues={{
+          is_admin: false,
+          status: 1,
+        }}
         onFinish={async (values) => {
-          await createUser({
-            ...values,
-            is_admin: values.is_admin ?? false,
-            status: Number(values.status ?? 1),
-          })
+          await createUser(buildCreateUserPayload(values))
           message.success(
             intl.formatMessage({
               id: 'pages.admin.users.create.success',
@@ -236,71 +537,21 @@ const UserAdminPage: React.FC = () => {
           return true
         }}
       >
-        <ProFormText
-          name="username"
-          label={intl.formatMessage({
-            id: 'pages.admin.users.username',
-            defaultMessage: '用户名',
-          })}
-          rules={usernameRules}
-        />
-        <ProFormText
-          name="nickname"
-          label={intl.formatMessage({
-            id: 'pages.admin.users.nickname',
-            defaultMessage: '昵称',
-          })}
-          rules={[
-            { required: true, message: '请输入昵称' },
-            { min: 1, max: 64, message: '昵称长度需在 1 到 64 位之间' },
-          ]}
-        />
-        <ProFormText.Password
-          name="password"
-          label={intl.formatMessage({
-            id: 'pages.admin.users.password',
-            defaultMessage: '密码',
-          })}
-          rules={[
-            { required: true, message: '请输入密码' },
-            { min: 6, max: 72, message: '密码长度需在 6 到 72 位之间' },
-          ]}
-        />
-        <ProFormText name="email" label="Email" />
-        <ProFormText name="phone" label="Phone" />
-        <ProFormText name="avatar" label="Avatar URL" />
-        <Space size={24}>
-          <ProFormSwitch
-            name="is_admin"
-            label={intl.formatMessage({
-              id: 'pages.admin.users.isAdmin',
-              defaultMessage: '管理员',
-            })}
-          />
-          <ProFormSelect
-            name="status"
-            label={intl.formatMessage({
-              id: 'pages.admin.users.status',
-              defaultMessage: '状态',
-            })}
-            valueEnum={{
-              1: { text: '启用' },
-              0: { text: '禁用' },
-            }}
-            initialValue={1}
-          />
-        </Space>
+        {renderUserFormFields(intl)}
       </ModalForm>
 
-      <ModalForm<API.UpdateUserParams>
+      <ModalForm<UserFormValues>
         title={intl.formatMessage({
           id: 'pages.admin.users.edit',
           defaultMessage: '编辑用户',
         })}
         open={editVisible}
+        width={650}
         initialValues={{
           ...editingUser,
           password: '',
+          confirm_password: '',
+          avatar_upload: getInitialAvatarUpload(editingUser?.avatar),
         }}
         modalProps={{
           destroyOnHidden: true,
@@ -314,8 +565,7 @@ const UserAdminPage: React.FC = () => {
             return false
           }
           await updateUser(editingUser.id, {
-            ...values,
-            password: values.password || undefined,
+            ...buildUpdateUserPayload(values),
             status:
               typeof values.status === 'undefined'
                 ? editingUser.status
@@ -333,67 +583,7 @@ const UserAdminPage: React.FC = () => {
           return true
         }}
       >
-        <ProFormText
-          name="username"
-          label={intl.formatMessage({
-            id: 'pages.admin.users.username',
-            defaultMessage: '用户名',
-          })}
-          rules={usernameRules}
-        />
-        <ProFormText
-          name="nickname"
-          label={intl.formatMessage({
-            id: 'pages.admin.users.nickname',
-            defaultMessage: '昵称',
-          })}
-          rules={[
-            { required: true, message: '请输入昵称' },
-            { min: 1, max: 64, message: '昵称长度需在 1 到 64 位之间' },
-          ]}
-        />
-        <ProFormText.Password
-          name="password"
-          label={intl.formatMessage({
-            id: 'pages.admin.users.password.optional',
-            defaultMessage: '新密码（留空则不修改）',
-          })}
-          rules={[
-            {
-              validator: async (_, value) => {
-                if (!value) {
-                  return
-                }
-                if (value.length < 6 || value.length > 72) {
-                  throw new Error('密码长度需在 6 到 72 位之间')
-                }
-              },
-            },
-          ]}
-        />
-        <ProFormText name="email" label="Email" />
-        <ProFormText name="phone" label="Phone" />
-        <ProFormText name="avatar" label="Avatar URL" />
-        <Space size={24}>
-          <ProFormSwitch
-            name="is_admin"
-            label={intl.formatMessage({
-              id: 'pages.admin.users.isAdmin',
-              defaultMessage: '管理员',
-            })}
-          />
-          <ProFormSelect
-            name="status"
-            label={intl.formatMessage({
-              id: 'pages.admin.users.status',
-              defaultMessage: '状态',
-            })}
-            valueEnum={{
-              1: { text: '启用' },
-              0: { text: '禁用' },
-            }}
-          />
-        </Space>
+        {renderUserFormFields(intl, true)}
       </ModalForm>
     </PageContainer>
   )

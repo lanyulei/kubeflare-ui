@@ -64,7 +64,11 @@ export default {
   'pages.admin.users.password': 'Password',
   'pages.admin.users.password.optional':
     'New password (leave empty to keep current)',
+  'pages.admin.users.password.confirm': 'Confirm Password',
+  'pages.admin.users.avatar': 'Avatar',
+  'pages.admin.users.avatar.upload': 'Upload Avatar',
   'pages.admin.users.isAdmin': 'Admin',
+  'pages.admin.users.remark': 'Remark',
   'pages.account.settings.title': 'Account Settings',
   'pages.account.settings.profile': 'Profile',
   'pages.account.settings.save': 'Save Profile',
