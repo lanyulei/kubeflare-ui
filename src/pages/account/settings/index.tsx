@@ -14,6 +14,7 @@ import {
   ProFormText,
 } from '@ant-design/pro-components';
 import { useIntl, useModel } from '@umijs/max';
+import { createStyles } from 'antd-style';
 import { App, Button, Col, Modal, QRCode, Row, Space, Typography } from 'antd';
 import React, { useState } from 'react';
 import {
@@ -24,8 +25,29 @@ import {
   updateCurrentUserPassword,
 } from '@/services/kubeflare/api';
 
+type UpdatePasswordFormValues = API.UpdateCurrentUserPasswordParams & {
+  confirm_password: string;
+};
+
+const useStyles = createStyles(() => ({
+  mfaSetupContent: {
+    width: '100%',
+  },
+  mfaQrCode: {
+    display: 'flex',
+    width: '100%',
+    justifyContent: 'center',
+  },
+  mfaSecret: {
+    width: '100%',
+    marginBottom: 0,
+    textAlign: 'center',
+  },
+}));
+
 const AccountSettingsPage: React.FC = () => {
   const intl = useIntl();
+  const { styles } = useStyles();
   const { message } = App.useApp();
   const { initialState, setInitialState } = useModel('@@initialState');
   const currentUser = initialState?.currentUser;
@@ -188,7 +210,7 @@ const AccountSettingsPage: React.FC = () => {
               defaultMessage: '修改密码',
             })}
           >
-            <ProForm<API.UpdateCurrentUserPasswordParams>
+            <ProForm<UpdatePasswordFormValues>
               submitter={{
                 searchConfig: {
                   submitText: intl.formatMessage({
@@ -198,7 +220,9 @@ const AccountSettingsPage: React.FC = () => {
                 },
               }}
               onFinish={async (values) => {
-                await updateCurrentUserPassword(values);
+                const { confirm_password: _confirmPassword, ...params } =
+                  values;
+                await updateCurrentUserPassword(params);
                 message.success(
                   intl.formatMessage({
                     id: 'pages.account.settings.password.success',
@@ -254,6 +278,41 @@ const AccountSettingsPage: React.FC = () => {
                   },
                 ]}
               />
+              <ProFormText.Password
+                name="confirm_password"
+                dependencies={['new_password']}
+                label={intl.formatMessage({
+                  id: 'pages.account.settings.password.confirm',
+                  defaultMessage: '确认新密码',
+                })}
+                fieldProps={{
+                  prefix: <LockOutlined />,
+                }}
+                rules={[
+                  {
+                    required: true,
+                    message: intl.formatMessage({
+                      id: 'pages.account.settings.password.confirm.required',
+                      defaultMessage: '请再次输入新密码',
+                    }),
+                  },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue('new_password') === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(
+                        new Error(
+                          intl.formatMessage({
+                            id: 'pages.account.settings.password.confirm.mismatch',
+                            defaultMessage: '两次输入的新密码不一致',
+                          }),
+                        ),
+                      );
+                    },
+                  }),
+                ]}
+              />
             </ProForm>
           </ProCard>
           <ProCard
@@ -306,12 +365,14 @@ const AccountSettingsPage: React.FC = () => {
         })}
         onCancel={closeMfaConfirm}
       >
-        <Space direction="vertical" size={16}>
+        <Space className={styles.mfaSetupContent} direction="vertical" size={16}>
           {mfaSetup?.otp_auth_url && (
-            <QRCode size={180} value={mfaSetup.otp_auth_url} />
+            <div className={styles.mfaQrCode}>
+              <QRCode size={180} value={mfaSetup.otp_auth_url} />
+            </div>
           )}
           {mfaSetup?.secret && (
-            <Typography.Paragraph copyable>
+            <Typography.Paragraph className={styles.mfaSecret} copyable>
               {mfaSetup.secret}
             </Typography.Paragraph>
           )}

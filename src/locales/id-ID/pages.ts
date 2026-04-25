@@ -83,8 +83,7 @@ export default {
     'Kata sandi harus terdiri dari 6 hingga 72 karakter.',
   'pages.login.setup.submit': 'Selesaikan Penyiapan',
   'pages.login.tip': 'Gunakan akun yang dibuatkan oleh administrator.',
-  'pages.login.switchToSetup':
-    'Login pertama kali? Atur kata sandi Anda',
+  'pages.login.switchToSetup': 'Login pertama kali? Atur kata sandi Anda',
   'pages.login.switchToLogin': 'Kembali ke Login',
   'pages.login.setup.tip':
     'Token penyiapan dapat dibuat di manajemen pengguna.',
@@ -121,8 +120,7 @@ export default {
   'pages.account.settings.save': 'Simpan Profil',
   'pages.account.settings.saveSuccess': 'Profil berhasil diperbarui.',
   'pages.account.settings.nickname': 'Nama Panggilan',
-  'pages.account.settings.nickname.required':
-    'Masukkan nama panggilan.',
+  'pages.account.settings.nickname.required': 'Masukkan nama panggilan.',
   'pages.account.settings.nickname.length':
     'Nama panggilan harus terdiri dari 1 hingga 64 karakter.',
   'pages.account.settings.username': 'Nama Pengguna',
@@ -134,9 +132,12 @@ export default {
   'pages.account.settings.password.save': 'Perbarui Kata Sandi',
   'pages.account.settings.password.success': 'Kata sandi berhasil diperbarui.',
   'pages.account.settings.password.old': 'Kata Sandi Lama',
-  'pages.account.settings.password.old.required':
-    'Masukkan kata sandi lama.',
+  'pages.account.settings.password.old.required': 'Masukkan kata sandi lama.',
   'pages.account.settings.password.new': 'Kata Sandi Baru',
-  'pages.account.settings.password.new.required':
-    'Masukkan kata sandi baru.',
+  'pages.account.settings.password.new.required': 'Masukkan kata sandi baru.',
+  'pages.account.settings.password.confirm': 'Konfirmasi Kata Sandi Baru',
+  'pages.account.settings.password.confirm.required':
+    'Masukkan kata sandi baru sekali lagi.',
+  'pages.account.settings.password.confirm.mismatch':
+    'Kedua kata sandi baru tidak cocok.',
 };

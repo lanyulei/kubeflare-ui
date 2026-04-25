@@ -132,6 +132,7 @@ export const layout: RunTimeLayoutConfig = ({
     ],
     links: [],
     menuHeaderRender: undefined,
+    breadcrumbRender: false,
     childrenRender: (children) => {
       return (
         <>

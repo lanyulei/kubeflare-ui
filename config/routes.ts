@@ -19,7 +19,7 @@ export default [
   {
     path: '/admin',
     name: 'admin',
-    icon: 'crown',
+    icon: 'setting',
     access: 'canAdmin',
     routes: [
       {
@@ -37,6 +37,7 @@ export default [
     path: '/account',
     name: 'account',
     icon: 'user',
+    hideInMenu: true,
     routes: [
       {
         path: '/account/settings',

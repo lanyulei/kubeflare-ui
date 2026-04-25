@@ -87,6 +87,11 @@ export default {
   'pages.account.settings.password.new': 'New Password',
   'pages.account.settings.password.new.required':
     'Please input your new password.',
+  'pages.account.settings.password.confirm': 'Confirm New Password',
+  'pages.account.settings.password.confirm.required':
+    'Please input your new password again.',
+  'pages.account.settings.password.confirm.mismatch':
+    'The two new passwords do not match.',
   'pages.account.settings.mfa': 'Multi-factor Authentication',
   'pages.account.settings.mfa.enabled': 'MFA is enabled for this account.',
   'pages.account.settings.mfa.disabled': 'MFA is not enabled for this account.',

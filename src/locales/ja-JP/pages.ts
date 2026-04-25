@@ -7,21 +7,26 @@ export default {
   'pages.login.failure': 'ログインに失敗したら、もう一度試してください!',
   'pages.login.success': 'ログイン成功!',
   'pages.login.setup.tab': '初回パスワード設定',
-  'pages.login.setup.success': 'パスワードを設定しました。新しいパスワードでログインしてください。',
-  'pages.login.setup.failure': 'パスワード設定に失敗しました。セットアップトークンを確認してください。',
+  'pages.login.setup.success':
+    'パスワードを設定しました。新しいパスワードでログインしてください。',
+  'pages.login.setup.failure':
+    'パスワード設定に失敗しました。セットアップトークンを確認してください。',
   'pages.login.username.placeholder': 'ユーザー名：adminまたはuser',
   'pages.login.username.required': 'ユーザー名を入力してください！',
-  'pages.login.username.length': 'ユーザー名は 3 文字以上 64 文字以下で入力してください。',
+  'pages.login.username.length':
+    'ユーザー名は 3 文字以上 64 文字以下で入力してください。',
   'pages.login.password.placeholder': 'パスワード：ant.design',
   'pages.login.password.required': 'パスワードを入力してください！',
-  'pages.login.password.length': 'パスワードは 6 文字以上 72 文字以下で入力してください。',
+  'pages.login.password.length':
+    'パスワードは 6 文字以上 72 文字以下で入力してください。',
   'pages.login.setup.submit': '設定を完了',
   'pages.login.tip': '管理者から払い出されたアカウントでログインしてください。',
   'pages.login.switchToSetup': '初回ログイン時はパスワードを設定',
   'pages.login.switchToLogin': 'ログインへ戻る',
   'pages.login.setup.tip': 'セットアップトークンはユーザー管理で生成できます。',
   'pages.login.setup.token.placeholder': 'セットアップトークン',
-  'pages.login.setup.token.required': 'セットアップトークンを入力してください。',
+  'pages.login.setup.token.required':
+    'セットアップトークンを入力してください。',
   'pages.login.setup.password.placeholder': '新しいパスワード',
   'pages.login.setup.password.required': '新しいパスワードを入力してください。',
   'pages.login.phoneLogin.tab': '電話ログイン',
@@ -76,19 +81,28 @@ export default {
   'pages.account.settings.saveSuccess': 'プロフィールを更新しました。',
   'pages.account.settings.nickname': '表示名',
   'pages.account.settings.nickname.required': '表示名を入力してください。',
-  'pages.account.settings.nickname.length': '表示名は 1 文字以上 64 文字以下で入力してください。',
+  'pages.account.settings.nickname.length':
+    '表示名は 1 文字以上 64 文字以下で入力してください。',
   'pages.account.settings.username': 'ユーザー名',
   'pages.account.settings.email': 'メール',
-  'pages.account.settings.email.invalid': '有効なメールアドレスを入力してください。',
+  'pages.account.settings.email.invalid':
+    '有効なメールアドレスを入力してください。',
   'pages.account.settings.phone': '電話番号',
   'pages.account.settings.avatar': 'アバター URL',
   'pages.account.settings.password': 'パスワード変更',
   'pages.account.settings.password.save': 'パスワード更新',
   'pages.account.settings.password.success': 'パスワードを更新しました。',
   'pages.account.settings.password.old': '現在のパスワード',
-  'pages.account.settings.password.old.required': '現在のパスワードを入力してください。',
+  'pages.account.settings.password.old.required':
+    '現在のパスワードを入力してください。',
   'pages.account.settings.password.new': '新しいパスワード',
-  'pages.account.settings.password.new.required': '新しいパスワードを入力してください。',
+  'pages.account.settings.password.new.required':
+    '新しいパスワードを入力してください。',
+  'pages.account.settings.password.confirm': '新しいパスワードの確認',
+  'pages.account.settings.password.confirm.required':
+    '新しいパスワードをもう一度入力してください。',
+  'pages.account.settings.password.confirm.mismatch':
+    '入力した新しいパスワードが一致しません。',
   'pages.searchTable.createForm.newRule': '新しいルール',
   'pages.searchTable.updateForm.ruleConfig': 'ルール構成',
   'pages.searchTable.updateForm.basicConfig': '基本情報',

@@ -77,10 +77,8 @@ export default {
     'رمز عبور با موفقیت تنظیم شد. لطفاً با رمز جدید وارد شوید.',
   'pages.login.setup.failure':
     'تنظیم رمز عبور انجام نشد. توکن راه‌اندازی را بررسی کنید.',
-  'pages.login.username.length':
-    'نام کاربری باید بین 3 تا 64 کاراکتر باشد.',
-  'pages.login.password.length':
-    'رمز عبور باید بین 6 تا 72 کاراکتر باشد.',
+  'pages.login.username.length': 'نام کاربری باید بین 3 تا 64 کاراکتر باشد.',
+  'pages.login.password.length': 'رمز عبور باید بین 6 تا 72 کاراکتر باشد.',
   'pages.login.setup.submit': 'تکمیل تنظیمات',
   'pages.login.tip': 'از حسابی که مدیر برای شما ایجاد کرده استفاده کنید.',
   'pages.login.switchToSetup': 'ورود اول است؟ ابتدا رمز عبور را تنظیم کنید',
@@ -132,9 +130,12 @@ export default {
   'pages.account.settings.password.save': 'بروزرسانی رمز عبور',
   'pages.account.settings.password.success': 'رمز عبور بروزرسانی شد.',
   'pages.account.settings.password.old': 'رمز عبور فعلی',
-  'pages.account.settings.password.old.required':
-    'رمز عبور فعلی را وارد کنید.',
+  'pages.account.settings.password.old.required': 'رمز عبور فعلی را وارد کنید.',
   'pages.account.settings.password.new': 'رمز عبور جدید',
-  'pages.account.settings.password.new.required':
-    'رمز عبور جدید را وارد کنید.',
+  'pages.account.settings.password.new.required': 'رمز عبور جدید را وارد کنید.',
+  'pages.account.settings.password.confirm': 'تأیید رمز عبور جدید',
+  'pages.account.settings.password.confirm.required':
+    'رمز عبور جدید را دوباره وارد کنید.',
+  'pages.account.settings.password.confirm.mismatch':
+    'رمزهای عبور جدید وارد شده یکسان نیستند.',
 };

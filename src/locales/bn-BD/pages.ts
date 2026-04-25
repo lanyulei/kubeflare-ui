@@ -73,19 +73,14 @@ export default {
   'pages.login.setup.tab': 'পাসওয়ার্ড সেট করুন',
   'pages.login.setup.success':
     'পাসওয়ার্ড সফলভাবে সেট হয়েছে। নতুন পাসওয়ার্ড দিয়ে লগইন করুন।',
-  'pages.login.setup.failure':
-    'পাসওয়ার্ড সেট করা যায়নি। সেটআপ টোকেনটি পরীক্ষা করুন।',
-  'pages.login.username.length':
-    'ব্যবহারকারীর নাম 3 থেকে 64 অক্ষরের মধ্যে হতে হবে।',
-  'pages.login.password.length':
-    'পাসওয়ার্ড 6 থেকে 72 অক্ষরের মধ্যে হতে হবে।',
+  'pages.login.setup.failure': 'পাসওয়ার্ড সেট করা যায়নি। সেটআপ টোকেনটি পরীক্ষা করুন।',
+  'pages.login.username.length': 'ব্যবহারকারীর নাম 3 থেকে 64 অক্ষরের মধ্যে হতে হবে।',
+  'pages.login.password.length': 'পাসওয়ার্ড 6 থেকে 72 অক্ষরের মধ্যে হতে হবে।',
   'pages.login.setup.submit': 'সেটআপ সম্পন্ন করুন',
   'pages.login.tip': 'অ্যাডমিন প্রদান করা অ্যাকাউন্ট ব্যবহার করুন।',
-  'pages.login.switchToSetup':
-    'প্রথমবার লগইন? আগে পাসওয়ার্ড সেট করুন',
+  'pages.login.switchToSetup': 'প্রথমবার লগইন? আগে পাসওয়ার্ড সেট করুন',
   'pages.login.switchToLogin': 'লগইনে ফিরে যান',
-  'pages.login.setup.tip':
-    'সেটআপ টোকেন ইউজার ম্যানেজমেন্ট পেজ থেকে তৈরি করা যায়।',
+  'pages.login.setup.tip': 'সেটআপ টোকেন ইউজার ম্যানেজমেন্ট পেজ থেকে তৈরি করা যায়।',
   'pages.login.setup.token.placeholder': 'সেটআপ টোকেন',
   'pages.login.setup.token.required': 'সেটআপ টোকেন লিখুন।',
   'pages.login.setup.password.placeholder': 'নতুন পাসওয়ার্ড',
@@ -111,8 +106,7 @@ export default {
   'pages.admin.users.create.success': 'ব্যবহারকারী তৈরি হয়েছে।',
   'pages.admin.users.edit.success': 'ব্যবহারকারী হালনাগাদ হয়েছে।',
   'pages.admin.users.password': 'পাসওয়ার্ড',
-  'pages.admin.users.password.optional':
-    'নতুন পাসওয়ার্ড (ফাঁকা রাখলে পরিবর্তন হবে না)',
+  'pages.admin.users.password.optional': 'নতুন পাসওয়ার্ড (ফাঁকা রাখলে পরিবর্তন হবে না)',
   'pages.admin.users.isAdmin': 'অ্যাডমিন',
   'pages.account.settings.title': 'অ্যাকাউন্ট সেটিংস',
   'pages.account.settings.profile': 'প্রোফাইল',
@@ -124,17 +118,18 @@ export default {
     'ডাকনাম 1 থেকে 64 অক্ষরের মধ্যে হতে হবে।',
   'pages.account.settings.username': 'ব্যবহারকারীর নাম',
   'pages.account.settings.email': 'ইমেইল',
-  'pages.account.settings.email.invalid':
-    'সঠিক ইমেইল ঠিকানা লিখুন।',
+  'pages.account.settings.email.invalid': 'সঠিক ইমেইল ঠিকানা লিখুন।',
   'pages.account.settings.phone': 'ফোন',
   'pages.account.settings.avatar': 'অ্যাভাটার URL',
   'pages.account.settings.password': 'পাসওয়ার্ড পরিবর্তন',
   'pages.account.settings.password.save': 'পাসওয়ার্ড আপডেট',
   'pages.account.settings.password.success': 'পাসওয়ার্ড আপডেট হয়েছে।',
   'pages.account.settings.password.old': 'পুরোনো পাসওয়ার্ড',
-  'pages.account.settings.password.old.required':
-    'পুরোনো পাসওয়ার্ড লিখুন।',
+  'pages.account.settings.password.old.required': 'পুরোনো পাসওয়ার্ড লিখুন।',
   'pages.account.settings.password.new': 'নতুন পাসওয়ার্ড',
-  'pages.account.settings.password.new.required':
-    'নতুন পাসওয়ার্ড লিখুন。',
+  'pages.account.settings.password.new.required': 'নতুন পাসওয়ার্ড লিখুন。',
+  'pages.account.settings.password.confirm': 'নতুন পাসওয়ার্ড নিশ্চিত করুন',
+  'pages.account.settings.password.confirm.required': 'নতুন পাসওয়ার্ড আবার লিখুন।',
+  'pages.account.settings.password.confirm.mismatch':
+    'দুইবার লেখা নতুন পাসওয়ার্ড মিলছে না।',
 };

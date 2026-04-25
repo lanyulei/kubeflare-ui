@@ -89,8 +89,7 @@ export default {
   'pages.login.setup.tip':
     'Os tokens de configuração podem ser gerados na gestão de usuários.',
   'pages.login.setup.token.placeholder': 'Token de configuração',
-  'pages.login.setup.token.required':
-    'Informe o token de configuração.',
+  'pages.login.setup.token.required': 'Informe o token de configuração.',
   'pages.login.setup.password.placeholder': 'Nova senha',
   'pages.login.setup.password.required': 'Informe a nova senha.',
   'pages.admin.users.title': 'Gestão de Usuários',
@@ -134,9 +133,12 @@ export default {
   'pages.account.settings.password.save': 'Atualizar Senha',
   'pages.account.settings.password.success': 'Senha atualizada.',
   'pages.account.settings.password.old': 'Senha Atual',
-  'pages.account.settings.password.old.required':
-    'Informe sua senha atual.',
+  'pages.account.settings.password.old.required': 'Informe sua senha atual.',
   'pages.account.settings.password.new': 'Nova Senha',
-  'pages.account.settings.password.new.required':
-    'Informe a nova senha.',
+  'pages.account.settings.password.new.required': 'Informe a nova senha.',
+  'pages.account.settings.password.confirm': 'Confirmar Nova Senha',
+  'pages.account.settings.password.confirm.required':
+    'Informe a nova senha novamente.',
+  'pages.account.settings.password.confirm.mismatch':
+    'As duas novas senhas não coincidem.',
 };
