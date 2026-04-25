@@ -17,6 +17,12 @@ export default [
     component: './home',
   },
   {
+    path: '/cluster',
+    name: 'cluster',
+    icon: 'cluster',
+    component: './system/clusters',
+  },
+  {
     path: '/system',
     name: 'system',
     icon: 'setting',

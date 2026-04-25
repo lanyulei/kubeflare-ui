@@ -2,6 +2,7 @@ export default {
   'menu.welcome': 'স্বাগতম',
   'menu.more-blocks': 'আরও ব্লক',
   'menu.home': 'নীড়',
+  'menu.cluster': 'ক্লাস্টার',
   'menu.system': 'সিস্টেম',
   'menu.system.sub-page': 'উপ-পৃষ্ঠা',
   'menu.system.user': 'ব্যবহারকারী',

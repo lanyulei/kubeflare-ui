@@ -2,6 +2,7 @@ export default {
   'menu.welcome': 'Selamat Datang',
   'menu.more-blocks': 'Blocks Lainnya',
   'menu.home': 'Halaman Awal',
+  'menu.cluster': 'Cluster',
   'menu.system': 'System',
   'menu.system.sub-page': 'Sub-Halaman',
   'menu.system.user': 'Pengguna',
