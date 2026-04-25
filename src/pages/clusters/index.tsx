@@ -3,11 +3,34 @@ import { PageContainer, ProTable } from '@ant-design/pro-components'
 import { useIntl } from '@umijs/max'
 import { Tag, Tooltip } from 'antd'
 import React from 'react'
-import { listClusterKubeflareComV1Cluster } from '@/services/kubeflare/clusters'
 
 const emptyText = '-'
 
-const getClusterStatus = (record: API.ClusterItem) => {
+type ClusterCondition = {
+  message?: string
+  reason?: string
+  status: 'True' | 'False' | 'Unknown'
+  type: string
+}
+
+type ClusterItem = {
+  metadata?: {
+    creationTimestamp?: string
+    name?: string
+    resourceVersion?: string
+    uid?: string
+  }
+  status?: {
+    conditions?: ClusterCondition[]
+    kubernetesVersion?: string
+    nodeCount?: number
+    uid?: string
+  }
+}
+
+const clusterData: ClusterItem[] = []
+
+const getClusterStatus = (record: ClusterItem) => {
   const conditions = record.status?.conditions || []
   const condition =
     conditions.find((item) => item.type === 'Ready') || conditions[0]
@@ -19,7 +42,7 @@ const getClusterStatus = (record: API.ClusterItem) => {
   return condition
 }
 
-const getStatusTagColor = (status?: API.ClusterCondition['status']) => {
+const getStatusTagColor = (status?: ClusterCondition['status']) => {
   if (status === 'True') {
     return 'success'
   }
@@ -33,9 +56,9 @@ const getStatusTagColor = (status?: API.ClusterCondition['status']) => {
 
 const getStatusText = (
   intl: ReturnType<typeof useIntl>,
-  status: API.ClusterCondition['status'],
+  status: ClusterCondition['status'],
 ) => {
-  const statusTextMap: Record<API.ClusterCondition['status'], string> = {
+  const statusTextMap: Record<ClusterCondition['status'], string> = {
     True: intl.formatMessage({
       id: 'pages.clusters.status.true',
       defaultMessage: '正常',
@@ -56,7 +79,7 @@ const getStatusText = (
 const ClusterManagementPage: React.FC = () => {
   const intl = useIntl()
 
-  const columns: ProColumns<API.ClusterItem>[] = [
+  const columns: ProColumns<ClusterItem>[] = [
     {
       title: intl.formatMessage({
         id: 'pages.clusters.name',
@@ -134,7 +157,7 @@ const ClusterManagementPage: React.FC = () => {
         defaultMessage: '集群管理',
       })}
     >
-      <ProTable<API.ClusterItem>
+      <ProTable<ClusterItem>
         rowKey={(record) =>
           record.metadata?.uid ||
           record.status?.uid ||
@@ -144,13 +167,7 @@ const ClusterManagementPage: React.FC = () => {
         }
         search={false}
         columns={columns}
-        request={async () => {
-          const res = await listClusterKubeflareComV1Cluster()
-          return {
-            data: res.items || [],
-            success: true,
-          }
-        }}
+        dataSource={clusterData}
         pagination={false}
         headerTitle={intl.formatMessage({
           id: 'pages.clusters.list',
