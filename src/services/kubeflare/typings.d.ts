@@ -72,6 +72,87 @@ declare namespace API {
     created_at: string
   }
 
+  type ClusterAuthType =
+    | 'bearer_token'
+    | 'client_certificate'
+    | 'basic'
+    | 'auth_provider'
+    | 'exec'
+
+  type ClusterItem = {
+    id: string
+    name: string
+    api_endpoint: string
+    auth_type: ClusterAuthType
+    tls_server_name?: string
+    skip_tls_verify: boolean
+    proxy_url?: string
+    disable_compression: boolean
+    impersonate_user?: string
+    impersonate_uid?: string
+    impersonate_groups?: string
+    impersonate_extra?: string
+    namespace?: string
+    source_context?: string
+    source_cluster?: string
+    source_user?: string
+    default: boolean
+    enabled: boolean
+    created_at: string
+    updated_at: string
+  }
+
+  type ClusterListData = {
+    items: ClusterItem[]
+  }
+
+  type ClusterBaseParams = {
+    name: string
+    api_endpoint: string
+    auth_type?: ClusterAuthType
+    upstream_bearer_token?: string
+    ca_cert_pem?: string
+    client_cert_pem?: string
+    client_key_pem?: string
+    username?: string
+    password?: string
+    auth_provider_config?: string
+    exec_config?: string
+    tls_server_name?: string
+    skip_tls_verify?: boolean
+    proxy_url?: string
+    disable_compression?: boolean
+    impersonate_user?: string
+    impersonate_uid?: string
+    impersonate_groups?: string
+    impersonate_extra?: string
+    namespace?: string
+    source_context?: string
+    source_cluster?: string
+    source_user?: string
+    default?: boolean
+    enabled?: boolean
+    kubeconfig?: string
+    kubeconfig_context?: string
+  }
+
+  type CreateClusterParams = ClusterBaseParams
+
+  type UpdateClusterParams = ClusterBaseParams
+
+  type ImportKubeconfigParams = {
+    kubeconfig: string
+    context_names?: string[]
+    default_context?: string
+    enabled?: boolean
+    skip_unsupported?: boolean
+  }
+
+  type ImportKubeconfigData = {
+    items: ClusterItem[]
+    skipped?: string[]
+  }
+
   type UpdateCurrentUserParams = {
     nickname: string
     email?: string
@@ -123,5 +204,4 @@ declare namespace API {
     remarks?: string
     status?: number
   }
-
 }
