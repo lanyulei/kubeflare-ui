@@ -148,7 +148,7 @@ const Welcome: React.FC = () => {
               index={2}
               title="了解 Kubeflare"
               href="https://kubeflare.io"
-              desc="Kubeflare 是一个基于 Cloudflare 的 Kubernetes 集群管理平台，主要用于管理和运维云原生应用。"
+              desc="Kubeflare 是一个面向企业级中后台场景的云原生应用平台。"
             />
             <InfoCard
               index={3}

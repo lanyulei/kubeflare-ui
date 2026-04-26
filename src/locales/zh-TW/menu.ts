@@ -2,7 +2,6 @@ export default {
   'menu.welcome': '歡迎',
   'menu.more-blocks': '更多區塊',
   'menu.home': '首頁',
-  'menu.cluster': '集群管理',
   'menu.system': '系統管理',
   'menu.system.sub-page': '二級管理頁',
   'menu.system.user': '使用者管理',

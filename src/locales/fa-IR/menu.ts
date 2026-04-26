@@ -2,7 +2,6 @@ export default {
   'menu.welcome': 'خوش آمدید',
   'menu.more-blocks': 'بلوک های بیشتر',
   'menu.home': 'خانه',
-  'menu.cluster': 'خوشه‌ها',
   'menu.system': 'سیستم',
   'menu.system.sub-page': 'زیر صفحه',
   'menu.system.user': 'کاربران',

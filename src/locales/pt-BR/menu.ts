@@ -2,7 +2,6 @@ export default {
   'menu.welcome': 'Welcome',
   'menu.more-blocks': 'More Blocks',
   'menu.home': 'Início',
-  'menu.cluster': 'Clusters',
   'menu.system': 'Sistema',
   'menu.system.sub-page': 'Sub-Page',
   'menu.system.user': 'Usuários',
