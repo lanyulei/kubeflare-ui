@@ -4,6 +4,8 @@ export default {
   'menu.home': '首页',
   'menu.system': '系统管理',
   'menu.system.user': '用户管理',
+  'menu.cluster': '集群管理',
+  'menu.cluster.clusterList': '集群列表',
   'menu.login': '登录',
   'menu.register': '注册',
   'menu.register-result': '注册结果',

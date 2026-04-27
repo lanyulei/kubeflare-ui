@@ -123,4 +123,42 @@ declare namespace API {
     remarks?: string
     status?: number
   }
+
+  type ClusterItem = {
+    id: number
+    name: string
+    alias?: string
+    provider: string
+    yaml?: string
+    remarks?: string
+    status: boolean
+    node_count: number
+    runtime_status: string
+    cluster_version?: string
+    runtime_error?: string
+    create_time: string
+    update_time: string
+  }
+
+  type ClusterListData = {
+    items: ClusterItem[]
+  }
+
+  type CreateClusterParams = {
+    name: string
+    alias?: string
+    provider: string
+    yaml: string
+    remarks?: string
+    status?: boolean
+  }
+
+  type UpdateClusterParams = {
+    name: string
+    alias?: string
+    provider: string
+    yaml: string
+    remarks?: string
+    status?: boolean
+  }
 }

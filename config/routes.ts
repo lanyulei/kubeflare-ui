@@ -17,6 +17,22 @@ export default [
     component: './home',
   },
   {
+    path: '/cluster',
+    name: 'cluster',
+    icon: 'database',
+    routes: [
+      {
+        path: '/cluster',
+        redirect: '/cluster/list',
+      },
+      {
+        path: '/cluster/list',
+        name: 'clusterList',
+        component: './cluster/list',
+      },
+    ],
+  },
+  {
     path: '/system',
     name: 'system',
     icon: 'setting',

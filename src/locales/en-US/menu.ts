@@ -4,6 +4,8 @@ export default {
   'menu.home': 'Home',
   'menu.system': 'System',
   'menu.system.user': 'Users',
+  'menu.cluster': 'Cluster',
+  'menu.cluster.clusterList': 'Clusters',
   'menu.login': 'Login',
   'menu.register': 'Register',
   'menu.register-result': 'Register Result',
