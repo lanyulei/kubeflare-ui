@@ -1,5 +1,5 @@
 import { yaml } from '@codemirror/lang-yaml'
-import CodeMirror from '@uiw/react-codemirror'
+import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import { Typography } from 'antd'
 import { createStyles } from 'antd-style'
 import React from 'react'
@@ -42,6 +42,11 @@ const useStyles = createStyles(({ token }) => ({
 
     '.cm-line': {
       padding: `0 ${token.paddingSM}px`,
+    },
+
+    '.cm-placeholder': {
+      whiteSpace: 'pre-wrap',
+      overflowWrap: 'anywhere',
     },
   },
   readOnly: {
@@ -93,7 +98,7 @@ const YamlEditor: React.FC<YamlEditorProps> = ({
         }}
         editable={!readOnly}
         readOnly={readOnly}
-        extensions={[yaml()]}
+        extensions={[yaml(), EditorView.lineWrapping]}
         height={`${minHeight}px`}
         maxHeight={`${maxHeight}px`}
         placeholder={placeholder}
