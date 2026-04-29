@@ -1,3 +1,5 @@
+// @ts-ignore
+/* eslint-disable */
 import { request } from '@umijs/max'
 
 /** 获取集群列表 GET /api/v1/cluster */

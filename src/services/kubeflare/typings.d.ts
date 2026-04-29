@@ -102,6 +102,27 @@ declare namespace API {
     items: UserItem[]
   }
 
+  type ClusterItem = {
+    id: number
+    name: string
+    alias?: string
+    provider?: string
+    yaml?: string
+    remarks?: string
+    status: number
+    node_count?: number
+    running_state?: string
+    version?: string
+    message?: string
+    create_time?: string
+    update_time?: string
+    delete_time?: string
+  }
+
+  type ClusterListData = {
+    items: ClusterItem[]
+  }
+
   type CreateUserParams = {
     username: string
     nickname: string
@@ -124,41 +145,15 @@ declare namespace API {
     status?: number
   }
 
-  type ClusterItem = {
-    id: number
-    name: string
-    alias?: string
-    provider: string
-    yaml?: string
-    remarks?: string
-    status: boolean
-    node_count: number
-    runtime_status: string
-    cluster_version?: string
-    runtime_error?: string
-    create_time: string
-    update_time: string
-  }
-
-  type ClusterListData = {
-    items: ClusterItem[]
-  }
-
   type CreateClusterParams = {
     name: string
     alias?: string
     provider: string
     yaml: string
     remarks?: string
-    status?: boolean
+    status?: number
   }
 
-  type UpdateClusterParams = {
-    name: string
-    alias?: string
-    provider: string
-    yaml: string
-    remarks?: string
-    status?: boolean
-  }
+  type UpdateClusterParams = CreateClusterParams
+
 }

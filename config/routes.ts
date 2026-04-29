@@ -19,7 +19,7 @@ export default [
   {
     path: '/cluster',
     name: 'cluster',
-    icon: 'database',
+    icon: 'cluster',
     routes: [
       {
         path: '/cluster',
@@ -27,8 +27,8 @@ export default [
       },
       {
         path: '/cluster/list',
-        name: 'clusterList',
-        component: './cluster/list',
+        name: 'list',
+        component: './cluster',
       },
     ],
   },
