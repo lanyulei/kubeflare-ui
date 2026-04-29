@@ -6,7 +6,7 @@ import {
 } from '@ant-design/icons'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import {
-  ModalForm,
+  DrawerForm,
   PageContainer,
   ProForm,
   ProDescriptions,
@@ -16,7 +16,7 @@ import {
   ProTable,
 } from '@ant-design/pro-components'
 import { useIntl } from '@umijs/max'
-import { App, Button, Col, Modal, Popconfirm, Row, Tag, Typography } from 'antd'
+import { App, Button, Col, Drawer, Popconfirm, Row, Tag, Typography } from 'antd'
 import { createStyles } from 'antd-style'
 import React, { useRef, useState } from 'react'
 import { YamlEditor } from '@/components'
@@ -144,7 +144,9 @@ const renderClusterFormFields = (intl: ReturnType<typeof useIntl>) => (
       })}
       rules={[{ required: true, message: '请输入配置 YAML' }]}
     >
-      <YamlEditor placeholder="apiVersion: v1&#10;kind: Config&#10;metadata:&#10;  name: cluster" />
+      <YamlEditor
+        placeholder={'apiVersion: v1\nkind: Config\nmetadata:\n  name: cluster'}
+      />
     </ProForm.Item>
     <ProFormTextArea
       name="remarks"
@@ -357,16 +359,16 @@ const ClusterManagementPage: React.FC = () => {
         }
       />
 
-      <ModalForm<ClusterFormValues>
+      <DrawerForm<ClusterFormValues>
         title={intl.formatMessage({
           id: 'pages.cluster.create',
           defaultMessage: '新建集群',
         })}
         open={createVisible}
         width={760}
-        modalProps={{
+        drawerProps={{
           destroyOnHidden: true,
-          onCancel: () => setCreateVisible(false),
+          onClose: () => setCreateVisible(false),
         }}
         initialValues={{ status: 1 }}
         onFinish={async (values) => {
@@ -383,9 +385,9 @@ const ClusterManagementPage: React.FC = () => {
         }}
       >
         {renderClusterFormFields(intl)}
-      </ModalForm>
+      </DrawerForm>
 
-      <ModalForm<ClusterFormValues>
+      <DrawerForm<ClusterFormValues>
         title={intl.formatMessage({
           id: 'pages.cluster.edit',
           defaultMessage: '编辑集群',
@@ -393,9 +395,9 @@ const ClusterManagementPage: React.FC = () => {
         open={editVisible}
         width={760}
         initialValues={editingCluster}
-        modalProps={{
+        drawerProps={{
           destroyOnHidden: true,
-          onCancel: () => {
+          onClose: () => {
             setEditVisible(false)
             setEditingCluster(undefined)
           },
@@ -418,9 +420,9 @@ const ClusterManagementPage: React.FC = () => {
         }}
       >
         {renderClusterFormFields(intl)}
-      </ModalForm>
+      </DrawerForm>
 
-      <Modal
+      <Drawer
         title={intl.formatMessage({
           id: 'pages.cluster.detail',
           defaultMessage: '集群详情',
@@ -429,7 +431,7 @@ const ClusterManagementPage: React.FC = () => {
         width={860}
         footer={null}
         destroyOnHidden
-        onCancel={() => {
+        onClose={() => {
           setDetailVisible(false)
           setDetailCluster(undefined)
         }}
@@ -474,7 +476,7 @@ const ClusterManagementPage: React.FC = () => {
             maxHeight={420}
           />
         </div>
-      </Modal>
+      </Drawer>
     </PageContainer>
   )
 }
