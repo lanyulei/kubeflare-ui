@@ -6,8 +6,16 @@
  * 布局组件
  */
 import Footer from './Footer';
-import { Question, SelectLang } from './RightContent';
+import { ClusterSwitch, Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import YamlEditor from './YamlEditor';
 
-export { AvatarDropdown, AvatarName, Footer, Question, SelectLang, YamlEditor };
+export {
+  AvatarDropdown,
+  AvatarName,
+  ClusterSwitch,
+  Footer,
+  Question,
+  SelectLang,
+  YamlEditor,
+};

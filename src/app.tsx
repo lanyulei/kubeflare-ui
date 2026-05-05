@@ -6,16 +6,13 @@ import React from 'react';
 import {
   AvatarDropdown,
   AvatarName,
+  ClusterSwitch,
   Footer,
   Question,
   SelectLang,
 } from '@/components';
-import {
-  currentUser as queryCurrentUser,
-} from '@/services/kubeflare/account/settings';
-import {
-  refreshToken,
-} from '@/services/kubeflare/user/login';
+import { currentUser as queryCurrentUser } from '@/services/kubeflare/account/settings';
+import { refreshToken } from '@/services/kubeflare/user/login';
 import { clearAuthSession, setAuthSession } from '@/utils/auth';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
@@ -83,6 +80,7 @@ export const layout: RunTimeLayoutConfig = ({
 }) => {
   return {
     actionsRender: () => [
+      <ClusterSwitch key="ClusterSwitch" />,
       <Question key="doc" />,
       <SelectLang key="SelectLang" />,
     ],

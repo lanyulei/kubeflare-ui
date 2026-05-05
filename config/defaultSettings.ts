@@ -23,6 +23,22 @@ const Settings: ProLayoutProps & {
   token: {
     // 参见ts声明，demo 见文档，通过token 修改样式
     //https://kubeflare.io/docs/components/layout
+    header: {
+      colorHeaderTitle: '#565656',
+      colorTextMenu: '#565656',
+      colorTextMenuActive: '#565656',
+      colorTextMenuSelected: 'rgba(0, 0, 0, 0.95)',
+      colorTextMenuSecondary: '#565656',
+      colorTextRightActionsItem: '#565656',
+    },
+    sider: {
+      colorTextMenu: '#565656',
+      colorTextMenuActive: '#565656',
+      colorTextMenuItemHover: '#565656',
+      colorTextMenuSelected: 'rgba(0, 0, 0, 0.95)',
+      colorTextMenuSecondary: '#565656',
+      colorTextMenuTitle: '#565656',
+    },
   },
 };
 

@@ -4,6 +4,10 @@ export default {
   'component.globalHeader.search.example2': 'Search example 2',
   'component.globalHeader.search.example3': 'Search example 3',
   'component.globalHeader.help': 'Help',
+  'component.globalHeader.cluster.select': 'Switch cluster',
+  'component.globalHeader.cluster.placeholder': 'Select cluster',
+  'component.globalHeader.cluster.empty': 'No clusters',
+  'component.globalHeader.cluster.disabled': '{name} (Disabled)',
   'component.globalHeader.notification': 'Notification',
   'component.globalHeader.notification.empty':
     'You have viewed all notifications.',
