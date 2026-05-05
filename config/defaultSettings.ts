@@ -32,6 +32,7 @@ const Settings: ProLayoutProps & {
       colorTextRightActionsItem: '#565656',
     },
     sider: {
+      colorBgMenuItemSelected: 'rgb(0 0 0 / 6%)',
       colorTextMenu: '#565656',
       colorTextMenuActive: '#565656',
       colorTextMenuItemHover: '#565656',
