@@ -1,8 +1,17 @@
 import {
+  AliyunOutlined,
+  AmazonOutlined,
+  AntCloudOutlined,
+  CloudServerOutlined,
+  ClusterOutlined,
   DeleteOutlined,
+  DeploymentUnitOutlined,
   EditOutlined,
   EyeOutlined,
+  GlobalOutlined,
+  GoogleOutlined,
   PlusOutlined,
+  WindowsOutlined,
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import {
@@ -11,6 +20,7 @@ import {
   ProForm,
   ProDescriptions,
   ProFormRadio,
+  ProFormSelect,
   ProFormSwitch,
   ProFormText,
   ProFormTextArea,
@@ -24,6 +34,7 @@ import {
   Drawer,
   Popconfirm,
   Row,
+  Space,
   Tag,
   Typography,
 } from 'antd';
@@ -39,6 +50,68 @@ import {
 } from '@/services/kubeflare/cluster/info';
 
 type ClusterFormValues = API.CreateClusterParams & API.UpdateClusterParams;
+
+const CLUSTER_PROVIDER_OPTIONS: {
+  icon: React.ReactNode;
+  labelId: string;
+  label: string;
+  value: API.ClusterProvider;
+}[] = [
+  {
+    icon: <ClusterOutlined />,
+    labelId: 'pages.cluster.provider.kubernetes',
+    label: 'Kubernetes',
+    value: 'kubernetes',
+  },
+  {
+    icon: <AliyunOutlined />,
+    labelId: 'pages.cluster.provider.aliyun',
+    label: '阿里云',
+    value: 'aliyun',
+  },
+  {
+    icon: <CloudServerOutlined />,
+    labelId: 'pages.cluster.provider.tencent',
+    label: '腾讯云',
+    value: 'tencent',
+  },
+  {
+    icon: <AntCloudOutlined />,
+    labelId: 'pages.cluster.provider.huawei',
+    label: '华为云',
+    value: 'huawei',
+  },
+  {
+    icon: <AmazonOutlined />,
+    labelId: 'pages.cluster.provider.aws',
+    label: 'AWS',
+    value: 'aws',
+  },
+  {
+    icon: <WindowsOutlined />,
+    labelId: 'pages.cluster.provider.azure',
+    label: 'Azure',
+    value: 'azure',
+  },
+  {
+    icon: <GoogleOutlined />,
+    labelId: 'pages.cluster.provider.google',
+    label: 'Google Cloud',
+    value: 'google',
+  },
+  {
+    icon: <DeploymentUnitOutlined />,
+    labelId: 'pages.cluster.provider.selfHosted',
+    label: '自建',
+    value: 'self_hosted',
+  },
+  {
+    icon: <GlobalOutlined />,
+    labelId: 'pages.cluster.provider.other',
+    label: '其他',
+    value: 'other',
+  },
+];
 
 const useStyles = createStyles(({ token }) => ({
   yamlPreview: {
@@ -70,12 +143,52 @@ const buildClusterPayload = (
 ): API.CreateClusterParams => ({
   name: values.name.trim(),
   alias: normalizeOptionalText(values.alias),
-  provider: values.provider.trim(),
+  provider: values.provider,
   yaml: values.yaml.trim(),
   remarks: normalizeOptionalText(values.remarks),
   status: Number(values.status ?? 1),
   test_connection: Boolean(values.test_connection),
 });
+
+const getProviderOptions = (intl: ReturnType<typeof useIntl>) =>
+  CLUSTER_PROVIDER_OPTIONS.map((item) => ({
+    label: renderProviderLabel(intl, item.value),
+    value: item.value,
+  }));
+
+const getProviderText = (
+  intl: ReturnType<typeof useIntl>,
+  provider?: string,
+) => {
+  const option = CLUSTER_PROVIDER_OPTIONS.find(
+    (item) => item.value === provider,
+  );
+  if (!option) {
+    return provider || '-';
+  }
+  return intl.formatMessage({
+    id: option.labelId,
+    defaultMessage: option.label,
+  });
+};
+
+const renderProviderLabel = (
+  intl: ReturnType<typeof useIntl>,
+  provider?: string,
+) => {
+  const option = CLUSTER_PROVIDER_OPTIONS.find(
+    (item) => item.value === provider,
+  );
+  if (!option) {
+    return getProviderText(intl, provider);
+  }
+  return (
+    <Space size={6}>
+      {option.icon}
+      <span>{getProviderText(intl, provider)}</span>
+    </Space>
+  );
+};
 
 const getRunningStateTag = (state?: string) => {
   if (state === 'available') {
@@ -119,16 +232,25 @@ const renderClusterFormFields = (intl: ReturnType<typeof useIntl>) => (
     </Row>
     <Row gutter={16}>
       <Col xs={24} md={12}>
-        <ProFormText
+        <ProFormSelect
           name="provider"
           label={intl.formatMessage({
             id: 'pages.cluster.provider',
             defaultMessage: '供应商',
           })}
+          options={getProviderOptions(intl)}
+          placeholder={intl.formatMessage({
+            id: 'pages.cluster.provider.placeholder',
+            defaultMessage: '请选择供应商',
+          })}
           rules={[
-            { required: true, message: '请输入供应商' },
-            { min: 2, message: '供应商长度不能少于 2 位' },
-            { max: 128, message: '供应商长度不能超过 128 位' },
+            {
+              required: true,
+              message: intl.formatMessage({
+                id: 'pages.cluster.provider.required',
+                defaultMessage: '请选择供应商',
+              }),
+            },
           ]}
         />
       </Col>
@@ -255,6 +377,12 @@ const ClusterManagementPage: React.FC = () => {
       }),
       dataIndex: 'provider',
       ellipsis: true,
+      filters: getProviderOptions(intl).map((item) => ({
+        text: item.label,
+        value: item.value,
+      })),
+      onFilter: (value, record) => record.provider === value,
+      render: (_, record) => renderProviderLabel(intl, record.provider),
     },
     {
       title: intl.formatMessage({
@@ -505,7 +633,12 @@ const ClusterManagementPage: React.FC = () => {
           columns={[
             { title: '集群名称', dataIndex: 'name' },
             { title: '集群别名', dataIndex: 'alias' },
-            { title: '供应商', dataIndex: 'provider' },
+            {
+              title: '供应商',
+              dataIndex: 'provider',
+              render: (_, record) =>
+                renderProviderLabel(intl, record?.provider),
+            },
             {
               title: '状态',
               dataIndex: 'status',

@@ -102,11 +102,22 @@ declare namespace API {
     items: UserItem[]
   }
 
+  type ClusterProvider =
+    | 'kubernetes'
+    | 'aliyun'
+    | 'tencent'
+    | 'huawei'
+    | 'aws'
+    | 'azure'
+    | 'google'
+    | 'other'
+    | 'self_hosted'
+
   type ClusterItem = {
     id: number
     name: string
     alias?: string
-    provider?: string
+    provider?: ClusterProvider
     yaml?: string
     remarks?: string
     status: number
@@ -149,7 +160,7 @@ declare namespace API {
   type CreateClusterParams = {
     name: string
     alias?: string
-    provider: string
+    provider: ClusterProvider
     yaml: string
     remarks?: string
     status?: number
