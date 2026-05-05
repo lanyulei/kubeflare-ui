@@ -3,43 +3,67 @@ import {
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
-} from '@ant-design/icons'
-import type { ActionType, ProColumns } from '@ant-design/pro-components'
+} from '@ant-design/icons';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import {
   DrawerForm,
   PageContainer,
   ProForm,
   ProDescriptions,
   ProFormRadio,
+  ProFormSwitch,
   ProFormText,
   ProFormTextArea,
   ProTable,
-} from '@ant-design/pro-components'
-import { useIntl } from '@umijs/max'
-import { App, Button, Col, Drawer, Popconfirm, Row, Tag, Typography } from 'antd'
-import { createStyles } from 'antd-style'
-import React, { useRef, useState } from 'react'
-import { YamlEditor } from '@/components'
+} from '@ant-design/pro-components';
+import { useIntl } from '@umijs/max';
+import {
+  App,
+  Button,
+  Col,
+  Drawer,
+  Popconfirm,
+  Row,
+  Tag,
+  Typography,
+} from 'antd';
+import { createStyles } from 'antd-style';
+import React, { useRef, useState } from 'react';
+import { YamlEditor } from '@/components';
 import {
   createCluster,
   deleteCluster,
   getClusterDetail,
   getClusterList,
   updateCluster,
-} from '@/services/kubeflare/cluster/info'
+} from '@/services/kubeflare/cluster/info';
 
-type ClusterFormValues = API.CreateClusterParams & API.UpdateClusterParams
+type ClusterFormValues = API.CreateClusterParams & API.UpdateClusterParams;
 
 const useStyles = createStyles(({ token }) => ({
   yamlPreview: {
     marginTop: token.marginXS,
   },
-}))
+}));
 
 const normalizeOptionalText = (value?: string) => {
-  const nextValue = value?.trim()
-  return nextValue || undefined
-}
+  const nextValue = value?.trim();
+  return nextValue || undefined;
+};
+
+const getErrorMessage = (error: unknown) => {
+  const apiError = error as {
+    info?: { message?: string };
+    message?: string;
+    response?: { data?: { message?: string } };
+  };
+  return (
+    apiError.info?.message ||
+    apiError.response?.data?.message ||
+    apiError.message ||
+    '保存失败'
+  );
+};
 
 const buildClusterPayload = (
   values: ClusterFormValues,
@@ -50,20 +74,21 @@ const buildClusterPayload = (
   yaml: values.yaml.trim(),
   remarks: normalizeOptionalText(values.remarks),
   status: Number(values.status ?? 1),
-})
+  test_connection: Boolean(values.test_connection),
+});
 
 const getRunningStateTag = (state?: string) => {
   if (state === 'available') {
-    return <Tag color="success">可用</Tag>
+    return <Tag color="success">可用</Tag>;
   }
   if (state === 'unhealthy') {
-    return <Tag color="error">异常</Tag>
+    return <Tag color="error">异常</Tag>;
   }
   if (state === 'disabled') {
-    return <Tag color="default">停用</Tag>
+    return <Tag color="default">停用</Tag>;
   }
-  return <Tag color="warning">未知</Tag>
-}
+  return <Tag color="warning">未知</Tag>;
+};
 
 const renderClusterFormFields = (intl: ReturnType<typeof useIntl>) => (
   <>
@@ -88,9 +113,7 @@ const renderClusterFormFields = (intl: ReturnType<typeof useIntl>) => (
             id: 'pages.cluster.alias',
             defaultMessage: '集群别名',
           })}
-          rules={[
-            { max: 128, message: '集群别名长度不能超过 128 位' },
-          ]}
+          rules={[{ max: 128, message: '集群别名长度不能超过 128 位' }]}
         />
       </Col>
     </Row>
@@ -148,6 +171,24 @@ const renderClusterFormFields = (intl: ReturnType<typeof useIntl>) => (
         placeholder={'apiVersion: v1\nkind: Config\nmetadata:\n  name: cluster'}
       />
     </ProForm.Item>
+    <ProFormSwitch
+      name="test_connection"
+      label={intl.formatMessage({
+        id: 'pages.cluster.testConnection',
+        defaultMessage: '保存前连接测试',
+      })}
+      initialValue={false}
+      fieldProps={{
+        checkedChildren: intl.formatMessage({
+          id: 'pages.cluster.testConnection.enabled',
+          defaultMessage: '开启',
+        }),
+        unCheckedChildren: intl.formatMessage({
+          id: 'pages.cluster.testConnection.disabled',
+          defaultMessage: '关闭',
+        }),
+      }}
+    />
     <ProFormTextArea
       name="remarks"
       label={intl.formatMessage({
@@ -161,34 +202,34 @@ const renderClusterFormFields = (intl: ReturnType<typeof useIntl>) => (
       }}
     />
   </>
-)
+);
 
 const ClusterManagementPage: React.FC = () => {
-  const intl = useIntl()
-  const { styles } = useStyles()
-  const { message } = App.useApp()
-  const actionRef = useRef<ActionType | null>(null)
-  const [createVisible, setCreateVisible] = useState(false)
-  const [editVisible, setEditVisible] = useState(false)
-  const [detailVisible, setDetailVisible] = useState(false)
+  const intl = useIntl();
+  const { styles } = useStyles();
+  const { message } = App.useApp();
+  const actionRef = useRef<ActionType | null>(null);
+  const [createVisible, setCreateVisible] = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
+  const [detailVisible, setDetailVisible] = useState(false);
   const [editingCluster, setEditingCluster] = useState<
     API.ClusterItem | undefined
-  >(undefined)
+  >(undefined);
   const [detailCluster, setDetailCluster] = useState<
     API.ClusterItem | undefined
-  >(undefined)
+  >(undefined);
 
   const openDetail = async (record: API.ClusterItem) => {
-    const res = await getClusterDetail(record.id)
-    setDetailCluster(res.data)
-    setDetailVisible(true)
-  }
+    const res = await getClusterDetail(record.id);
+    setDetailCluster(res.data);
+    setDetailVisible(true);
+  };
 
   const openEdit = async (record: API.ClusterItem) => {
-    const res = await getClusterDetail(record.id)
-    setEditingCluster(res.data)
-    setEditVisible(true)
-  }
+    const res = await getClusterDetail(record.id);
+    setEditingCluster(res.data);
+    setEditVisible(true);
+  };
 
   const columns: ProColumns<API.ClusterItem>[] = [
     {
@@ -280,7 +321,8 @@ const ClusterManagementPage: React.FC = () => {
       }),
       valueType: 'option',
       key: 'option',
-      width: 220,
+      width: 200,
+      fixed: 'right',
       render: (_, record) => [
         <a key="detail" onClick={() => openDetail(record)}>
           <EyeOutlined />{' '}
@@ -303,14 +345,14 @@ const ClusterManagementPage: React.FC = () => {
             defaultMessage: '确认删除该集群吗？',
           })}
           onConfirm={async () => {
-            await deleteCluster(record.id)
+            await deleteCluster(record.id);
             message.success(
               intl.formatMessage({
                 id: 'pages.cluster.delete.success',
                 defaultMessage: '集群已删除',
               }),
-            )
-            actionRef.current?.reload()
+            );
+            actionRef.current?.reload();
           }}
         >
           <a>
@@ -323,7 +365,7 @@ const ClusterManagementPage: React.FC = () => {
         </Popconfirm>,
       ],
     },
-  ]
+  ];
 
   return (
     <PageContainer
@@ -339,11 +381,11 @@ const ClusterManagementPage: React.FC = () => {
         columns={columns}
         scroll={{ x: 1200 }}
         request={async () => {
-          const res = await getClusterList()
+          const res = await getClusterList();
           return {
             data: res.data.items || [],
             success: true,
-          }
+          };
         }}
         headerTitle={
           <Button
@@ -370,18 +412,25 @@ const ClusterManagementPage: React.FC = () => {
           destroyOnHidden: true,
           onClose: () => setCreateVisible(false),
         }}
-        initialValues={{ status: 1 }}
+        initialValues={{ status: 1, test_connection: false }}
         onFinish={async (values) => {
-          await createCluster(buildClusterPayload(values))
-          message.success(
-            intl.formatMessage({
-              id: 'pages.cluster.create.success',
-              defaultMessage: '集群创建成功',
-            }),
-          )
-          setCreateVisible(false)
-          actionRef.current?.reload()
-          return true
+          try {
+            await createCluster(buildClusterPayload(values), {
+              skipErrorHandler: true,
+            });
+            message.success(
+              intl.formatMessage({
+                id: 'pages.cluster.create.success',
+                defaultMessage: '集群创建成功',
+              }),
+            );
+            setCreateVisible(false);
+            actionRef.current?.reload();
+            return true;
+          } catch (error) {
+            message.error(getErrorMessage(error));
+            return false;
+          }
         }}
       >
         {renderClusterFormFields(intl)}
@@ -394,29 +443,43 @@ const ClusterManagementPage: React.FC = () => {
         })}
         open={editVisible}
         width={760}
-        initialValues={editingCluster}
+        initialValues={{
+          ...editingCluster,
+          test_connection: Boolean(editingCluster?.test_connection),
+        }}
         drawerProps={{
           destroyOnHidden: true,
           onClose: () => {
-            setEditVisible(false)
-            setEditingCluster(undefined)
+            setEditVisible(false);
+            setEditingCluster(undefined);
           },
         }}
         onFinish={async (values) => {
           if (!editingCluster) {
-            return false
+            return false;
           }
-          await updateCluster(editingCluster.id, buildClusterPayload(values))
-          message.success(
-            intl.formatMessage({
-              id: 'pages.cluster.edit.success',
-              defaultMessage: '集群更新成功',
-            }),
-          )
-          setEditVisible(false)
-          setEditingCluster(undefined)
-          actionRef.current?.reload()
-          return true
+          try {
+            await updateCluster(
+              editingCluster.id,
+              buildClusterPayload(values),
+              {
+                skipErrorHandler: true,
+              },
+            );
+            message.success(
+              intl.formatMessage({
+                id: 'pages.cluster.edit.success',
+                defaultMessage: '集群更新成功',
+              }),
+            );
+            setEditVisible(false);
+            setEditingCluster(undefined);
+            actionRef.current?.reload();
+            return true;
+          } catch (error) {
+            message.error(getErrorMessage(error));
+            return false;
+          }
         }}
       >
         {renderClusterFormFields(intl)}
@@ -432,8 +495,8 @@ const ClusterManagementPage: React.FC = () => {
         footer={null}
         destroyOnHidden
         onClose={() => {
-          setDetailVisible(false)
-          setDetailCluster(undefined)
+          setDetailVisible(false);
+          setDetailCluster(undefined);
         }}
       >
         <ProDescriptions<API.ClusterItem>
@@ -455,12 +518,26 @@ const ClusterManagementPage: React.FC = () => {
             },
             { title: '节点数', dataIndex: 'node_count' },
             {
+              title: '保存前连接测试',
+              dataIndex: 'test_connection',
+              render: (_, record) =>
+                record?.test_connection ? (
+                  <Tag color="processing">开启</Tag>
+                ) : (
+                  <Tag color="default">关闭</Tag>
+                ),
+            },
+            {
               title: '运行状态',
               dataIndex: 'running_state',
               render: (_, record) => getRunningStateTag(record?.running_state),
             },
             { title: '集群版本', dataIndex: 'version' },
-            { title: '更新时间', dataIndex: 'update_time', valueType: 'dateTime' },
+            {
+              title: '更新时间',
+              dataIndex: 'update_time',
+              valueType: 'dateTime',
+            },
             { title: '备注', dataIndex: 'remarks', span: 2 },
             { title: '状态信息', dataIndex: 'message', span: 2 },
           ]}
@@ -478,7 +555,7 @@ const ClusterManagementPage: React.FC = () => {
         </div>
       </Drawer>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default ClusterManagementPage
+export default ClusterManagementPage;

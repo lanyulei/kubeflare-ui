@@ -110,6 +110,7 @@ declare namespace API {
     yaml?: string
     remarks?: string
     status: number
+    test_connection?: boolean
     node_count?: number
     running_state?: string
     version?: string
@@ -152,6 +153,7 @@ declare namespace API {
     yaml: string
     remarks?: string
     status?: number
+    test_connection?: boolean
   }
 
   type UpdateClusterParams = CreateClusterParams
