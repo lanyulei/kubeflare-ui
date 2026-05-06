@@ -2,17 +2,166 @@
 /* eslint-disable */
 import { request } from '@umijs/max'
 
-/** 获取集群节点列表 GET /api/v1/cluster/node */
+const CURRENT_CLUSTER_STORAGE_KEY = 'kubeflare.currentClusterId'
+
+type KubernetesNodeAddress = {
+  type?: string
+  address?: string
+}
+
+type KubernetesNodeCondition = {
+  type?: string
+  status?: string
+}
+
+type KubernetesNode = {
+  metadata?: {
+    name?: string
+    labels?: Record<string, string>
+    creationTimestamp?: string
+  }
+  spec?: {
+    unschedulable?: boolean
+  }
+  status?: {
+    addresses?: KubernetesNodeAddress[]
+    conditions?: KubernetesNodeCondition[]
+    nodeInfo?: {
+      kubeletVersion?: string
+    }
+  }
+}
+
+type KubernetesNodeList = {
+  items?: KubernetesNode[]
+}
+
+const getCurrentClusterId = () => {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+  return window.localStorage.getItem(CURRENT_CLUSTER_STORAGE_KEY) || undefined
+}
+
+const getNodeAddress = (node: KubernetesNode, type: string) =>
+  node.status?.addresses?.find((address) => address.type === type)?.address
+
+const getNodeRoles = (labels?: Record<string, string>) => {
+  if (!labels) {
+    return []
+  }
+
+  const roles = Object.entries(labels)
+    .map(([key, value]) => {
+      if (key.startsWith('node-role.kubernetes.io/')) {
+        return key.replace('node-role.kubernetes.io/', '')
+      }
+      if (key === 'kubernetes.io/role') {
+        return value
+      }
+      return ''
+    })
+    .filter(Boolean)
+
+  return roles.length > 0 ? roles : ['worker']
+}
+
+const getNodeStatus = (node: KubernetesNode) => {
+  if (node.spec?.unschedulable) {
+    return 'SchedulingDisabled'
+  }
+  const readyCondition = node.status?.conditions?.find(
+    (condition) => condition.type === 'Ready',
+  )
+  if (readyCondition?.status === 'True') {
+    return 'Ready'
+  }
+  if (readyCondition?.status === 'Unknown') {
+    return 'Unknown'
+  }
+  return 'NotReady'
+}
+
+const getNodeAge = (creationTimestamp?: string) => {
+  if (!creationTimestamp) {
+    return undefined
+  }
+
+  const createdAt = new Date(creationTimestamp).getTime()
+  if (!Number.isFinite(createdAt)) {
+    return undefined
+  }
+
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - createdAt) / 1000))
+  const diffDays = Math.floor(diffSeconds / 86400)
+  if (diffDays > 0) {
+    return `${diffDays}d`
+  }
+  const diffHours = Math.floor(diffSeconds / 3600)
+  if (diffHours > 0) {
+    return `${diffHours}h`
+  }
+  const diffMinutes = Math.floor(diffSeconds / 60)
+  if (diffMinutes > 0) {
+    return `${diffMinutes}m`
+  }
+  return `${diffSeconds}s`
+}
+
+const toClusterNodeItem = (node: KubernetesNode): API.ClusterNodeItem => {
+  const name = node.metadata?.name || '-'
+  const internalIP = getNodeAddress(node, 'InternalIP')
+  const externalIP = getNodeAddress(node, 'ExternalIP')
+
+  return {
+    id: name,
+    name,
+    ip: internalIP || externalIP,
+    internal_ip: internalIP,
+    external_ip: externalIP,
+    status: getNodeStatus(node),
+    roles: getNodeRoles(node.metadata?.labels),
+    uptime: getNodeAge(node.metadata?.creationTimestamp),
+    age: getNodeAge(node.metadata?.creationTimestamp),
+    version: node.status?.nodeInfo?.kubeletVersion,
+    kubelet_version: node.status?.nodeInfo?.kubeletVersion,
+    create_time: node.metadata?.creationTimestamp,
+  }
+}
+
+/** 获取集群节点列表 GET /kapi/v1/nodes */
 export async function getClusterNodeList(
   params?: API.ClusterNodeListParams,
   options?: { [key: string]: any },
 ) {
-  return request<API.ApiResponse<API.ClusterNodeListData>>(
-    '/api/v1/cluster/node',
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return {
+      code: 20000,
+      message: '',
+      data: {
+        items: [],
+      },
+    } as API.ApiResponse<API.ClusterNodeListData>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesNodeList>>(
+    '/kapi/v1/nodes',
     {
       method: 'GET',
       params: { ...params },
       ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
     },
   )
+
+  return {
+    ...res,
+    data: {
+      items: (res.data?.items || []).map(toClusterNodeItem),
+    },
+  } as API.ApiResponse<API.ClusterNodeListData>
 }

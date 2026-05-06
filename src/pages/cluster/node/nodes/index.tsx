@@ -3,8 +3,10 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useIntl } from '@umijs/max';
 import { Input, Space, Tag } from 'antd';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getClusterNodeList } from '@/services/kubeflare/cluster/node';
+
+const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 
 const normalizeOptionalText = (value?: string) => {
   const nextValue = value?.trim();
@@ -45,20 +47,22 @@ const getNodeRoles = (roles?: string[] | string) => {
   return [];
 };
 
-const matchNodeKeyword = (record: API.ClusterNodeItem, keyword: string) => {
-  if (!keyword) {
-    return true;
-  }
-  const normalizedKeyword = keyword.toLowerCase();
-  return [record.name, getNodeIp(record)]
-    .filter(Boolean)
-    .some((value) => value.toLowerCase().includes(normalizedKeyword));
-};
-
 const ClusterNodes = () => {
   const intl = useIntl();
   const actionRef = useRef<ActionType | null>(null);
   const keywordRef = useRef('');
+  const [keywordDraft, setKeywordDraft] = useState('');
+
+  useEffect(() => {
+    const reloadNodes = () => {
+      actionRef.current?.reload();
+    };
+
+    window.addEventListener(CURRENT_CLUSTER_CHANGE_EVENT, reloadNodes);
+    return () => {
+      window.removeEventListener(CURRENT_CLUSTER_CHANGE_EVENT, reloadNodes);
+    };
+  }, []);
 
   const columns: ProColumns<API.ClusterNodeItem>[] = [
     {
@@ -140,22 +144,20 @@ const ClusterNodes = () => {
         actionRef={actionRef}
         search={false}
         columns={columns}
-        scroll={{ x: 900 }}
         request={async () => {
           const res = await getClusterNodeList({
             keyword: normalizeOptionalText(keywordRef.current),
           });
           const items = res.data.items || [];
           return {
-            data: items.filter((item) =>
-              matchNodeKeyword(item, keywordRef.current),
-            ),
+            data: items,
             success: true,
           };
         }}
         headerTitle={
           <Input
             allowClear
+            value={keywordDraft}
             suffix={<SearchOutlined />}
             style={{ width: 260 }}
             placeholder={intl.formatMessage({
@@ -163,7 +165,10 @@ const ClusterNodes = () => {
               defaultMessage: '搜索节点名称 / IP 地址',
             })}
             onChange={(event) => {
-              keywordRef.current = event.target.value.trim();
+              setKeywordDraft(event.target.value);
+            }}
+            onPressEnter={(event) => {
+              keywordRef.current = event.currentTarget.value.trim();
               actionRef.current?.reload();
             }}
           />
