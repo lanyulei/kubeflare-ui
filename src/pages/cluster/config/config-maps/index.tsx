@@ -2,7 +2,7 @@ import ClusterResourcePage from '../../resource';
 
 const ConfigMaps = () => (
   <ClusterResourcePage
-    titleId="menu.cluster.config.config-maps"
+    titleId="menu.cluster.clusterConfig.clusterConfigConfigMaps"
     defaultTitle="配置字典"
   />
 );

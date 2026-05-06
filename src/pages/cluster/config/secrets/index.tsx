@@ -2,7 +2,7 @@ import ClusterResourcePage from '../../resource';
 
 const Secrets = () => (
   <ClusterResourcePage
-    titleId="menu.cluster.config.secrets"
+    titleId="menu.cluster.clusterConfig.clusterConfigSecrets"
     defaultTitle="保密字典"
   />
 );

@@ -2,7 +2,7 @@ import ClusterResourcePage from '../../resource';
 
 const Pods = () => (
   <ClusterResourcePage
-    titleId="menu.cluster.workloads.pods"
+    titleId="menu.cluster.clusterWorkloads.clusterWorkloadsPods"
     defaultTitle="容器组"
   />
 );

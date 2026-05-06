@@ -2,7 +2,7 @@ import ClusterResourcePage from '../../resource';
 
 const PersistentVolumeClaims = () => (
   <ClusterResourcePage
-    titleId="menu.cluster.storage.persistent-volume-claims"
+    titleId="menu.cluster.clusterStorage.clusterStoragePersistentVolumeClaims"
     defaultTitle="持久卷声明"
   />
 );

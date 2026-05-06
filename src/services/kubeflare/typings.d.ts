@@ -135,6 +135,33 @@ declare namespace API {
     items: ClusterItem[]
   }
 
+  type ClusterListParams = {
+    keyword?: string
+  }
+
+  type ClusterNodeItem = {
+    id?: number | string
+    name: string
+    ip?: string
+    internal_ip?: string
+    external_ip?: string
+    status?: string
+    roles?: string[] | string
+    uptime?: string
+    age?: string
+    version?: string
+    kubelet_version?: string
+    create_time?: string
+  }
+
+  type ClusterNodeListData = {
+    items: ClusterNodeItem[]
+  }
+
+  type ClusterNodeListParams = {
+    keyword?: string
+  }
+
   type CreateUserParams = {
     username: string
     nickname: string

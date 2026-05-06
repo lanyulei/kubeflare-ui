@@ -2,7 +2,7 @@ import ClusterResourcePage from '../../resource';
 
 const StorageClasses = () => (
   <ClusterResourcePage
-    titleId="menu.cluster.storage.storage-classes"
+    titleId="menu.cluster.clusterStorage.clusterStorageStorageClasses"
     defaultTitle="存储类"
   />
 );

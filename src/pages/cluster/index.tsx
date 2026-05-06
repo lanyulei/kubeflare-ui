@@ -11,6 +11,7 @@ import {
   GlobalOutlined,
   GoogleOutlined,
   PlusOutlined,
+  SearchOutlined,
   WindowsOutlined,
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
@@ -32,6 +33,7 @@ import {
   Button,
   Col,
   Drawer,
+  Input,
   Popconfirm,
   Row,
   Space,
@@ -122,6 +124,16 @@ const useStyles = createStyles(({ token }) => ({
 const normalizeOptionalText = (value?: string) => {
   const nextValue = value?.trim();
   return nextValue || undefined;
+};
+
+const matchClusterKeyword = (record: API.ClusterItem, keyword: string) => {
+  if (!keyword) {
+    return true;
+  }
+  const normalizedKeyword = keyword.toLowerCase();
+  return [record.name, record.alias]
+    .filter(Boolean)
+    .some((value) => value?.toLowerCase().includes(normalizedKeyword));
 };
 
 const getErrorMessage = (error: unknown) => {
@@ -331,6 +343,7 @@ const ClusterManagementPage: React.FC = () => {
   const { styles } = useStyles();
   const { message } = App.useApp();
   const actionRef = useRef<ActionType | null>(null);
+  const clusterKeywordRef = useRef('');
   const [createVisible, setCreateVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [detailVisible, setDetailVisible] = useState(false);
@@ -509,24 +522,49 @@ const ClusterManagementPage: React.FC = () => {
         columns={columns}
         scroll={{ x: 1200 }}
         request={async () => {
-          const res = await getClusterList();
+          const res = await getClusterList({
+            keyword: normalizeOptionalText(clusterKeywordRef.current),
+          });
+          const items = res.data.items || [];
           return {
-            data: res.data.items || [],
+            data: items.filter((item) =>
+              matchClusterKeyword(item, clusterKeywordRef.current),
+            ),
             success: true,
           };
         }}
         headerTitle={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateVisible(true)}
-          >
-            {intl.formatMessage({
-              id: 'pages.cluster.create',
-              defaultMessage: '新建集群',
-            })}
-          </Button>
+          <div>
+            <Button
+              style={{marginRight: '10px'}}
+              key="create"
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateVisible(true)}
+            >
+              {intl.formatMessage({
+                id: 'pages.cluster.create',
+                defaultMessage: '新建集群',
+              })}
+            </Button>
+            <Input
+              allowClear
+              suffix={<SearchOutlined />}
+              style={{ width: 260 }}
+              placeholder={intl.formatMessage({
+                id: 'pages.cluster.search.placeholder',
+                defaultMessage: '搜索集群名称 / 别名',
+              })}
+              onChange={(event) => {
+                clusterKeywordRef.current = event.target.value.trim();
+                actionRef.current?.reload();
+              }}
+            />
+          </div>
         }
+        toolBarRender={() => [
+
+        ]}
       />
 
       <DrawerForm<ClusterFormValues>

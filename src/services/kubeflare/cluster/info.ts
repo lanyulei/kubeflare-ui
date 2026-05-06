@@ -3,9 +3,13 @@
 import { request } from '@umijs/max'
 
 /** 获取集群列表 GET /api/v1/cluster */
-export async function getClusterList(options?: { [key: string]: any }) {
+export async function getClusterList(
+  params?: API.ClusterListParams,
+  options?: { [key: string]: any },
+) {
   return request<API.ApiResponse<API.ClusterListData>>('/api/v1/cluster', {
     method: 'GET',
+    params: { ...params },
     ...(options || {}),
   })
 }

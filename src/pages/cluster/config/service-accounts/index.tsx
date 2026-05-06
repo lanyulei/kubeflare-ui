@@ -2,7 +2,7 @@ import ClusterResourcePage from '../../resource';
 
 const ServiceAccounts = () => (
   <ClusterResourcePage
-    titleId="menu.cluster.config.service-accounts"
+    titleId="menu.cluster.clusterConfig.clusterConfigServiceAccounts"
     defaultTitle="服务账户"
   />
 );

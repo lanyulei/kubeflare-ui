@@ -88,7 +88,7 @@ export const ClusterSwitch: React.FC = () => {
     const loadClusters = async () => {
       setLoading(true);
       try {
-        const res = await getClusterList({
+        const res = await getClusterList(undefined, {
           skipErrorHandler: true,
         });
         if (!mounted) {

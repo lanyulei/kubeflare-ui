@@ -27,72 +27,72 @@ export default [
       },
       {
         path: '/cluster/list',
-        name: 'list',
+        name: 'clusterList',
         component: './cluster',
       },
       {
         path: '/cluster/node',
-        name: 'node',
+        name: 'clusterNode',
         routes: [
           {
             path: '/cluster/node',
-            redirect: '/cluster/node/nodes',
+            redirect: '/cluster/node/list',
           },
           {
-            path: '/cluster/node/nodes',
-            name: 'nodes',
+            path: '/cluster/node/list',
+            name: 'clusterNodeList',
             component: './cluster/node/nodes',
           },
         ],
       },
       {
         path: '/cluster/namespaces',
-        name: 'namespaces',
+        name: 'clusterNamespaces',
         component: './cluster/namespaces',
       },
       {
         path: '/cluster/workloads',
-        name: 'workloads',
+        name: 'clusterWorkloads',
         routes: [
           {
             path: '/cluster/workloads',
-            redirect: '/cluster/workloads/workloads',
+            redirect: '/cluster/workloads/list',
           },
           {
-            path: '/cluster/workloads/workloads',
-            name: 'workloads',
+            path: '/cluster/workloads/list',
+            name: 'clusterWorkloadsList',
             component: './cluster/workloads/workloads',
           },
           {
             path: '/cluster/workloads/jobs',
-            name: 'jobs',
+            name: 'clusterWorkloadsJobs',
             component: './cluster/workloads/jobs',
           },
           {
             path: '/cluster/workloads/cron-jobs',
-            name: 'cron-jobs',
+            name: 'clusterWorkloadsCronJobs',
             component: './cluster/workloads/cron-jobs',
           },
           {
             path: '/cluster/workloads/pods',
-            name: 'pods',
+            name: 'clusterWorkloadsPods',
             component: './cluster/workloads/pods',
           },
           {
             path: '/cluster/workloads/services',
-            name: 'services',
+            name: 'clusterWorkloadsServices',
             component: './cluster/workloads/services',
           },
           {
             path: '/cluster/workloads/ingresses',
-            name: 'ingresses',
+            name: 'clusterWorkloadsIngresses',
             component: './cluster/workloads/ingresses',
           },
         ],
       },
       {
         path: '/cluster/config',
-        name: 'config',
+        name: 'clusterConfig',
         routes: [
           {
             path: '/cluster/config',
@@ -100,29 +100,29 @@ export default [
           },
           {
             path: '/cluster/config/secrets',
-            name: 'secrets',
+            name: 'clusterConfigSecrets',
             component: './cluster/config/secrets',
           },
           {
             path: '/cluster/config/config-maps',
-            name: 'config-maps',
+            name: 'clusterConfigConfigMaps',
             component: './cluster/config/config-maps',
           },
           {
             path: '/cluster/config/service-accounts',
-            name: 'service-accounts',
+            name: 'clusterConfigServiceAccounts',
             component: './cluster/config/service-accounts',
           },
         ],
       },
       {
         path: '/cluster/custom-resource-definitions',
-        name: 'custom-resource-definitions',
+        name: 'clusterCustomResourceDefinitions',
         component: './cluster/custom-resource-definitions',
       },
       {
         path: '/cluster/storage',
-        name: 'storage',
+        name: 'clusterStorage',
         routes: [
           {
             path: '/cluster/storage',
@@ -130,12 +130,12 @@ export default [
           },
           {
             path: '/cluster/storage/persistent-volume-claims',
-            name: 'persistent-volume-claims',
+            name: 'clusterStoragePersistentVolumeClaims',
             component: './cluster/storage/persistent-volume-claims',
           },
           {
             path: '/cluster/storage/storage-classes',
-            name: 'storage-classes',
+            name: 'clusterStorageStorageClasses',
             component: './cluster/storage/storage-classes',
           },
         ],
@@ -153,7 +153,7 @@ export default [
       },
       {
         path: '/system/user',
-        name: 'user',
+        name: 'systemUser',
         component: './system/users',
       },
     ],
@@ -166,7 +166,7 @@ export default [
     routes: [
       {
         path: '/account/settings',
-        name: 'settings',
+        name: 'accountSettings',
         component: './account/settings',
       },
     ],

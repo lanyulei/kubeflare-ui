@@ -2,7 +2,7 @@ import ClusterResourcePage from '../../resource';
 
 const CronJobs = () => (
   <ClusterResourcePage
-    titleId="menu.cluster.workloads.cron-jobs"
+    titleId="menu.cluster.clusterWorkloads.clusterWorkloadsCronJobs"
     defaultTitle="定时任务"
   />
 );

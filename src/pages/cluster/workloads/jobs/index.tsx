@@ -2,7 +2,7 @@ import ClusterResourcePage from '../../resource';
 
 const Jobs = () => (
   <ClusterResourcePage
-    titleId="menu.cluster.workloads.jobs"
+    titleId="menu.cluster.clusterWorkloads.clusterWorkloadsJobs"
     defaultTitle="任务"
   />
 );
