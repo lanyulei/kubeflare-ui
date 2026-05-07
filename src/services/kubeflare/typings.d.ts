@@ -149,8 +149,14 @@ declare namespace API {
     roles?: string[] | string
     uptime?: string
     age?: string
+    architecture?: string
+    container_runtime_version?: string
+    kernel_version?: string
     version?: string
     kubelet_version?: string
+    kube_proxy_version?: string
+    operating_system?: string
+    os_image?: string
     create_time?: string
   }
 

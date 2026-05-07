@@ -27,7 +27,13 @@ type KubernetesNode = {
     addresses?: KubernetesNodeAddress[]
     conditions?: KubernetesNodeCondition[]
     nodeInfo?: {
+      architecture?: string
+      containerRuntimeVersion?: string
+      kernelVersion?: string
       kubeletVersion?: string
+      kubeProxyVersion?: string
+      operatingSystem?: string
+      osImage?: string
     }
   }
 }
@@ -127,8 +133,14 @@ const toClusterNodeItem = (node: KubernetesNode): API.ClusterNodeItem => {
     roles: getNodeRoles(node.metadata?.labels),
     uptime: getNodeAge(node.metadata?.creationTimestamp),
     age: getNodeAge(node.metadata?.creationTimestamp),
+    architecture: node.status?.nodeInfo?.architecture,
+    container_runtime_version: node.status?.nodeInfo?.containerRuntimeVersion,
+    kernel_version: node.status?.nodeInfo?.kernelVersion,
     version: node.status?.nodeInfo?.kubeletVersion,
     kubelet_version: node.status?.nodeInfo?.kubeletVersion,
+    kube_proxy_version: node.status?.nodeInfo?.kubeProxyVersion,
+    operating_system: node.status?.nodeInfo?.operatingSystem,
+    os_image: node.status?.nodeInfo?.osImage,
     create_time: node.metadata?.creationTimestamp,
   }
 }
