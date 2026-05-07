@@ -8,6 +8,7 @@
 import Footer from './Footer';
 import { ClusterSwitch, Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
+import SectionTitle from './SectionTitle';
 import YamlEditor from './YamlEditor';
 
 export {
@@ -16,6 +17,7 @@ export {
   ClusterSwitch,
   Footer,
   Question,
+  SectionTitle,
   SelectLang,
   YamlEditor,
 };
