@@ -43,6 +43,12 @@ export default [
             name: 'clusterNodeList',
             component: './cluster/node/nodes',
           },
+          {
+            path: '/cluster/node/detail/:name',
+            name: 'clusterNodeDetail',
+            hideInMenu: true,
+            component: './cluster/node/detail',
+          },
         ],
       },
       {

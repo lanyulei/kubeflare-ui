@@ -33,6 +33,10 @@ type KubernetesNode = {
 }
 
 type KubernetesNodeList = {
+  metadata?: {
+    continue?: string
+    remainingItemCount?: number
+  }
   items?: KubernetesNode[]
 }
 
@@ -141,6 +145,8 @@ export async function getClusterNodeList(
       message: '',
       data: {
         items: [],
+        continue: '',
+        remainingItemCount: 0,
       },
     } as API.ApiResponse<API.ClusterNodeListData>
   }
@@ -162,6 +168,8 @@ export async function getClusterNodeList(
     ...res,
     data: {
       items: (res.data?.items || []).map(toClusterNodeItem),
+      continue: res.data?.metadata?.continue || '',
+      remainingItemCount: res.data?.metadata?.remainingItemCount,
     },
   } as API.ApiResponse<API.ClusterNodeListData>
 }

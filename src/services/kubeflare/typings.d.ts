@@ -156,10 +156,14 @@ declare namespace API {
 
   type ClusterNodeListData = {
     items: ClusterNodeItem[]
+    continue?: string
+    remainingItemCount?: number
   }
 
   type ClusterNodeListParams = {
     keyword?: string
+    limit?: number
+    continue?: string
   }
 
   type CreateUserParams = {
