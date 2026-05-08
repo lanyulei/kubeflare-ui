@@ -6,22 +6,23 @@ import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { SectionTitle } from '@/components';
 import { getClusterNodeList } from '@/services/kubeflare/cluster/node';
+import RunningStatus from './components/RunningStatus';
 
 const useStyles = createStyles(({ token }) => ({
   content: {
     backgroundColor: token.colorBgContainer,
     border: `1px solid ${token.colorBorder}80`,
     borderRadius: token.borderRadiusLG,
-    padding: token.paddingLG,
+    padding: `20px`,
   },
   moreInfo: {
-    marginTop: token.marginMD,
+    marginTop: '15px',
   },
   moreInfoCard: {
     borderColor: `${token.colorBorder}80`,
 
     '.ant-card-body': {
-      paddingTop: 5,
+      paddingTop: 2,
     },
   },
   status: {
@@ -182,7 +183,7 @@ const ClusterNodeDetail = () => {
     {
       key: 'status',
       label: '运行状态',
-      children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+      children: <RunningStatus node={node} />,
     },
     {
       key: 'pods',
@@ -291,7 +292,7 @@ const ClusterNodeDetail = () => {
         </div>
       </div>
       <div className={styles.moreInfo}>
-        <SectionTitle>更多信息</SectionTitle>
+        {/* <SectionTitle>更多信息</SectionTitle> */}
         <Card className={styles.moreInfoCard}>
           <Tabs items={moreInfoTabItems} />
         </Card>

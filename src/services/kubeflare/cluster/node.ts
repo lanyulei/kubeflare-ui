@@ -14,6 +14,12 @@ type KubernetesNodeCondition = {
   status?: string
 }
 
+type KubernetesNodeTaint = {
+  key?: string
+  value?: string
+  effect?: string
+}
+
 type KubernetesNode = {
   metadata?: {
     name?: string
@@ -22,6 +28,7 @@ type KubernetesNode = {
   }
   spec?: {
     unschedulable?: boolean
+    taints?: KubernetesNodeTaint[]
   }
   status?: {
     addresses?: KubernetesNodeAddress[]
@@ -130,6 +137,8 @@ const toClusterNodeItem = (node: KubernetesNode): API.ClusterNodeItem => {
     internal_ip: internalIP,
     external_ip: externalIP,
     status: getNodeStatus(node),
+    conditions: node.status?.conditions,
+    taints: node.spec?.taints,
     roles: getNodeRoles(node.metadata?.labels),
     uptime: getNodeAge(node.metadata?.creationTimestamp),
     age: getNodeAge(node.metadata?.creationTimestamp),

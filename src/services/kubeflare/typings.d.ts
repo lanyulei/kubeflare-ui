@@ -146,6 +146,8 @@ declare namespace API {
     internal_ip?: string
     external_ip?: string
     status?: string
+    conditions?: ClusterNodeCondition[]
+    taints?: ClusterNodeTaint[]
     roles?: string[] | string
     uptime?: string
     age?: string
@@ -158,6 +160,17 @@ declare namespace API {
     operating_system?: string
     os_image?: string
     create_time?: string
+  }
+
+  type ClusterNodeCondition = {
+    type?: string
+    status?: string
+  }
+
+  type ClusterNodeTaint = {
+    key?: string
+    value?: string
+    effect?: string
   }
 
   type ClusterNodeListData = {

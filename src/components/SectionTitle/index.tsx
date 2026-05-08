@@ -1,5 +1,5 @@
 import { createStyles } from 'antd-style';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 const useStyles = createStyles(() => ({
   title: {
@@ -17,12 +17,27 @@ const useStyles = createStyles(() => ({
 type SectionTitleProps = {
   children: ReactNode;
   className?: string;
+  color?: CSSProperties['color'];
+  fontSize?: CSSProperties['fontSize'];
 };
 
-const SectionTitle = ({ children, className }: SectionTitleProps) => {
+const SectionTitle = ({
+  children,
+  className,
+  color,
+  fontSize,
+}: SectionTitleProps) => {
   const { styles, cx } = useStyles();
+  const customStyle: CSSProperties = {
+    color,
+    fontSize,
+  };
 
-  return <div className={cx(styles.title, className)}>{children}</div>;
+  return (
+    <div className={cx(styles.title, className)} style={customStyle}>
+      {children}
+    </div>
+  );
 };
 
 export default SectionTitle;
