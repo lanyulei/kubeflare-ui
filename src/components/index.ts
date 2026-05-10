@@ -6,10 +6,12 @@
  * 布局组件
  */
 import Footer from './Footer';
+import KeyValueEditor from './KeyValueEditor';
 import KeyValueList from './KeyValueList';
 import { ClusterSwitch, Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import SectionTitle from './SectionTitle';
+import TaintEditor from './TaintEditor';
 import YamlEditor from './YamlEditor';
 
 export {
@@ -17,9 +19,11 @@ export {
   AvatarName,
   ClusterSwitch,
   Footer,
+  KeyValueEditor,
   KeyValueList,
   Question,
   SectionTitle,
   SelectLang,
+  TaintEditor,
   YamlEditor,
 };

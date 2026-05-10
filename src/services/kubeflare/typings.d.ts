@@ -146,6 +146,7 @@ declare namespace API {
     internal_ip?: string
     external_ip?: string
     status?: string
+    unschedulable?: boolean
     conditions?: ClusterNodeCondition[]
     taints?: ClusterNodeTaint[]
     labels?: Record<string, string>
@@ -185,6 +186,18 @@ declare namespace API {
     keyword?: string
     limit?: number
     continue?: string
+  }
+
+  type UpdateClusterNodeSchedulingParams = {
+    unschedulable: boolean
+  }
+
+  type UpdateClusterNodeLabelsParams = {
+    labels: Record<string, string | null>
+  }
+
+  type UpdateClusterNodeTaintsParams = {
+    taints: ClusterNodeTaint[]
   }
 
   type ClusterNodeEventItem = {

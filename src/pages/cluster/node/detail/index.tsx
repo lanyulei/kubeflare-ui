@@ -1,4 +1,11 @@
-import { SearchOutlined } from '@ant-design/icons';
+import {
+  DownOutlined,
+  EditOutlined,
+  PlayCircleOutlined,
+  SearchOutlined,
+  StopOutlined,
+  TagOutlined,
+} from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import {
   PageContainer,
@@ -6,14 +13,34 @@ import {
   ProTable,
 } from '@ant-design/pro-components';
 import { history, useParams } from '@umijs/max';
-import { Card, Empty, Input, Spin, Tabs, Tooltip } from 'antd';
+import {
+  App,
+  Button,
+  Card,
+  Dropdown,
+  Empty,
+  Input,
+  Modal,
+  Spin,
+  Tabs,
+  Tooltip,
+} from 'antd';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { SectionTitle } from '@/components';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { KeyValueEditor, SectionTitle, TaintEditor } from '@/components';
+import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+import type {
+  TaintEditorItem,
+  TaintEffect,
+  TaintEffectOption,
+} from '@/components/TaintEditor';
 import {
   getClusterNodeEventList,
   getClusterNodeList,
+  updateClusterNodeLabels,
+  updateClusterNodeScheduling,
+  updateClusterNodeTaints,
 } from '@/services/kubeflare/cluster/node';
 import NodeMetadata from './components/Metadata';
 import Pods from './components/Pods';
@@ -21,6 +48,24 @@ import RunningStatus from './components/RunningStatus';
 
 const DEFAULT_PAGE_SIZE = 10;
 const EVENT_SEARCH_PAGE_SIZE = 500;
+
+const TAINT_EFFECT_OPTIONS: TaintEffectOption[] = [
+  {
+    value: 'NoSchedule',
+    label: '阻止调度',
+    description: '阻止容器组调度到节点。',
+  },
+  {
+    value: 'PreferNoSchedule',
+    label: '尽可能阻止调度',
+    description: '尽可能阻止容器组调度到节点。',
+  },
+  {
+    value: 'NoExecute',
+    label: '阻止调度并驱逐现有容器组',
+    description: '阻止容器组调度到节点并驱逐节点上现有的容器组。',
+  },
+];
 
 const useStyles = createStyles(({ token }) => ({
   content: {
@@ -268,6 +313,18 @@ const getEventTypeClassName = (
   return styles.eventTypeError;
 };
 
+const getTaintEffect = (effect?: string): TaintEffect => {
+  if (
+    effect === 'NoSchedule' ||
+    effect === 'PreferNoSchedule' ||
+    effect === 'NoExecute'
+  ) {
+    return effect;
+  }
+
+  return 'NoSchedule';
+};
+
 const decodeNodeName = (name?: string) => {
   if (!name) {
     return '';
@@ -281,6 +338,7 @@ const decodeNodeName = (name?: string) => {
 };
 
 const ClusterNodeDetail = () => {
+  const { message, modal } = App.useApp();
   const { styles } = useStyles();
   const params = useParams<{ name?: string }>();
   const nodeName = useMemo(() => decodeNodeName(params.name), [params.name]);
@@ -288,38 +346,223 @@ const ClusterNodeDetail = () => {
   const eventKeywordRef = useRef('');
   const eventContinueTokenRef = useRef<Record<number, string>>({ 1: '' });
   const eventPageSizeRef = useRef(DEFAULT_PAGE_SIZE);
+  const labelRowIdRef = useRef(0);
+  const taintRowIdRef = useRef(0);
   const [loading, setLoading] = useState(false);
+  const [schedulingLoading, setSchedulingLoading] = useState(false);
   const [eventKeywordDraft, setEventKeywordDraft] = useState('');
+  const [labelModalOpen, setLabelModalOpen] = useState(false);
+  const [labelSaving, setLabelSaving] = useState(false);
+  const [labelRows, setLabelRows] = useState<KeyValueEditorItem[]>([]);
+  const [taintModalOpen, setTaintModalOpen] = useState(false);
+  const [taintSaving, setTaintSaving] = useState(false);
+  const [taintRows, setTaintRows] = useState<TaintEditorItem[]>([]);
   const [node, setNode] = useState<API.ClusterNodeItem>();
 
-  useEffect(() => {
-    let mounted = true;
+  const createLabelRow = useCallback((keyName = '', value = '') => {
+    const nextId = labelRowIdRef.current;
+    labelRowIdRef.current += 1;
 
-    const fetchNode = async () => {
-      setLoading(true);
+    return {
+      id: `label-${nextId}`,
+      keyName,
+      value,
+    };
+  }, []);
+
+  const createTaintRow = useCallback(
+    (keyName = '', value = '', effect: TaintEffect = 'NoSchedule') => {
+      const nextId = taintRowIdRef.current;
+      taintRowIdRef.current += 1;
+
+      return {
+        id: `taint-${nextId}`,
+        keyName,
+        value,
+        effect,
+      };
+    },
+    [],
+  );
+
+  const fetchNode = useCallback(async () => {
+    if (!nodeName) {
+      setNode(undefined);
+      return;
+    }
+
+    setLoading(true);
+    try {
       const res = await getClusterNodeList({ keyword: nodeName });
       const items = res.data.items || [];
       const nextNode =
         items.find((item) => item.name === nodeName) ||
         items.find((item) => item.name?.includes(nodeName));
 
-      if (mounted) {
-        setNode(nextNode);
-        setLoading(false);
-      }
-    };
-
-    if (nodeName) {
-      fetchNode();
+      setNode(nextNode);
+    } finally {
+      setLoading(false);
     }
-
-    return () => {
-      mounted = false;
-    };
   }, [nodeName]);
+
+  useEffect(() => {
+    fetchNode();
+  }, [fetchNode]);
 
   const roles =
     getNodeRoles(node?.roles).map(getNodeRoleLabel).join('、') || '-';
+  const isSchedulingDisabled =
+    node?.unschedulable || node?.status?.toLowerCase() === 'schedulingdisabled';
+  const openLabelModal = () => {
+    const rows = Object.entries(node?.labels || {}).map(([keyName, value]) =>
+      createLabelRow(keyName, value),
+    );
+
+    setLabelRows(rows);
+    setLabelModalOpen(true);
+  };
+  const handleSaveLabels = async () => {
+    if (!nodeName) {
+      return;
+    }
+
+    const nextLabels: Record<string, string> = {};
+    const labelKeys = new Set<string>();
+
+    for (const row of labelRows) {
+      const keyName = row.keyName.trim();
+
+      if (!keyName) {
+        message.warning('标签 Key 不能为空');
+        return;
+      }
+      if (labelKeys.has(keyName)) {
+        message.warning('标签 Key 不能重复');
+        return;
+      }
+
+      labelKeys.add(keyName);
+      nextLabels[keyName] = row.value.trim();
+    }
+
+    const labelsPatch: Record<string, string | null> = {};
+    Object.keys(node?.labels || {}).forEach((keyName) => {
+      if (!labelKeys.has(keyName)) {
+        labelsPatch[keyName] = null;
+      }
+    });
+    Object.entries(nextLabels).forEach(([keyName, value]) => {
+      labelsPatch[keyName] = value;
+    });
+
+    setLabelSaving(true);
+    try {
+      await updateClusterNodeLabels(nodeName, { labels: labelsPatch });
+      message.success('节点标签已更新');
+      setLabelModalOpen(false);
+      await fetchNode();
+    } finally {
+      setLabelSaving(false);
+    }
+  };
+  const openTaintModal = () => {
+    const rows = (node?.taints || []).map((taint) =>
+      createTaintRow(
+        taint.key || '',
+        taint.value || '',
+        getTaintEffect(taint.effect),
+      ),
+    );
+
+    setTaintRows(rows);
+    setTaintModalOpen(true);
+  };
+  const handleSaveTaints = async () => {
+    if (!nodeName) {
+      return;
+    }
+
+    const taintKeys = new Set<string>();
+    const taints: API.ClusterNodeTaint[] = [];
+
+    for (const row of taintRows) {
+      const keyName = row.keyName.trim();
+
+      if (!keyName) {
+        message.warning('污点 Key 不能为空');
+        return;
+      }
+
+      const taintKey = `${keyName}:${row.effect}`;
+      if (taintKeys.has(taintKey)) {
+        message.warning('相同 Key 和调度规则的污点不能重复');
+        return;
+      }
+
+      taintKeys.add(taintKey);
+      taints.push({
+        key: keyName,
+        value: row.value.trim(),
+        effect: row.effect,
+      });
+    }
+
+    setTaintSaving(true);
+    try {
+      await updateClusterNodeTaints(nodeName, { taints });
+      message.success('节点污点已更新');
+      setTaintModalOpen(false);
+      await fetchNode();
+    } finally {
+      setTaintSaving(false);
+    }
+  };
+  const handleToggleScheduling = () => {
+    if (!nodeName) {
+      return;
+    }
+
+    const nextUnschedulable = !isSchedulingDisabled;
+    const actionText = nextUnschedulable ? '停止调度' : '启用调度';
+
+    modal.confirm({
+      title: `确认${actionText}该节点吗？`,
+      content: nextUnschedulable
+        ? '停止调度后，新的容器组将不会被调度到该节点。'
+        : '启用调度后，新的容器组可以继续被调度到该节点。',
+      okText: actionText,
+      cancelText: '取消',
+      onOk: async () => {
+        setSchedulingLoading(true);
+        try {
+          await updateClusterNodeScheduling(nodeName, {
+            unschedulable: nextUnschedulable,
+          });
+          message.success(`节点已${actionText}`);
+          await fetchNode();
+        } finally {
+          setSchedulingLoading(false);
+        }
+      },
+    });
+  };
+  const nodeActionItems = [
+    {
+      key: 'toggleScheduling',
+      icon: isSchedulingDisabled ? <PlayCircleOutlined /> : <StopOutlined />,
+      label: isSchedulingDisabled ? '启用调度' : '停止调度',
+    },
+    {
+      key: 'editLabels',
+      icon: <TagOutlined />,
+      label: '编辑标签',
+    },
+    {
+      key: 'editTaints',
+      icon: <EditOutlined />,
+      label: '编辑污点',
+    },
+  ];
   const statusDotClassNames = {
     default: styles.statusDotDefault,
     error: styles.statusDotError,
@@ -511,7 +754,36 @@ const ClusterNodeDetail = () => {
   ];
 
   return (
-    <PageContainer title={nodeName || '节点详情'} onBack={() => history.back()}>
+    <PageContainer
+      title={nodeName || '节点详情'}
+      onBack={() => history.back()}
+      extra={[
+        <Dropdown
+          disabled={!node}
+          key="node-actions"
+          menu={{
+            items: nodeActionItems,
+            onClick: ({ key }) => {
+              if (key === 'toggleScheduling') {
+                handleToggleScheduling();
+              }
+              if (key === 'editLabels') {
+                openLabelModal();
+              }
+              if (key === 'editTaints') {
+                openTaintModal();
+              }
+            },
+          }}
+          trigger={['click']}
+        >
+          <Button disabled={!node} loading={schedulingLoading}>
+            操作
+            <DownOutlined />
+          </Button>
+        </Dropdown>,
+      ]}
+    >
       <div>
         <SectionTitle>基本信息</SectionTitle>
         <div className={styles.content}>
@@ -605,6 +877,45 @@ const ClusterNodeDetail = () => {
           <Tabs items={moreInfoTabItems} />
         </Card>
       </div>
+      <Modal
+        destroyOnHidden
+        confirmLoading={labelSaving}
+        open={labelModalOpen}
+        title="编辑标签"
+        width={900}
+        okText="保存"
+        cancelText="取消"
+        onCancel={() => setLabelModalOpen(false)}
+        onOk={handleSaveLabels}
+      >
+        <KeyValueEditor
+          value={labelRows}
+          deleteAriaLabel="删除标签"
+          onAddBlocked={() => message.warning('请先填写已有标签的 Key')}
+          onChange={setLabelRows}
+          onCreateItem={() => createLabelRow()}
+        />
+      </Modal>
+      <Modal
+        destroyOnHidden
+        confirmLoading={taintSaving}
+        open={taintModalOpen}
+        title="编辑污点"
+        width={960}
+        okText="保存"
+        cancelText="取消"
+        onCancel={() => setTaintModalOpen(false)}
+        onOk={handleSaveTaints}
+      >
+        <TaintEditor
+          value={taintRows}
+          deleteAriaLabel="删除污点"
+          effectOptions={TAINT_EFFECT_OPTIONS}
+          onAddBlocked={() => message.warning('请先填写已有污点的 Key')}
+          onChange={setTaintRows}
+          onCreateItem={() => createTaintRow()}
+        />
+      </Modal>
     </PageContainer>
   );
 };

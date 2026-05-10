@@ -189,6 +189,7 @@ const toClusterNodeItem = (node: KubernetesNode): API.ClusterNodeItem => {
     internal_ip: internalIP,
     external_ip: externalIP,
     status: getNodeStatus(node),
+    unschedulable: node.spec?.unschedulable,
     conditions: node.status?.conditions,
     taints: node.spec?.taints,
     labels: node.metadata?.labels,
@@ -280,6 +281,108 @@ export async function getClusterNodeList(
       remainingItemCount: res.data?.metadata?.remainingItemCount,
     },
   } as API.ApiResponse<API.ClusterNodeListData>
+}
+
+/** 更新集群节点调度状态 PATCH /kapi/v1/nodes/:name */
+export async function updateClusterNodeScheduling(
+  name: string,
+  params: API.UpdateClusterNodeSchedulingParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return {
+      code: 20000,
+      message: '',
+      data: {},
+    } as API.ApiResponse<Record<string, never>>
+  }
+
+  return request<API.ApiResponse<KubernetesNode>>(
+    `/kapi/v1/nodes/${encodeURIComponent(name)}`,
+    {
+      method: 'PATCH',
+      data: {
+        spec: {
+          unschedulable: params.unschedulable,
+        },
+      },
+      ...(options || {}),
+      headers: {
+        'Content-Type': 'application/merge-patch+json',
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+}
+
+/** 更新集群节点标签 PATCH /kapi/v1/nodes/:name */
+export async function updateClusterNodeLabels(
+  name: string,
+  params: API.UpdateClusterNodeLabelsParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return {
+      code: 20000,
+      message: '',
+      data: {},
+    } as API.ApiResponse<Record<string, never>>
+  }
+
+  return request<API.ApiResponse<KubernetesNode>>(
+    `/kapi/v1/nodes/${encodeURIComponent(name)}`,
+    {
+      method: 'PATCH',
+      data: {
+        metadata: {
+          labels: params.labels,
+        },
+      },
+      ...(options || {}),
+      headers: {
+        'Content-Type': 'application/merge-patch+json',
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+}
+
+/** 更新集群节点污点 PATCH /kapi/v1/nodes/:name */
+export async function updateClusterNodeTaints(
+  name: string,
+  params: API.UpdateClusterNodeTaintsParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return {
+      code: 20000,
+      message: '',
+      data: {},
+    } as API.ApiResponse<Record<string, never>>
+  }
+
+  return request<API.ApiResponse<KubernetesNode>>(
+    `/kapi/v1/nodes/${encodeURIComponent(name)}`,
+    {
+      method: 'PATCH',
+      data: {
+        spec: {
+          taints: params.taints,
+        },
+      },
+      ...(options || {}),
+      headers: {
+        'Content-Type': 'application/merge-patch+json',
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
 }
 
 /** 获取集群节点事件列表 GET /kapi/v1/events */
