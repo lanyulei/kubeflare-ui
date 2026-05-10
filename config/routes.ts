@@ -11,6 +11,11 @@ export default [
     ],
   },
   {
+    path: '/terminal/cluster/:clusterId/namespaces/:namespace/pods/:podName/containers/:containerName',
+    layout: false,
+    component: './cluster/terminal/container',
+  },
+  {
     path: '/home',
     name: 'home',
     icon: 'home',
