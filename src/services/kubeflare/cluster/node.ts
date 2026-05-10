@@ -87,13 +87,63 @@ type KubernetesPod = {
     name?: string
     namespace?: string
     creationTimestamp?: string
+    deletionTimestamp?: string
   }
   spec?: {
     nodeName?: string
+    containers?: KubernetesContainer[]
   }
   status?: {
     podIP?: string
     phase?: string
+    reason?: string
+    containerStatuses?: KubernetesContainerStatus[]
+  }
+}
+
+type KubernetesProbe = {
+  initialDelaySeconds?: number
+  timeoutSeconds?: number
+  httpGet?: {
+    path?: string
+    port?: number | string
+    scheme?: string
+  }
+  tcpSocket?: {
+    port?: number | string
+  }
+  exec?: {
+    command?: string[]
+  }
+}
+
+type KubernetesContainerPort = {
+  name?: string
+  containerPort?: number
+  protocol?: string
+}
+
+type KubernetesContainer = {
+  name?: string
+  image?: string
+  ports?: KubernetesContainerPort[]
+  readinessProbe?: KubernetesProbe
+  livenessProbe?: KubernetesProbe
+  startupProbe?: KubernetesProbe
+}
+
+type KubernetesContainerStatus = {
+  name?: string
+  ready?: boolean
+  restartCount?: number
+  state?: {
+    running?: Record<string, unknown>
+    waiting?: {
+      reason?: string
+    }
+    terminated?: {
+      reason?: string
+    }
   }
 }
 
@@ -221,6 +271,90 @@ const getEventTime = (event: KubernetesEvent) =>
   event.firstTimestamp ||
   event.metadata?.creationTimestamp
 
+const getContainerStatus = (status?: KubernetesContainerStatus) => {
+  if (status?.state?.running) {
+    return '运行中'
+  }
+  return (
+    status?.state?.waiting?.reason ||
+    status?.state?.terminated?.reason ||
+    '未知'
+  )
+}
+
+const getPodReady = (pod: KubernetesPod) => {
+  const statuses = pod.status?.containerStatuses || []
+  const total = pod.spec?.containers?.length || statuses.length
+  const ready = statuses.filter((status) => status.ready).length
+
+  return `${ready}/${total}`
+}
+
+const getPodStatus = (pod: KubernetesPod) => {
+  if (pod.metadata?.deletionTimestamp) {
+    return 'Terminating'
+  }
+
+  return (
+    pod.status?.reason ||
+    pod.status?.containerStatuses?.find((status) => status.state?.waiting)
+      ?.state?.waiting?.reason ||
+    pod.status?.containerStatuses?.find((status) => status.state?.terminated)
+      ?.state?.terminated?.reason ||
+    pod.status?.phase ||
+    '-'
+  )
+}
+
+const getProbeHandler = (probe: KubernetesProbe) => {
+  if (probe.httpGet) {
+    return {
+      handler: 'HTTP 请求',
+      detail: `GET ${probe.httpGet.path || '/'} on port ${
+        probe.httpGet.port || '-'
+      }${probe.httpGet.scheme ? ` (${probe.httpGet.scheme})` : ''}`,
+    }
+  }
+
+  if (probe.tcpSocket) {
+    return {
+      handler: 'TCP Socket',
+      detail: `TCP check on port ${probe.tcpSocket.port || '-'}`,
+    }
+  }
+
+  if (probe.exec) {
+    return {
+      handler: '命令',
+      detail: probe.exec.command?.join(' ') || '-',
+    }
+  }
+
+  return {
+    handler: '探针',
+    detail: '-',
+  }
+}
+
+const toClusterNodePodProbe = (
+  probe: KubernetesProbe | undefined,
+  type: string,
+): API.ClusterNodePodContainerProbe | undefined => {
+  if (!probe) {
+    return undefined
+  }
+
+  const handler = getProbeHandler(probe)
+
+  return {
+    type,
+    handler: handler.handler,
+    detail: handler.detail,
+    initial_delay_seconds: probe.initialDelaySeconds,
+    timeout_seconds: probe.timeoutSeconds,
+  }
+}
+
 const toClusterNodeEventItem = (
   event: KubernetesEvent,
 ): API.ClusterNodeEventItem => ({
@@ -239,7 +373,32 @@ const toClusterNodePodItem = (pod: KubernetesPod): API.ClusterNodePodItem => ({
   node_name: pod.spec?.nodeName,
   pod_ip: pod.status?.podIP,
   phase: pod.status?.phase,
+  ready: getPodReady(pod),
+  status: getPodStatus(pod),
   create_time: pod.metadata?.creationTimestamp,
+  containers: (pod.spec?.containers || []).map((container) => {
+    const status = pod.status?.containerStatuses?.find(
+      (item) => item.name === container.name,
+    )
+
+    return {
+      name: container.name,
+      image: container.image,
+      status: getContainerStatus(status),
+      ready: status?.ready,
+      restart_count: status?.restartCount || 0,
+      ports: (container.ports || []).map((port) => ({
+        name: port.name,
+        container_port: port.containerPort,
+        protocol: port.protocol,
+      })),
+      probes: [
+        toClusterNodePodProbe(container.readinessProbe, '就绪探针'),
+        toClusterNodePodProbe(container.livenessProbe, '存活探针'),
+        toClusterNodePodProbe(container.startupProbe, '启动探针'),
+      ].filter(Boolean) as API.ClusterNodePodContainerProbe[],
+    }
+  }),
 })
 
 /** 获取集群节点列表 GET /kapi/v1/nodes */

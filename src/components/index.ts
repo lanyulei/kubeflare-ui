@@ -5,6 +5,7 @@
 /**
  * 布局组件
  */
+import ClusterPodList from './ClusterPodList';
 import Footer from './Footer';
 import KeyValueEditor from './KeyValueEditor';
 import KeyValueList from './KeyValueList';
@@ -17,6 +18,7 @@ import YamlEditor from './YamlEditor';
 export {
   AvatarDropdown,
   AvatarName,
+  ClusterPodList,
   ClusterSwitch,
   Footer,
   KeyValueEditor,

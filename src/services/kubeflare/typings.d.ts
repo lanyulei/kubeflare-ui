@@ -228,7 +228,34 @@ declare namespace API {
     node_name?: string
     pod_ip?: string
     phase?: string
+    ready?: string
+    status?: string
     create_time?: string
+    containers?: ClusterNodePodContainer[]
+  }
+
+  type ClusterNodePodContainer = {
+    name?: string
+    image?: string
+    status?: string
+    ready?: boolean
+    restart_count?: number
+    ports?: ClusterNodePodContainerPort[]
+    probes?: ClusterNodePodContainerProbe[]
+  }
+
+  type ClusterNodePodContainerPort = {
+    name?: string
+    container_port?: number
+    protocol?: string
+  }
+
+  type ClusterNodePodContainerProbe = {
+    type?: string
+    handler?: string
+    detail?: string
+    initial_delay_seconds?: number
+    timeout_seconds?: number
   }
 
   type ClusterNodePodListData = {
