@@ -10,6 +10,8 @@ import { Empty, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import SectionTitle from '@/components/SectionTitle';
 
+const itemBackgroundColor = 'rgba(0, 0, 0, 0.03)';
+
 const useStyles = createStyles(({ token }) => ({
   runningStatus: {
     display: 'flex',
@@ -30,7 +32,6 @@ const useStyles = createStyles(({ token }) => ({
     gap: '12px',
     // padding: token.paddingMD,
     borderRadius: token.borderRadiusLG,
-    backgroundColor: token.colorBgContainer,
 
     '@media (max-width: 1200px)': {
       gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -47,7 +48,7 @@ const useStyles = createStyles(({ token }) => ({
     // minHeight: 72,
     padding: `${token.paddingSM}px`,
     borderRadius: token.borderRadius,
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: itemBackgroundColor,
   },
   healthIconWrap: {
     position: 'relative',
@@ -97,7 +98,7 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginSM,
     // padding: token.paddingSM,
     borderRadius: token.borderRadiusLG,
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: token.colorBgContainer,
   },
   taintItem: {
     display: 'grid',
@@ -105,10 +106,10 @@ const useStyles = createStyles(({ token }) => ({
     columnGap: token.marginLG,
     alignItems: 'center',
     minHeight: 46,
-    padding: `0 ${token.paddingMD}px`,
+    padding: '0 16px',
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
-    backgroundColor: token.colorFillQuaternary,
+    backgroundColor: itemBackgroundColor,
     color: token.colorText,
     lineHeight: 1.5,
 

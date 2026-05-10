@@ -148,6 +148,8 @@ declare namespace API {
     status?: string
     conditions?: ClusterNodeCondition[]
     taints?: ClusterNodeTaint[]
+    labels?: Record<string, string>
+    annotations?: Record<string, string>
     roles?: string[] | string
     uptime?: string
     age?: string
@@ -181,6 +183,49 @@ declare namespace API {
 
   type ClusterNodeListParams = {
     keyword?: string
+    limit?: number
+    continue?: string
+  }
+
+  type ClusterNodeEventItem = {
+    id?: string
+    type?: string
+    reason?: string
+    event_time?: string
+    source?: string
+    message?: string
+  }
+
+  type ClusterNodeEventListData = {
+    items: ClusterNodeEventItem[]
+    continue?: string
+    remainingItemCount?: number
+  }
+
+  type ClusterNodeEventListParams = {
+    nodeName?: string
+    limit?: number
+    continue?: string
+  }
+
+  type ClusterNodePodItem = {
+    id?: string
+    name: string
+    namespace?: string
+    node_name?: string
+    pod_ip?: string
+    phase?: string
+    create_time?: string
+  }
+
+  type ClusterNodePodListData = {
+    items: ClusterNodePodItem[]
+    continue?: string
+    remainingItemCount?: number
+  }
+
+  type ClusterNodePodListParams = {
+    nodeName?: string
     limit?: number
     continue?: string
   }

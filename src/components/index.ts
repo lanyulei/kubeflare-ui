@@ -6,6 +6,7 @@
  * 布局组件
  */
 import Footer from './Footer';
+import KeyValueList from './KeyValueList';
 import { ClusterSwitch, Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import SectionTitle from './SectionTitle';
@@ -16,6 +17,7 @@ export {
   AvatarName,
   ClusterSwitch,
   Footer,
+  KeyValueList,
   Question,
   SectionTitle,
   SelectLang,
