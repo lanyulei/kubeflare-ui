@@ -302,13 +302,14 @@ const useStyles = createStyles(({ token }) => ({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 24,
+    width: 30,
     height: 22,
     borderRadius: token.borderRadiusSM,
     backgroundColor: '#1f2937',
     color: '#fff',
     fontSize: 12,
     fontWeight: 600,
+    padding: `0 3px`,
   },
   image: {
     marginTop: 3,
@@ -610,13 +611,15 @@ const ClusterPodList = ({
                       {container.name || '-'}
                     </div>
                   </Tooltip>
-                  <Popover
-                    content={renderProbePopover(container.probes)}
-                    placement="topLeft"
-                    trigger="hover"
-                  >
-                    <span className={styles.probeTrigger}>探针</span>
-                  </Popover>
+                  {container.probes && container.probes.length > 0 ? (
+                    <Popover
+                      content={renderProbePopover(container.probes)}
+                      placement="topLeft"
+                      trigger="hover"
+                    >
+                      <span className={styles.probeTrigger}>探针</span>
+                    </Popover>
+                  ) : null}
                 </div>
                 <Tooltip title={container.image || '-'}>
                   <div className={styles.image}>
