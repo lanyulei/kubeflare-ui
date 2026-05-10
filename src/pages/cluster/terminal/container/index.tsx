@@ -1,8 +1,4 @@
-import {
-  DisconnectOutlined,
-  LinkOutlined,
-  LoadingOutlined,
-} from '@ant-design/icons';
+import { LoadingOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useParams } from '@umijs/max';
 import { Alert, Button, Tag, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
@@ -34,10 +30,10 @@ const useStyles = createStyles(({ token }) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: token.marginMD,
-    marginBottom: token.marginLG,
+    marginBottom: '16px',
   },
   title: {
-    margin: 0,
+    margin: '0 0 5px 0',
     color: token.colorText,
     fontSize: token.fontSizeLG,
     fontWeight: 600,
@@ -59,16 +55,18 @@ const useStyles = createStyles(({ token }) => ({
     whiteSpace: 'nowrap',
   },
   panel: {
+    padding: token.paddingSM,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     background: token.colorBgContainer,
     boxShadow: token.boxShadowTertiary,
   },
   terminal: {
+    display: 'block',
+    boxSizing: 'border-box',
     width: '100%',
-    height: 'calc(100vh - 158px)',
+    height: 'calc(100vh - 141px)',
     minHeight: 420,
-    margin: token.paddingSM,
     padding: token.padding,
     overflow: 'auto',
     resize: 'none',
@@ -308,7 +306,7 @@ const ContainerTerminal = () => {
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>terminal</h1>
+          <h1 className={styles.title}>Terminal</h1>
           <div className={styles.meta}>
             {getStatusTag(status)}
             <Tooltip title={terminalParams.containerName}>
@@ -319,15 +317,16 @@ const ContainerTerminal = () => {
             </Tooltip>
           </div>
         </div>
-        <Button
-          disabled={status === 'connecting'}
-          icon={
-            status === 'connected' ? <DisconnectOutlined /> : <LinkOutlined />
-          }
-          onClick={reconnect}
-        >
-          重新连接
-        </Button>
+        <Tooltip title="重连">
+          <Button
+            aria-label="重连"
+            disabled={status === 'connecting'}
+            icon={<ReloadOutlined />}
+            onClick={reconnect}
+            shape="circle"
+            type="text"
+          />
+        </Tooltip>
       </div>
 
       {missingParams ? (
