@@ -54,7 +54,7 @@ const useStyles = createStyles(({ token }) => ({
   itemHeader: {
     display: 'grid',
     gridTemplateColumns:
-      'minmax(220px, 1.2fr) minmax(320px, 0.9fr) minmax(120px, 180px) 40px',
+      'minmax(220px, 1fr) minmax(136px, 172px) minmax(160px, 0.8fr) 40px',
     alignItems: 'center',
     columnGap: token.marginMD,
     minHeight: 62,
@@ -140,7 +140,7 @@ const useStyles = createStyles(({ token }) => ({
   expandedSummary: {
     display: 'grid',
     gridTemplateColumns:
-      'minmax(220px, 1.2fr) minmax(320px, 0.9fr) minmax(120px, 180px) 40px',
+      'minmax(220px, 1fr) minmax(136px, 172px) minmax(160px, 0.8fr) 40px',
     alignItems: 'center',
     columnGap: token.marginMD,
     minHeight: 62,
@@ -189,7 +189,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   podStats: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(54px, 1fr))',
+    gridTemplateColumns: '48px minmax(72px, 112px)',
     minWidth: 0,
     gap: token.marginSM,
 
@@ -199,7 +199,7 @@ const useStyles = createStyles(({ token }) => ({
     },
 
     '@media (max-width: 576px)': {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gridTemplateColumns: '48px minmax(72px, 112px)',
     },
   },
   podMetric: {
