@@ -270,6 +270,14 @@ declare namespace API {
     continue?: string
   }
 
+  type ClusterNodePodContainerLogParams = {
+    namespace?: string
+    podName?: string
+    container?: string
+    tailLines?: number
+    timestamps?: boolean
+  }
+
   type CreateUserParams = {
     username: string
     nickname: string

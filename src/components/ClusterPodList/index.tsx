@@ -1,17 +1,32 @@
 import {
   ClusterOutlined,
   CodeOutlined,
+  DownloadOutlined,
   DownOutlined,
   FileTextOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
   ReloadOutlined,
   SearchOutlined,
   UpOutlined,
 } from '@ant-design/icons';
-import { Button, Empty, Input, Pagination, Popover, Spin, Tooltip } from 'antd';
+import {
+  App,
+  Button,
+  Empty,
+  Input,
+  Modal,
+  Pagination,
+  Popover,
+  Spin,
+  Tooltip,
+} from 'antd';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getClusterNodePodContainerLogs } from '@/services/kubeflare/cluster/node';
 import SectionTitle from '../SectionTitle';
+import { openContainerTerminalWindow } from './terminal';
 
 const useStyles = createStyles(({ token }) => ({
   pods: {
@@ -416,6 +431,101 @@ const useStyles = createStyles(({ token }) => ({
     color: token.colorText,
     fontSize: 13,
   },
+  logModal: {
+    '.ant-modal-content': {
+      padding: 0,
+      overflow: 'hidden',
+    },
+
+    '.ant-modal-header': {
+      margin: 0,
+      padding: `${token.paddingMD}px ${token.paddingLG}px`,
+      borderBottom: `1px solid ${token.colorBorderSecondary}`,
+    },
+
+    '.ant-modal-body': {
+      padding: token.paddingSM,
+      backgroundColor: token.colorBgLayout,
+    },
+
+    '.ant-modal-close': {
+      top: 14,
+      right: 18,
+      width: 32,
+      height: 32,
+      borderRadius: token.borderRadius,
+      backgroundColor: '#1f2937',
+      color: '#fff',
+
+      '&:hover': {
+        backgroundColor: '#111827',
+        color: '#fff',
+      },
+    },
+  },
+  logViewer: {
+    position: 'relative',
+    height: 'calc(100vh - 180px)',
+    minHeight: 420,
+    overflow: 'hidden',
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadius,
+    backgroundColor: '#1f2937',
+
+    '.ant-spin-nested-loading, .ant-spin-container': {
+      height: '100%',
+    },
+  },
+  logActions: {
+    position: 'absolute',
+    top: token.paddingMD,
+    right: token.paddingMD,
+    zIndex: 1,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: token.marginXS,
+    padding: `4px ${token.paddingXS}px`,
+    borderRadius: 18,
+    backgroundColor: 'rgba(71, 85, 105, 0.72)',
+    backdropFilter: 'blur(8px)',
+
+    '.ant-btn': {
+      color: 'rgba(255, 255, 255, 0.86)',
+
+      '&:hover': {
+        color: '#fff',
+        backgroundColor: 'rgba(255, 255, 255, 0.14)',
+      },
+
+      '&[disabled]': {
+        color: 'rgba(255, 255, 255, 0.34)',
+      },
+    },
+  },
+  logDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.32)',
+  },
+  logContent: {
+    height: '100%',
+    margin: 0,
+    padding: `${token.paddingMD}px ${token.paddingLG}px`,
+    overflow: 'auto',
+    color: '#dbe4f0',
+    fontFamily: 'SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace',
+    fontSize: 12,
+    fontWeight: 600,
+    lineHeight: 1.7,
+    whiteSpace: 'pre',
+  },
+  logEmpty: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    color: 'rgba(255, 255, 255, 0.64)',
+  },
   footer: {
     display: 'flex',
     alignItems: 'center',
@@ -461,6 +571,8 @@ export type ClusterPodListProps = {
 };
 
 const DEFAULT_PAGE_SIZE = 10;
+const LOG_TAIL_LINES = 500;
+const LOG_FOLLOW_INTERVAL = 5000;
 
 const getProbeTypeClassName = (
   type: string | undefined,
@@ -514,6 +626,14 @@ const formatContainerPorts = (ports?: API.ClusterNodePodContainerPort[]) =>
         .join('，')
     : '-';
 
+const getLogDownloadFileName = (
+  pod?: API.ClusterNodePodItem,
+  container?: API.ClusterNodePodContainer,
+) =>
+  `${pod?.namespace || 'default'}-${pod?.name || 'pod'}-${
+    container?.name || 'container'
+  }.log`.replace(/[^\w.-]+/g, '-');
+
 const ClusterPodList = ({
   dataSource = [],
   loading = false,
@@ -524,10 +644,20 @@ const ClusterPodList = ({
   onContainerLog,
   onContainerTerminal,
 }: ClusterPodListProps) => {
+  const { message } = App.useApp();
   const { styles } = useStyles();
   const [keyword, setKeyword] = useState('');
   const [current, setCurrent] = useState(1);
   const [expandedPodId, setExpandedPodId] = useState<string>();
+  const [logModalOpen, setLogModalOpen] = useState(false);
+  const [logTarget, setLogTarget] = useState<{
+    pod: API.ClusterNodePodItem;
+    container: API.ClusterNodePodContainer;
+  }>();
+  const [logContent, setLogContent] = useState('');
+  const [logLoading, setLogLoading] = useState(false);
+  const [logFollowing, setLogFollowing] = useState(true);
+  const logContentRef = useRef<HTMLPreElement>(null);
 
   const filteredPods = useMemo(() => {
     const nextKeyword = keyword.trim().toLowerCase();
@@ -556,6 +686,123 @@ const ClusterPodList = ({
     const podId = pod.id || pod.name;
     setExpandedPodId((value) => (value === podId ? undefined : podId));
   };
+
+  const fetchContainerLogs = useCallback(async () => {
+    if (!logTarget) {
+      return;
+    }
+
+    const { pod, container } = logTarget;
+
+    if (!pod.namespace || !pod.name || !container.name) {
+      message.error('容器日志参数不完整');
+      return;
+    }
+
+    setLogLoading(true);
+    try {
+      const logs = await getClusterNodePodContainerLogs(
+        {
+          namespace: pod.namespace,
+          podName: pod.name,
+          container: container.name,
+          tailLines: LOG_TAIL_LINES,
+          timestamps: true,
+        },
+        {
+          skipErrorHandler: true,
+        },
+      );
+      setLogContent(String(logs || ''));
+    } catch (_error) {
+      message.error('容器日志获取失败');
+    } finally {
+      setLogLoading(false);
+    }
+  }, [logTarget, message]);
+
+  const openContainerLog = (
+    pod: API.ClusterNodePodItem,
+    container: API.ClusterNodePodContainer,
+  ) => {
+    onContainerLog?.(pod, container);
+    setLogTarget({ pod, container });
+    setLogContent('');
+    setLogFollowing(true);
+    setLogModalOpen(true);
+  };
+
+  const openContainerTerminal = (
+    pod: API.ClusterNodePodItem,
+    container: API.ClusterNodePodContainer,
+  ) => {
+    const result = openContainerTerminalWindow({
+      namespace: pod.namespace,
+      podName: pod.name,
+      containerName: container.name,
+    });
+
+    if (!result.ok) {
+      message.warning(
+        result.reason === 'popup-blocked'
+          ? '浏览器已阻止新窗口，请允许弹窗后重试'
+          : '容器终端参数不完整',
+      );
+      return;
+    }
+
+    onContainerTerminal?.(pod, container);
+  };
+
+  const closeContainerLog = () => {
+    setLogModalOpen(false);
+    setLogFollowing(false);
+  };
+
+  const downloadContainerLogs = () => {
+    if (!logContent) {
+      message.warning('暂无可下载的日志');
+      return;
+    }
+
+    const blob = new Blob([logContent], {
+      type: 'text/plain;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = getLogDownloadFileName(
+      logTarget?.pod,
+      logTarget?.container,
+    );
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  useEffect(() => {
+    if (logModalOpen && logTarget) {
+      void fetchContainerLogs();
+    }
+  }, [fetchContainerLogs, logModalOpen, logTarget]);
+
+  useEffect(() => {
+    if (!logModalOpen || !logFollowing) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      void fetchContainerLogs();
+    }, LOG_FOLLOW_INTERVAL);
+
+    return () => window.clearInterval(timer);
+  }, [fetchContainerLogs, logFollowing, logModalOpen]);
+
+  useEffect(() => {
+    const logContentElement = logContentRef.current;
+    if (logContentElement) {
+      logContentElement.scrollTop = logContentElement.scrollHeight;
+    }
+  }, [logContent]);
 
   const renderProbePopover = (probes?: API.ClusterNodePodContainerProbe[]) => (
     <div className={styles.probePopover}>
@@ -666,7 +913,7 @@ const ClusterPodList = ({
                       <button
                         aria-label={`查看 ${container.name || '容器'} 日志`}
                         className={styles.containerTrigger}
-                        onClick={() => onContainerLog?.(pod, container)}
+                        onClick={() => openContainerLog(pod, container)}
                         type="button"
                       >
                         <FileTextOutlined />
@@ -676,7 +923,7 @@ const ClusterPodList = ({
                       <button
                         aria-label={`打开 ${container.name || '容器'} 终端`}
                         className={styles.containerTrigger}
-                        onClick={() => onContainerTerminal?.(pod, container)}
+                        onClick={() => openContainerTerminal(pod, container)}
                         type="button"
                       >
                         <CodeOutlined />
@@ -783,6 +1030,62 @@ const ClusterPodList = ({
           size="small"
         />
       </div>
+      <Modal
+        className={styles.logModal}
+        footer={null}
+        onCancel={closeContainerLog}
+        open={logModalOpen}
+        title="容器日志"
+        width="calc(100vw - 48px)"
+      >
+        <div className={styles.logViewer}>
+          <div className={styles.logActions}>
+            <Tooltip title={logFollowing ? '暂停自动追踪' : '启动自动追踪'}>
+              <Button
+                aria-label={logFollowing ? '暂停自动追踪' : '启动自动追踪'}
+                icon={
+                  logFollowing ? (
+                    <PauseCircleOutlined />
+                  ) : (
+                    <PlayCircleOutlined />
+                  )
+                }
+                onClick={() => setLogFollowing((value) => !value)}
+                type="text"
+              />
+            </Tooltip>
+            <div className={styles.logDivider} />
+            <Tooltip title="刷新当前日志">
+              <Button
+                aria-label="刷新当前日志"
+                icon={<ReloadOutlined />}
+                loading={logLoading}
+                onClick={() => void fetchContainerLogs()}
+                type="text"
+              />
+            </Tooltip>
+            <div className={styles.logDivider} />
+            <Tooltip title="下载当前容器日志">
+              <Button
+                aria-label="下载当前容器日志"
+                disabled={!logContent}
+                icon={<DownloadOutlined />}
+                onClick={downloadContainerLogs}
+                type="text"
+              />
+            </Tooltip>
+          </div>
+          <Spin spinning={logLoading && !logContent}>
+            {logContent ? (
+              <pre className={styles.logContent} ref={logContentRef}>
+                {logContent}
+              </pre>
+            ) : (
+              <div className={styles.logEmpty}>暂无日志</div>
+            )}
+          </Spin>
+        </div>
+      </Modal>
     </div>
   );
 };

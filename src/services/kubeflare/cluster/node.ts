@@ -155,6 +155,24 @@ type KubernetesPodList = {
   items?: KubernetesPod[]
 }
 
+const normalizeLogResponse = (response: unknown) => {
+  if (typeof response === 'string') {
+    return response
+  }
+
+  if (response && typeof response === 'object' && 'data' in response) {
+    const data = (response as API.ApiResponse<unknown>).data
+
+    if (typeof data === 'string') {
+      return data
+    }
+
+    return data ? JSON.stringify(data, null, 2) : ''
+  }
+
+  return response ? String(response) : ''
+}
+
 const getCurrentClusterId = () => {
   if (typeof window === 'undefined') {
     return undefined
@@ -638,4 +656,33 @@ export async function getClusterNodePodList(
       remainingItemCount: res.data?.metadata?.remainingItemCount,
     },
   } as API.ApiResponse<API.ClusterNodePodListData>
+}
+
+/** 获取集群节点容器日志 GET /kapi/v1/namespaces/{namespace}/pods/{podName}/log */
+export async function getClusterNodePodContainerLogs(
+  params?: API.ClusterNodePodContainerLogParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, podName, ...restParams } = params || {}
+
+  if (!clusterId || !namespace || !podName) {
+    return ''
+  }
+
+  const res = await request<string | API.ApiResponse<unknown>>(
+    `/kapi/v1/namespaces/${namespace}/pods/${podName}/log`,
+    {
+      method: 'GET',
+      params: restParams,
+      responseType: 'text',
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  return normalizeLogResponse(res)
 }
