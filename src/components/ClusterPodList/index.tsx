@@ -1,6 +1,8 @@
 import {
   ClusterOutlined,
+  CodeOutlined,
   DownOutlined,
+  FileTextOutlined,
   ReloadOutlined,
   SearchOutlined,
   UpOutlined,
@@ -9,6 +11,7 @@ import { Button, Empty, Input, Pagination, Popover, Spin, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
+import SectionTitle from '../SectionTitle';
 
 const useStyles = createStyles(({ token }) => ({
   pods: {
@@ -311,6 +314,38 @@ const useStyles = createStyles(({ token }) => ({
     fontWeight: 600,
     padding: `0 3px`,
   },
+  containerTriggers: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    flex: '0 0 auto',
+    gap: 2,
+  },
+  containerTrigger: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 18,
+    height: 22,
+    padding: 0,
+    border: 0,
+    borderRadius: token.borderRadiusSM,
+    backgroundColor: 'transparent',
+    color: token.colorTextSecondary,
+    cursor: 'pointer',
+    fontSize: 13,
+    lineHeight: 1,
+    transition: `color ${token.motionDurationMid}, background-color ${token.motionDurationMid}`,
+
+    '&:hover': {
+      backgroundColor: token.colorFillSecondary,
+      color: token.colorText,
+    },
+
+    '&:focus-visible': {
+      outline: `2px solid ${token.colorPrimaryBorder}`,
+      outlineOffset: 1,
+    },
+  },
   image: {
     marginTop: 3,
     color: token.colorTextTertiary,
@@ -323,6 +358,12 @@ const useStyles = createStyles(({ token }) => ({
     color: token.colorText,
     fontSize: 14,
     fontWeight: 600,
+  },
+  containerPorts: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   metricLabel: {
     marginTop: 3,
@@ -409,6 +450,14 @@ export type ClusterPodListProps = {
   searchPlaceholder?: string;
   showRefresh?: boolean;
   onRefresh?: () => void;
+  onContainerLog?: (
+    pod: API.ClusterNodePodItem,
+    container: API.ClusterNodePodContainer,
+  ) => void;
+  onContainerTerminal?: (
+    pod: API.ClusterNodePodItem,
+    container: API.ClusterNodePodContainer,
+  ) => void;
 };
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -472,11 +521,13 @@ const ClusterPodList = ({
   searchPlaceholder = '搜索容器组名称 / 命名空间 / IP 地址',
   showRefresh = true,
   onRefresh,
+  onContainerLog,
+  onContainerTerminal,
 }: ClusterPodListProps) => {
   const { styles } = useStyles();
   const [keyword, setKeyword] = useState('');
   const [current, setCurrent] = useState(1);
-  const [expandedPodIds, setExpandedPodIds] = useState<string[]>([]);
+  const [expandedPodId, setExpandedPodId] = useState<string>();
 
   const filteredPods = useMemo(() => {
     const nextKeyword = keyword.trim().toLowerCase();
@@ -503,11 +554,7 @@ const ClusterPodList = ({
 
   const toggleExpanded = (pod: API.ClusterNodePodItem) => {
     const podId = pod.id || pod.name;
-    setExpandedPodIds((value) =>
-      value.includes(podId)
-        ? value.filter((item) => item !== podId)
-        : [...value, podId],
-    );
+    setExpandedPodId((value) => (value === podId ? undefined : podId));
   };
 
   const renderProbePopover = (probes?: API.ClusterNodePodContainerProbe[]) => (
@@ -596,6 +643,9 @@ const ClusterPodList = ({
 
   const renderContainers = (pod: API.ClusterNodePodItem) => (
     <div className={styles.containerList}>
+      <SectionTitle color={'#36435C'} fontSize={12} style={{ marginBottom: 0 }}>
+        容器
+      </SectionTitle>
       {pod.containers && pod.containers.length > 0 ? (
         pod.containers.map((container) => (
           <div className={styles.containerItem} key={container.name}>
@@ -611,6 +661,28 @@ const ClusterPodList = ({
                       {container.name || '-'}
                     </div>
                   </Tooltip>
+                  <span className={styles.containerTriggers}>
+                    <Tooltip title="容器日志">
+                      <button
+                        aria-label={`查看 ${container.name || '容器'} 日志`}
+                        className={styles.containerTrigger}
+                        onClick={() => onContainerLog?.(pod, container)}
+                        type="button"
+                      >
+                        <FileTextOutlined />
+                      </button>
+                    </Tooltip>
+                    <Tooltip title="终端">
+                      <button
+                        aria-label={`打开 ${container.name || '容器'} 终端`}
+                        className={styles.containerTrigger}
+                        onClick={() => onContainerTerminal?.(pod, container)}
+                        type="button"
+                      >
+                        <CodeOutlined />
+                      </button>
+                    </Tooltip>
+                  </span>
                   {container.probes && container.probes.length > 0 ? (
                     <Popover
                       content={renderProbePopover(container.probes)}
@@ -642,7 +714,9 @@ const ClusterPodList = ({
             </div>
             <div>
               <Tooltip title={formatContainerPorts(container.ports)}>
-                <div className={styles.metricValue}>
+                <div
+                  className={`${styles.metricValue} ${styles.containerPorts}`}
+                >
                   {formatContainerPorts(container.ports)}
                 </div>
               </Tooltip>
@@ -684,7 +758,7 @@ const ClusterPodList = ({
         {filteredPods.length > 0 ? (
           <div className={styles.list}>
             {pagedPods.map((pod) => {
-              const expanded = expandedPodIds.includes(pod.id || pod.name);
+              const expanded = expandedPodId === (pod.id || pod.name);
 
               return (
                 <div className={styles.item} key={pod.id || pod.name}>

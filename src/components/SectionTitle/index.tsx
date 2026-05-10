@@ -19,6 +19,7 @@ type SectionTitleProps = {
   className?: string;
   color?: CSSProperties['color'];
   fontSize?: CSSProperties['fontSize'];
+  style?: CSSProperties;
 };
 
 const SectionTitle = ({
@@ -26,11 +27,13 @@ const SectionTitle = ({
   className,
   color,
   fontSize,
+  style,
 }: SectionTitleProps) => {
   const { styles, cx } = useStyles();
   const customStyle: CSSProperties = {
     color,
     fontSize,
+    ...style,
   };
 
   return (
