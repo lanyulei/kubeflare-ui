@@ -2,12 +2,7 @@ import type { RequestOptions } from '@@/plugin-request/request';
 import type { RequestConfig } from '@umijs/max';
 import { getRequestInstance, history } from '@umijs/max';
 import { message } from 'antd';
-import {
-  clearAuthSession,
-  getAccessToken,
-  getCsrfToken,
-  setAuthSession,
-} from '@/utils/auth';
+import { clearAuthSession, getCsrfToken, setAuthSession } from '@/utils/auth';
 
 type ApiErrorPayload = {
   code?: number;
@@ -152,16 +147,15 @@ export const errorConfig: RequestConfig = {
   },
   requestInterceptors: [
     (config: RequestOptions) => {
-      const token = getAccessToken();
+      // Authentication relies entirely on the HttpOnly access-token cookie
+      // set by the backend on /auth/login and /auth/refresh. Cookies are
+      // forwarded automatically by withCredentials, so we no longer reach
+      // into JavaScript-readable storage for a Bearer token.
       const csrfToken = getCsrfToken();
       const method = (config.method || 'GET').toUpperCase();
       const headers = {
         ...(config.headers || {}),
       } as Record<string, string>;
-
-      if (token && !config.skipAuthorization) {
-        headers.Authorization = `Bearer ${token}`;
-      }
 
       if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
         headers['X-Kubeflare-CSRF'] = csrfToken;

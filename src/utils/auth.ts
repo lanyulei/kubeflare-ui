@@ -1,15 +1,10 @@
-const ACCESS_TOKEN_KEY = 'kubeflare_access_token';
-const REFRESH_TOKEN_KEY = 'kubeflare_refresh_token';
 const CSRF_TOKEN_COOKIE = 'kubeflare_csrf_token';
 
-export const getAccessToken = () => {
-  return localStorage.getItem(ACCESS_TOKEN_KEY) || '';
-};
-
-export const setAccessToken = (token: string) => {
-  localStorage.setItem(ACCESS_TOKEN_KEY, token);
-};
-
+// Auth state lives exclusively in HttpOnly cookies issued by the backend on
+// /auth/login and /auth/refresh. Keeping the access token out of JavaScript
+// reach eliminates the most common XSS escalation path (token theft from
+// localStorage). The CSRF double-submit token remains readable so we can
+// echo it back in the X-Kubeflare-CSRF header.
 export const getCookie = (name: string) => {
   const cookie = document.cookie
     .split('; ')
@@ -30,13 +25,23 @@ export const getCsrfToken = () => {
   return getCookie(CSRF_TOKEN_COOKIE);
 };
 
-export const setAuthSession = (session: API.AuthSession) => {
-  setAccessToken(session.access_token);
+// setAuthSession / clearAuthSession are kept as no-ops so call sites in
+// app.tsx, AvatarDropdown, login page, and the request interceptor stay
+// untouched. The browser cookie jar is now the single source of truth.
+export const setAuthSession = (_session: API.AuthSession) => {
+  void _session;
 };
 
 export const clearAuthSession = () => {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  // Best-effort: also wipe any legacy keys an older build of the app may
+  // have left in localStorage so a returning user does not carry stale
+  // tokens around.
+  try {
+    localStorage.removeItem('kubeflare_access_token');
+    localStorage.removeItem('kubeflare_refresh_token');
+  } catch (_error) {
+    /* ignore: storage may be disabled in private mode */
+  }
 };
 
 export const clearAccessToken = clearAuthSession;

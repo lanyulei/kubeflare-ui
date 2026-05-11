@@ -6,6 +6,7 @@ export default {
   'menu.cluster.clusterList': '集群列表',
   'menu.cluster.clusterNode': '節點',
   'menu.cluster.clusterNode.clusterNodeList': '集群節點',
+  'menu.cluster.clusterNode.clusterNodeDetail': '節點詳情',
   'menu.cluster.clusterNamespaces': '命名空間',
   'menu.cluster.clusterWorkloads': '應用負載',
   'menu.cluster.clusterWorkloads.clusterWorkloadsList': '工作負載',

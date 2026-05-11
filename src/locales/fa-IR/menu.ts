@@ -6,6 +6,7 @@ export default {
   'menu.cluster.clusterList': 'Cluster List',
   'menu.cluster.clusterNode': 'Node',
   'menu.cluster.clusterNode.clusterNodeList': 'Cluster Nodes',
+  'menu.cluster.clusterNode.clusterNodeDetail': 'Node Detail',
   'menu.cluster.clusterNamespaces': 'Namespaces',
   'menu.cluster.clusterWorkloads': 'Application Workloads',
   'menu.cluster.clusterWorkloads.clusterWorkloadsList': 'Workloads',
