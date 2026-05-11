@@ -3,7 +3,6 @@ import { useParams } from '@umijs/max';
 import { Alert, Button, Tag, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getAccessToken } from '@/utils/auth';
 
 type TerminalStatus = 'connecting' | 'connected' | 'closed' | 'error';
 
@@ -122,11 +121,6 @@ const createTerminalWebSocketUrl = ({
     tty: 'true',
     clusterId,
   });
-  const token = getAccessToken();
-
-  if (token) {
-    params.set('access_token', token);
-  }
 
   appendCommandParams(params);
 
@@ -233,6 +227,11 @@ const ContainerTerminal = () => {
     setOutput('Connecting...\n');
 
     socket.onopen = () => {
+      console.info('[terminal] websocket open', {
+        protocol: socket.protocol,
+        extensions: socket.extensions,
+        url,
+      });
       setStatus('connected');
       setOutput('');
       terminalRef.current?.focus();
@@ -248,14 +247,33 @@ const ContainerTerminal = () => {
       appendOutput(String(event.data));
     };
 
-    socket.onerror = () => {
+    socket.onerror = (event) => {
+      console.error('[terminal] websocket error', event, {
+        readyState: socket.readyState,
+        protocol: socket.protocol,
+        extensions: socket.extensions,
+        url,
+      });
       setStatus('error');
       appendOutput('\n连接失败，请检查容器状态或稍后重试。\n');
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
+      console.warn('[terminal] websocket close', {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean,
+        readyState: socket.readyState,
+        protocol: socket.protocol,
+        extensions: socket.extensions,
+        url,
+      });
       setStatus((current) => (current === 'error' ? current : 'closed'));
-      appendOutput('\nConnection closed.\n');
+      appendOutput(
+        `\nConnection closed. code=${event.code} clean=${event.wasClean}${
+          event.reason ? ` reason=${event.reason}` : ''
+        }\n`,
+      );
     };
 
     return socket;

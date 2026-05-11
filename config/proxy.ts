@@ -18,10 +18,12 @@ export default {
     '/kapi/': {
       target: 'http://localhost:8000',
       changeOrigin: true,
+      ws: true,
     },
     '/kapis/': {
       target: 'http://localhost:8000',
       changeOrigin: true,
+      ws: true,
     },
   },
   /**
