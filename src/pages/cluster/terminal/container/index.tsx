@@ -1,4 +1,7 @@
 import { LoadingOutlined, ReloadOutlined } from '@ant-design/icons';
+import { FitAddon } from '@xterm/addon-fit';
+import { Terminal } from '@xterm/xterm';
+import '@xterm/xterm/css/xterm.css';
 import { useParams } from '@umijs/max';
 import { Alert, Button, Tag, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
@@ -15,7 +18,6 @@ type TerminalRouteParams = {
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-const maxOutputLength = 120000;
 
 const useStyles = createStyles(({ token }) => ({
   page: {
@@ -61,26 +63,27 @@ const useStyles = createStyles(({ token }) => ({
     boxShadow: token.boxShadowTertiary,
   },
   terminal: {
-    display: 'block',
     boxSizing: 'border-box',
     width: '100%',
     height: 'calc(100vh - 141px)',
     minHeight: 420,
     padding: token.padding,
-    overflow: 'auto',
-    resize: 'none',
-    outline: 'none',
-    border: 0,
+    overflow: 'hidden',
     borderRadius: token.borderRadius,
     background: '#111827',
-    color: '#d1d5db',
-    fontFamily:
-      'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-    fontSize: 13,
-    lineHeight: 1.6,
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
     cursor: 'text',
+
+    '.xterm': {
+      height: '100%',
+    },
+
+    '.xterm-viewport': {
+      backgroundColor: 'transparent !important',
+    },
+
+    '.xterm-screen': {
+      outline: 'none',
+    },
   },
 }));
 
@@ -129,14 +132,6 @@ const createTerminalWebSocketUrl = ({
   )}/pods/${encodeURIComponent(podName)}/exec?${params.toString()}`;
 };
 
-const trimOutput = (value: string) => {
-  if (value.length <= maxOutputLength) {
-    return value;
-  }
-
-  return value.slice(value.length - maxOutputLength);
-};
-
 const getStatusTag = (status: TerminalStatus) => {
   if (status === 'connected') {
     return <Tag color="success">已连接</Tag>;
@@ -160,10 +155,11 @@ const getStatusTag = (status: TerminalStatus) => {
 const ContainerTerminal = () => {
   const { styles } = useStyles();
   const params = useParams() as TerminalRouteParams;
-  const terminalRef = useRef<HTMLTextAreaElement>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const terminalInstanceRef = useRef<Terminal | undefined>(undefined);
+  const fitAddonRef = useRef<FitAddon | undefined>(undefined);
   const socketRef = useRef<WebSocket | undefined>(undefined);
   const [status, setStatus] = useState<TerminalStatus>('connecting');
-  const [output, setOutput] = useState('Connecting...\n');
 
   const terminalParams = useMemo(() => {
     return {
@@ -186,17 +182,7 @@ const ContainerTerminal = () => {
     terminalParams.containerName
   );
 
-  const appendOutput = useCallback((value: string) => {
-    setOutput((current) => trimOutput(`${current}${value}`));
-    requestAnimationFrame(() => {
-      const terminal = terminalRef.current;
-      if (terminal) {
-        terminal.scrollTop = terminal.scrollHeight;
-      }
-    });
-  }, []);
-
-  const sendInput = useCallback((value: string) => {
+  const sendFrame = useCallback((channel: number, value: string) => {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       return;
@@ -204,15 +190,119 @@ const ContainerTerminal = () => {
 
     const payload = encoder.encode(value);
     const frame = new Uint8Array(payload.length + 1);
-    frame[0] = 0;
+    frame[0] = channel;
     frame.set(payload, 1);
     socket.send(frame);
   }, []);
 
+  const sendInput = useCallback(
+    (value: string) => {
+      sendFrame(0, value);
+    },
+    [sendFrame],
+  );
+
+  const sendResize = useCallback(
+    (cols: number, rows: number) => {
+      if (!cols || !rows) {
+        return;
+      }
+
+      sendFrame(4, JSON.stringify({ Width: cols, Height: rows }));
+    },
+    [sendFrame],
+  );
+
+  const appendOutput = useCallback((value: string) => {
+    terminalInstanceRef.current?.write(value);
+  }, []);
+
+  const resetTerminal = useCallback((message: string) => {
+    const terminal = terminalInstanceRef.current;
+    if (!terminal) {
+      return;
+    }
+
+    terminal.reset();
+    terminal.write(message);
+  }, []);
+
+  const fitTerminal = useCallback(() => {
+    const terminal = terminalInstanceRef.current;
+    const fitAddon = fitAddonRef.current;
+    if (!terminal || !fitAddon) {
+      return;
+    }
+
+    fitAddon.fit();
+    sendResize(terminal.cols, terminal.rows);
+  }, [sendResize]);
+
+  useEffect(() => {
+    const container = terminalRef.current;
+    if (!container) {
+      return undefined;
+    }
+
+    const terminal = new Terminal({
+      allowProposedApi: false,
+      convertEol: true,
+      cursorBlink: true,
+      fontFamily:
+        'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      fontSize: 13,
+      scrollback: 5000,
+      tabStopWidth: 4,
+      theme: {
+        background: '#111827',
+        foreground: '#d1d5db',
+        cursor: '#f9fafb',
+        selectionBackground: '#374151',
+        black: '#111827',
+        blue: '#60a5fa',
+        brightBlack: '#6b7280',
+        brightBlue: '#93c5fd',
+        brightCyan: '#67e8f9',
+        brightGreen: '#86efac',
+        brightMagenta: '#f0abfc',
+        brightRed: '#fca5a5',
+        brightWhite: '#f9fafb',
+        brightYellow: '#fde68a',
+        cyan: '#22d3ee',
+        green: '#4ade80',
+        magenta: '#e879f9',
+        red: '#f87171',
+        white: '#d1d5db',
+        yellow: '#facc15',
+      },
+    });
+    const fitAddon = new FitAddon();
+
+    terminal.loadAddon(fitAddon);
+    terminal.open(container);
+    terminal.onData(sendInput);
+    terminal.write('Connecting...\r\n');
+
+    terminalInstanceRef.current = terminal;
+    fitAddonRef.current = fitAddon;
+
+    requestAnimationFrame(fitTerminal);
+
+    const resizeObserver = new ResizeObserver(fitTerminal);
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+      terminal.dispose();
+      terminalInstanceRef.current = undefined;
+      fitAddonRef.current = undefined;
+    };
+  }, [fitTerminal, sendInput]);
+
   const connect = useCallback(() => {
     if (missingParams) {
       setStatus('error');
-      setOutput('容器终端参数不完整，无法建立连接。\n');
+      resetTerminal('容器终端参数不完整，无法建立连接。\r\n');
       return undefined;
     }
 
@@ -224,7 +314,7 @@ const ContainerTerminal = () => {
     socket.binaryType = 'arraybuffer';
     socketRef.current = socket;
     setStatus('connecting');
-    setOutput('Connecting...\n');
+    resetTerminal('Connecting...\r\n');
 
     socket.onopen = () => {
       console.info('[terminal] websocket open', {
@@ -233,8 +323,9 @@ const ContainerTerminal = () => {
         url,
       });
       setStatus('connected');
-      setOutput('');
-      terminalRef.current?.focus();
+      terminalInstanceRef.current?.reset();
+      terminalInstanceRef.current?.focus();
+      fitTerminal();
     };
 
     socket.onmessage = (event) => {
@@ -255,7 +346,7 @@ const ContainerTerminal = () => {
         url,
       });
       setStatus('error');
-      appendOutput('\n连接失败，请检查容器状态或稍后重试。\n');
+      appendOutput('\r\n连接失败，请检查容器状态或稍后重试。\r\n');
     };
 
     socket.onclose = (event) => {
@@ -270,50 +361,23 @@ const ContainerTerminal = () => {
       });
       setStatus((current) => (current === 'error' ? current : 'closed'));
       appendOutput(
-        `\nConnection closed. code=${event.code} clean=${event.wasClean}${
+        `\r\nConnection closed. code=${event.code} clean=${event.wasClean}${
           event.reason ? ` reason=${event.reason}` : ''
-        }\n`,
+        }\r\n`,
       );
     };
 
     return socket;
-  }, [appendOutput, missingParams, terminalParams]);
+  }, [appendOutput, fitTerminal, missingParams, resetTerminal, terminalParams]);
 
   useEffect(() => {
-    const socket = connect();
+    connect();
 
     return () => {
-      socket?.close();
+      socketRef.current?.close();
+      socketRef.current = undefined;
     };
   }, [connect]);
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.metaKey || event.ctrlKey || event.altKey) {
-      return;
-    }
-
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      sendInput('\r');
-      return;
-    }
-
-    if (event.key === 'Backspace') {
-      event.preventDefault();
-      sendInput('\u007f');
-      return;
-    }
-
-    if (event.key.length === 1) {
-      event.preventDefault();
-      sendInput(event.key);
-    }
-  };
-
-  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    event.preventDefault();
-    sendInput(event.clipboardData.getData('text'));
-  };
 
   const reconnect = () => {
     socketRef.current?.close();
@@ -356,14 +420,11 @@ const ContainerTerminal = () => {
         />
       ) : (
         <div className={styles.panel}>
-          <textarea
+          <div
             aria-label="容器终端"
             className={styles.terminal}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            readOnly
             ref={terminalRef}
-            value={output || ' '}
+            role="application"
           />
         </div>
       )}
