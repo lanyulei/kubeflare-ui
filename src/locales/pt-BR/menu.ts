@@ -8,6 +8,7 @@ export default {
   'menu.cluster.clusterNode.clusterNodeList': 'Cluster Nodes',
   'menu.cluster.clusterNode.clusterNodeDetail': 'Node Detail',
   'menu.cluster.clusterNamespaces': 'Namespaces',
+  'menu.cluster.clusterNamespacesDetail': 'Namespace Detail',
   'menu.cluster.clusterWorkloads': 'Application Workloads',
   'menu.cluster.clusterWorkloads.clusterWorkloadsList': 'Workloads',
   'menu.cluster.clusterWorkloads.clusterWorkloadsJobs': 'Jobs',
@@ -19,9 +20,11 @@ export default {
   'menu.cluster.clusterConfig.clusterConfigSecrets': 'Secrets',
   'menu.cluster.clusterConfig.clusterConfigConfigMaps': 'ConfigMaps',
   'menu.cluster.clusterConfig.clusterConfigServiceAccounts': 'Service Accounts',
-  'menu.cluster.clusterCustomResourceDefinitions': 'Custom Resource Definitions',
+  'menu.cluster.clusterCustomResourceDefinitions':
+    'Custom Resource Definitions',
   'menu.cluster.clusterStorage': 'Storage',
-  'menu.cluster.clusterStorage.clusterStoragePersistentVolumeClaims': 'Persistent Volume Claims',
+  'menu.cluster.clusterStorage.clusterStoragePersistentVolumeClaims':
+    'Persistent Volume Claims',
   'menu.cluster.clusterStorage.clusterStorageStorageClasses': 'Storage Classes',
   'menu.system': 'Sistema',
   'menu.system.sub-page': 'Sub-Page',

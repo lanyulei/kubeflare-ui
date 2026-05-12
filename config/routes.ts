@@ -62,6 +62,12 @@ export default [
         component: './cluster/namespaces',
       },
       {
+        path: '/cluster/namespaces/detail/:name',
+        name: 'clusterNamespacesDetail',
+        hideInMenu: true,
+        component: './cluster/namespaces/detail',
+      },
+      {
         path: '/cluster/workloads',
         name: 'clusterWorkloads',
         routes: [

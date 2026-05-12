@@ -278,6 +278,102 @@ declare namespace API {
     timestamps?: boolean
   }
 
+  type ClusterNamespaceItem = {
+    id?: string
+    name: string
+    status?: string
+    conditions?: ClusterNamespaceCondition[]
+    labels?: Record<string, string>
+    annotations?: Record<string, string>
+    create_time?: string
+  }
+
+  type ClusterNamespaceCondition = {
+    type?: string
+    status?: string
+    reason?: string
+    message?: string
+    lastTransitionTime?: string
+  }
+
+  type ClusterNamespaceListData = {
+    items: ClusterNamespaceItem[]
+    continue?: string
+    remainingItemCount?: number
+  }
+
+  type ClusterNamespaceListParams = {
+    keyword?: string
+    limit?: number
+    continue?: string
+  }
+
+  type CreateClusterNamespaceParams = {
+    name: string
+  }
+
+  type ClusterNamespaceResourceStatus = {
+    pods: number
+    deployments: number
+    statefulsets: number
+    daemonsets: number
+    jobs: number
+    cronjobs: number
+    persistentVolumeClaims: number
+    services: number
+    ingresses: number
+  }
+
+  type ClusterNamespacePodListParams = {
+    namespace?: string
+    limit?: number
+    continue?: string
+  }
+
+  type ClusterNamespaceQuotaItem = {
+    id?: string
+    name?: string
+    resource?: string
+    used?: string
+    hard?: string
+    create_time?: string
+  }
+
+  type ClusterNamespaceQuotaListData = {
+    items: ClusterNamespaceQuotaItem[]
+    continue?: string
+    remainingItemCount?: number
+  }
+
+  type ClusterNamespaceQuotaListParams = {
+    namespace?: string
+    limit?: number
+    continue?: string
+  }
+
+  type ClusterNamespaceDefaultContainerQuota = {
+    cpuRequest?: string
+    cpuLimit?: string
+    memoryRequest?: string
+    memoryLimit?: string
+  }
+
+  type ClusterNamespaceProjectQuotaValue = {
+    used?: string
+    hard?: string
+  }
+
+  type ClusterNamespaceQuotaSummary = {
+    defaultContainer: ClusterNamespaceDefaultContainerQuota
+    project: {
+      cpuLimit: ClusterNamespaceProjectQuotaValue
+      memoryLimit: ClusterNamespaceProjectQuotaValue
+      pods: ClusterNamespaceProjectQuotaValue
+      deployments: ClusterNamespaceProjectQuotaValue
+      persistentVolumeClaims: ClusterNamespaceProjectQuotaValue
+    }
+  }
+
   type CreateUserParams = {
     username: string
     nickname: string

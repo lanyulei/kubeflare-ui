@@ -8,6 +8,7 @@ export default {
   'menu.cluster.clusterNode.clusterNodeList': '集群节点',
   'menu.cluster.clusterNode.clusterNodeDetail': '节点详情',
   'menu.cluster.clusterNamespaces': '命名空间',
+  'menu.cluster.clusterNamespacesDetail': '命名空间详情',
   'menu.cluster.clusterWorkloads': '应用负载',
   'menu.cluster.clusterWorkloads.clusterWorkloadsList': '工作负载',
   'menu.cluster.clusterWorkloads.clusterWorkloadsJobs': '任务',
@@ -21,7 +22,8 @@ export default {
   'menu.cluster.clusterConfig.clusterConfigServiceAccounts': '服务账户',
   'menu.cluster.clusterCustomResourceDefinitions': '定制资源定义',
   'menu.cluster.clusterStorage': '存储',
-  'menu.cluster.clusterStorage.clusterStoragePersistentVolumeClaims': '持久卷声明',
+  'menu.cluster.clusterStorage.clusterStoragePersistentVolumeClaims':
+    '持久卷声明',
   'menu.cluster.clusterStorage.clusterStorageStorageClasses': '存储类',
   'menu.system': '系统管理',
   'menu.system.systemUser': '用户管理',
