@@ -162,7 +162,7 @@ const useStyles = createStyles(({ token }) => ({
     overflow: 'hidden',
     color: token.colorText,
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 1.5,
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
