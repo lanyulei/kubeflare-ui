@@ -34,8 +34,10 @@ import {
   ComputeQuotaFields,
   KeyValueEditor,
   SectionTitle,
+  SelectValueEditor,
 } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+import type { SelectValueEditorItem } from '@/components/SelectValueEditor';
 import {
   deleteClusterNamespace,
   getClusterNamespaceDetail,
@@ -44,6 +46,7 @@ import {
   getClusterNamespaceResourceStatus,
   updateClusterNamespaceAnnotations,
   updateClusterNamespaceDefaultContainerQuota,
+  updateClusterNamespaceProjectQuota,
 } from '@/services/kubeflare/cluster/namespace';
 
 const useStyles = createStyles(({ token }) => ({
@@ -275,8 +278,18 @@ const useStyles = createStyles(({ token }) => ({
   quotaForm: {
     display: 'flex',
     flexDirection: 'column',
-    gap: token.marginLG,
-    padding: '10px 0',
+    gap: token.marginSM,
+    padding: `${token.paddingXS}px 0`,
+  },
+  quotaFormSectionTitle: {
+    color: token.colorText,
+    fontWeight: 500,
+    lineHeight: token.lineHeight,
+    marginTop: token.marginXS,
+
+    '&:first-child': {
+      marginTop: 0,
+    },
   },
 }));
 
@@ -295,11 +308,21 @@ const DEFAULT_RESOURCE_STATUS: API.ClusterNamespaceResourceStatus = {
 const DEFAULT_QUOTA_SUMMARY: API.ClusterNamespaceQuotaSummary = {
   defaultContainer: {},
   project: {
+    cpuRequest: {},
     cpuLimit: {},
+    memoryRequest: {},
     memoryLimit: {},
     pods: {},
     deployments: {},
+    statefulsets: {},
+    daemonsets: {},
+    jobs: {},
+    cronjobs: {},
     persistentVolumeClaims: {},
+    services: {},
+    ingresses: {},
+    secrets: {},
+    configMaps: {},
   },
 };
 
@@ -417,6 +440,45 @@ type DefaultContainerQuotaFormValues = {
   memoryLimit?: number | null;
 };
 
+type ProjectQuotaFormValues = {
+  cpuRequest?: number | null;
+  cpuLimit?: number | null;
+  memoryRequest?: number | null;
+  memoryLimit?: number | null;
+  pods?: number | null;
+  deployments?: number | null;
+  statefulsets?: number | null;
+  daemonsets?: number | null;
+  jobs?: number | null;
+  cronjobs?: number | null;
+  persistentVolumeClaims?: number | null;
+  services?: number | null;
+  ingresses?: number | null;
+  secrets?: number | null;
+  configMaps?: number | null;
+};
+
+type AppQuotaField = {
+  label: string;
+  name: keyof ProjectQuotaFormValues;
+};
+
+const APP_QUOTA_OPTIONS: AppQuotaField[] = [
+  { label: '容器组数量', name: 'pods' },
+  { label: '部署数量', name: 'deployments' },
+  { label: '有状态副本集数量', name: 'statefulsets' },
+  { label: '守护进程集数量', name: 'daemonsets' },
+  { label: '任务数量', name: 'jobs' },
+  { label: '定时任务数量', name: 'cronjobs' },
+  { label: '持久卷声明数量', name: 'persistentVolumeClaims' },
+  { label: '服务数量', name: 'services' },
+  { label: '应用路由数量', name: 'ingresses' },
+  { label: '保密字典数量', name: 'secrets' },
+  { label: '配置字典数量', name: 'configMaps' },
+];
+
+const APP_QUOTA_OPTION_VALUES = APP_QUOTA_OPTIONS.map((option) => option.name);
+
 const normalizeNumberValue = (value?: number | null) => {
   if (value === undefined || value === null) {
     return undefined;
@@ -433,6 +495,14 @@ const normalizeMemoryMiValue = (value?: number | null) => {
   return `${value}Mi`;
 };
 
+const normalizeMemoryGiValue = (value?: number | null) => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  return `${value}Gi`;
+};
+
 const getCpuFormValue = (value?: string) => parseCpuQuantity(value);
 
 const getMemoryMiFormValue = (value?: string) => {
@@ -445,6 +515,16 @@ const getMemoryMiFormValue = (value?: string) => {
   return Math.round(bytes / 1024 ** 2);
 };
 
+const getMemoryGiFormValue = (value?: string) => {
+  const bytes = parseMemoryQuantity(value);
+
+  if (!bytes) {
+    return undefined;
+  }
+
+  return Number((bytes / 1024 ** 3).toFixed(2));
+};
+
 const NamespaceDetail = () => {
   const intl = useIntl();
   const params = useParams<{ name?: string }>();
@@ -452,6 +532,7 @@ const NamespaceDetail = () => {
   const { styles } = useStyles();
   const [defaultContainerQuotaForm] =
     Form.useForm<DefaultContainerQuotaFormValues>();
+  const [projectQuotaForm] = Form.useForm<ProjectQuotaFormValues>();
   const annotationRowIdRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [namespace, setNamespace] = useState<API.ClusterNamespaceItem>();
@@ -460,6 +541,7 @@ const NamespaceDetail = () => {
   const [annotationRows, setAnnotationRows] = useState<KeyValueEditorItem[]>(
     [],
   );
+  const [appQuotaRows, setAppQuotaRows] = useState<SelectValueEditorItem[]>([]);
   const [podLoading, setPodLoading] = useState(false);
   const [pods, setPods] = useState<API.ClusterNodePodItem[]>([]);
   const [resourceLoading, setResourceLoading] = useState(false);
@@ -472,6 +554,9 @@ const NamespaceDetail = () => {
     useState(false);
   const [defaultContainerQuotaSaving, setDefaultContainerQuotaSaving] =
     useState(false);
+  const [projectQuotaModalOpen, setProjectQuotaModalOpen] = useState(false);
+  const [projectQuotaSaving, setProjectQuotaSaving] = useState(false);
+  const appQuotaRowIdRef = useRef(0);
   const namespaceName = useMemo(
     () => decodeNamespaceName(params.name),
     [params.name],
@@ -491,6 +576,19 @@ const NamespaceDetail = () => {
       value,
     };
   }, []);
+  const createAppQuotaRow = useCallback(
+    (keyName?: string, value?: number | null) => {
+      const nextId = appQuotaRowIdRef.current;
+      appQuotaRowIdRef.current += 1;
+
+      return {
+        id: `app-quota-${nextId}`,
+        keyName,
+        value,
+      };
+    },
+    [],
+  );
 
   const fetchNamespace = useCallback(async () => {
     if (!namespaceName) {
@@ -657,6 +755,85 @@ const NamespaceDetail = () => {
       await fetchQuotaSummary();
     } finally {
       setDefaultContainerQuotaSaving(false);
+    }
+  };
+  const openProjectQuotaModal = () => {
+    projectQuotaForm.setFieldsValue({
+      cpuRequest: getCpuFormValue(quotaSummary.project.cpuRequest.hard),
+      cpuLimit: getCpuFormValue(quotaSummary.project.cpuLimit.hard),
+      memoryRequest: getMemoryGiFormValue(
+        quotaSummary.project.memoryRequest.hard,
+      ),
+      memoryLimit: getMemoryGiFormValue(quotaSummary.project.memoryLimit.hard),
+    });
+    setAppQuotaRows(
+      APP_QUOTA_OPTIONS.flatMap((option) => {
+        const value = parseCountQuantity(
+          quotaSummary.project[option.name].hard,
+        );
+
+        return value === undefined
+          ? []
+          : [createAppQuotaRow(option.name, value)];
+      }),
+    );
+    setProjectQuotaModalOpen(true);
+  };
+  const handleSaveProjectQuota = async () => {
+    if (!namespaceName) {
+      return;
+    }
+
+    const values = await projectQuotaForm.validateFields();
+    const appQuotaValues: Partial<
+      Record<keyof ProjectQuotaFormValues, number>
+    > = {};
+    const appQuotaKeys = new Set<string>();
+
+    for (const row of appQuotaRows) {
+      if (!row.keyName) {
+        message.warning('请选择应用资源类型');
+        return;
+      }
+      if (appQuotaKeys.has(row.keyName)) {
+        message.warning('应用资源类型不能重复');
+        return;
+      }
+      if (row.value === undefined || row.value === null) {
+        message.warning('请输入应用资源配额数量');
+        return;
+      }
+
+      appQuotaKeys.add(row.keyName);
+      appQuotaValues[row.keyName as keyof ProjectQuotaFormValues] = row.value;
+    }
+
+    setProjectQuotaSaving(true);
+    try {
+      await updateClusterNamespaceProjectQuota(namespaceName, {
+        cpuRequest: normalizeNumberValue(values.cpuRequest),
+        cpuLimit: normalizeNumberValue(values.cpuLimit),
+        memoryRequest: normalizeMemoryGiValue(values.memoryRequest),
+        memoryLimit: normalizeMemoryGiValue(values.memoryLimit),
+        pods: normalizeNumberValue(appQuotaValues.pods),
+        deployments: normalizeNumberValue(appQuotaValues.deployments),
+        statefulsets: normalizeNumberValue(appQuotaValues.statefulsets),
+        daemonsets: normalizeNumberValue(appQuotaValues.daemonsets),
+        jobs: normalizeNumberValue(appQuotaValues.jobs),
+        cronjobs: normalizeNumberValue(appQuotaValues.cronjobs),
+        persistentVolumeClaims: normalizeNumberValue(
+          appQuotaValues.persistentVolumeClaims,
+        ),
+        services: normalizeNumberValue(appQuotaValues.services),
+        ingresses: normalizeNumberValue(appQuotaValues.ingresses),
+        secrets: normalizeNumberValue(appQuotaValues.secrets),
+        configMaps: normalizeNumberValue(appQuotaValues.configMaps),
+      });
+      message.success('项目配额已更新');
+      setProjectQuotaModalOpen(false);
+      await fetchQuotaSummary();
+    } finally {
+      setProjectQuotaSaving(false);
     }
   };
 
@@ -845,6 +1022,10 @@ const NamespaceDetail = () => {
     }
     if (key === 'editAnnotations') {
       openAnnotationModal();
+      return;
+    }
+    if (key === 'editQuota') {
+      openProjectQuotaModal();
       return;
     }
     if (key === 'editDefaultContainerQuota') {
@@ -1121,6 +1302,73 @@ const NamespaceDetail = () => {
           />
         </Card>
       </div>
+      <Modal
+        destroyOnHidden
+        confirmLoading={projectQuotaSaving}
+        open={projectQuotaModalOpen}
+        title="编辑配额"
+        width={920}
+        okText="保存"
+        cancelText="取消"
+        onCancel={() => setProjectQuotaModalOpen(false)}
+        onOk={handleSaveProjectQuota}
+      >
+        <Form<ProjectQuotaFormValues>
+          className={styles.quotaForm}
+          form={projectQuotaForm}
+          layout="vertical"
+        >
+          <div className={styles.quotaFormSectionTitle}>可用配额</div>
+          <ComputeQuotaFields
+            cpuFields={[
+              {
+                label: 'CPU 预留',
+                name: 'cpuRequest',
+                placeholder: '无预留',
+              },
+              {
+                label: 'CPU 限制',
+                name: 'cpuLimit',
+                placeholder: '无上限',
+              },
+            ]}
+            memoryFields={[
+              {
+                label: '内存预留',
+                name: 'memoryRequest',
+                placeholder: '无预留',
+              },
+              {
+                label: '内存上限',
+                name: 'memoryLimit',
+                placeholder: '无上限',
+              },
+            ]}
+            memoryUnit="Gi"
+          />
+          <div className={styles.quotaFormSectionTitle}>应用资源配额</div>
+          <SelectValueEditor
+            value={appQuotaRows}
+            deleteAriaLabel="删除应用资源配额"
+            keyPlaceholder="请选择资源类型"
+            options={APP_QUOTA_OPTIONS.map((option) => ({
+              label: option.label,
+              value: option.name,
+            }))}
+            valuePlaceholder="无上限"
+            onAddBlocked={() => message.warning('请先选择已有资源类型')}
+            onChange={setAppQuotaRows}
+            onCreateItem={() =>
+              createAppQuotaRow(
+                APP_QUOTA_OPTION_VALUES.find(
+                  (option) =>
+                    !appQuotaRows.some((row) => row.keyName === option),
+                ),
+              )
+            }
+          />
+        </Form>
+      </Modal>
       <Modal
         destroyOnHidden
         confirmLoading={defaultContainerQuotaSaving}

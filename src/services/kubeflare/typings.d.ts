@@ -323,6 +323,24 @@ declare namespace API {
     memoryLimit?: string
   }
 
+  type UpdateClusterNamespaceProjectQuotaParams = {
+    cpuRequest?: string
+    cpuLimit?: string
+    memoryRequest?: string
+    memoryLimit?: string
+    pods?: string
+    deployments?: string
+    statefulsets?: string
+    daemonsets?: string
+    jobs?: string
+    cronjobs?: string
+    persistentVolumeClaims?: string
+    services?: string
+    ingresses?: string
+    secrets?: string
+    configMaps?: string
+  }
+
   type ClusterNamespaceResourceStatus = {
     pods: number
     deployments: number
@@ -377,11 +395,21 @@ declare namespace API {
   type ClusterNamespaceQuotaSummary = {
     defaultContainer: ClusterNamespaceDefaultContainerQuota
     project: {
+      cpuRequest: ClusterNamespaceProjectQuotaValue
       cpuLimit: ClusterNamespaceProjectQuotaValue
+      memoryRequest: ClusterNamespaceProjectQuotaValue
       memoryLimit: ClusterNamespaceProjectQuotaValue
       pods: ClusterNamespaceProjectQuotaValue
       deployments: ClusterNamespaceProjectQuotaValue
+      statefulsets: ClusterNamespaceProjectQuotaValue
+      daemonsets: ClusterNamespaceProjectQuotaValue
+      jobs: ClusterNamespaceProjectQuotaValue
+      cronjobs: ClusterNamespaceProjectQuotaValue
       persistentVolumeClaims: ClusterNamespaceProjectQuotaValue
+      services: ClusterNamespaceProjectQuotaValue
+      ingresses: ClusterNamespaceProjectQuotaValue
+      secrets: ClusterNamespaceProjectQuotaValue
+      configMaps: ClusterNamespaceProjectQuotaValue
     }
   }
 

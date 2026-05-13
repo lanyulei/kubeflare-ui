@@ -14,6 +14,7 @@ import KeyValueList from './KeyValueList';
 import { ClusterSwitch, Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import SectionTitle from './SectionTitle';
+import SelectValueEditor from './SelectValueEditor';
 import TaintEditor from './TaintEditor';
 import YamlEditor from './YamlEditor';
 
@@ -30,6 +31,7 @@ export {
   Question,
   SectionTitle,
   SelectLang,
+  SelectValueEditor,
   TaintEditor,
   YamlEditor,
 };

@@ -109,10 +109,15 @@ type KubernetesPodList = {
 }
 
 type KubernetesResourceQuota = {
+  apiVersion?: string
+  kind?: string
   metadata?: {
     uid?: string
     name?: string
     creationTimestamp?: string
+  }
+  spec?: {
+    hard?: Record<string, string>
   }
   status?: {
     hard?: Record<string, string>
@@ -326,7 +331,7 @@ const toClusterNamespaceQuotaItems = (
   quota: KubernetesResourceQuota,
 ): API.ClusterNamespaceQuotaItem[] => {
   const name = quota.metadata?.name || '-'
-  const hard = quota.status?.hard || {}
+  const hard = { ...(quota.status?.hard || {}), ...(quota.spec?.hard || {}) }
   const used = quota.status?.used || {}
   const resources = Array.from(
     new Set([...Object.keys(hard), ...Object.keys(used)]),
@@ -348,7 +353,10 @@ const getQuotaResourceValue = (
   field: 'hard' | 'used',
 ) => {
   for (const quota of quotas) {
-    const resources = quota.status?.[field] || {}
+    const resources =
+      field === 'hard'
+        ? { ...(quota.status?.hard || {}), ...(quota.spec?.hard || {}) }
+        : quota.status?.used || {}
     for (const resourceName of resourceNames) {
       if (resources[resourceName]) {
         return resources[resourceName]
@@ -375,9 +383,17 @@ const toClusterNamespaceQuotaSummary = (
       memoryLimit: containerLimit?.default?.memory,
     },
     project: {
+      cpuRequest: {
+        used: getQuotaResourceValue(quotas, ['requests.cpu'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['requests.cpu'], 'hard'),
+      },
       cpuLimit: {
         used: getQuotaResourceValue(quotas, ['limits.cpu', 'cpu'], 'used'),
         hard: getQuotaResourceValue(quotas, ['limits.cpu', 'cpu'], 'hard'),
+      },
+      memoryRequest: {
+        used: getQuotaResourceValue(quotas, ['requests.memory'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['requests.memory'], 'hard'),
       },
       memoryLimit: {
         used: getQuotaResourceValue(
@@ -407,9 +423,65 @@ const toClusterNamespaceQuotaSummary = (
           'hard',
         ),
       },
+      statefulsets: {
+        used: getQuotaResourceValue(
+          quotas,
+          ['count/statefulsets.apps'],
+          'used',
+        ),
+        hard: getQuotaResourceValue(
+          quotas,
+          ['count/statefulsets.apps'],
+          'hard',
+        ),
+      },
+      daemonsets: {
+        used: getQuotaResourceValue(
+          quotas,
+          ['count/daemonsets.apps'],
+          'used',
+        ),
+        hard: getQuotaResourceValue(
+          quotas,
+          ['count/daemonsets.apps'],
+          'hard',
+        ),
+      },
+      jobs: {
+        used: getQuotaResourceValue(quotas, ['count/jobs.batch'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['count/jobs.batch'], 'hard'),
+      },
+      cronjobs: {
+        used: getQuotaResourceValue(quotas, ['count/cronjobs.batch'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['count/cronjobs.batch'], 'hard'),
+      },
       persistentVolumeClaims: {
         used: getQuotaResourceValue(quotas, ['persistentvolumeclaims'], 'used'),
         hard: getQuotaResourceValue(quotas, ['persistentvolumeclaims'], 'hard'),
+      },
+      services: {
+        used: getQuotaResourceValue(quotas, ['services'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['services'], 'hard'),
+      },
+      ingresses: {
+        used: getQuotaResourceValue(
+          quotas,
+          ['count/ingresses.networking.k8s.io'],
+          'used',
+        ),
+        hard: getQuotaResourceValue(
+          quotas,
+          ['count/ingresses.networking.k8s.io'],
+          'hard',
+        ),
+      },
+      secrets: {
+        used: getQuotaResourceValue(quotas, ['secrets'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['secrets'], 'hard'),
+      },
+      configMaps: {
+        used: getQuotaResourceValue(quotas, ['configmaps'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['configmaps'], 'hard'),
       },
     },
   }
@@ -505,6 +577,74 @@ const hasDefaultContainerQuotaValue = (
       params.cpuLimit ||
       params.memoryRequest ||
       params.memoryLimit,
+  )
+
+const projectQuotaResourceKeys = [
+  'requests.cpu',
+  'limits.cpu',
+  'requests.memory',
+  'limits.memory',
+  'pods',
+  'count/deployments.apps',
+  'count/statefulsets.apps',
+  'count/daemonsets.apps',
+  'count/jobs.batch',
+  'count/cronjobs.batch',
+  'persistentvolumeclaims',
+  'services',
+  'count/ingresses.networking.k8s.io',
+  'secrets',
+  'configmaps',
+]
+
+const getProjectQuotaHardPatch = (
+  params: API.UpdateClusterNamespaceProjectQuotaParams,
+) => ({
+  'requests.cpu': params.cpuRequest || null,
+  'limits.cpu': params.cpuLimit || null,
+  'requests.memory': params.memoryRequest || null,
+  'limits.memory': params.memoryLimit || null,
+  pods: params.pods || null,
+  'count/deployments.apps': params.deployments || null,
+  'count/statefulsets.apps': params.statefulsets || null,
+  'count/daemonsets.apps': params.daemonsets || null,
+  'count/jobs.batch': params.jobs || null,
+  'count/cronjobs.batch': params.cronjobs || null,
+  persistentvolumeclaims: params.persistentVolumeClaims || null,
+  services: params.services || null,
+  'count/ingresses.networking.k8s.io': params.ingresses || null,
+  secrets: params.secrets || null,
+  configmaps: params.configMaps || null,
+})
+
+const hasProjectQuotaResource = (quota: KubernetesResourceQuota) => {
+  const hard = {
+    ...(quota.status?.hard || {}),
+    ...(quota.spec?.hard || {}),
+  }
+
+  return projectQuotaResourceKeys.some((key) => hard[key])
+}
+
+const hasProjectQuotaValue = (
+  params: API.UpdateClusterNamespaceProjectQuotaParams,
+) =>
+  Boolean(
+    params.cpuRequest ||
+      params.cpuLimit ||
+      params.memoryRequest ||
+      params.memoryLimit ||
+      params.pods ||
+      params.deployments ||
+      params.statefulsets ||
+      params.daemonsets ||
+      params.jobs ||
+      params.cronjobs ||
+      params.persistentVolumeClaims ||
+      params.services ||
+      params.ingresses ||
+      params.secrets ||
+      params.configMaps,
   )
 
 /** 获取命名空间列表 GET /kapi/v1/namespaces */
@@ -880,6 +1020,82 @@ export async function updateClusterNamespaceDefaultContainerQuota(
         },
         spec: {
           limits: [containerLimit],
+        },
+      },
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+}
+
+/** 更新命名空间项目配额 PATCH/POST /kapi/v1/namespaces/:name/resourcequotas */
+export async function updateClusterNamespaceProjectQuota(
+  name: string,
+  params: API.UpdateClusterNamespaceProjectQuotaParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return {
+      code: 20000,
+      message: '',
+      data: {},
+    } as API.ApiResponse<Record<string, never>>
+  }
+
+  const quotas = await getNamespaceResourceQuotas(name, clusterId, options)
+  const quota =
+    quotas.find(hasProjectQuotaResource) ||
+    quotas.find((item) => item.metadata?.name)
+  const hard = getProjectQuotaHardPatch(params)
+
+  if (quota?.metadata?.name) {
+    return request<API.ApiResponse<KubernetesResourceQuota>>(
+      `/kapi/v1/namespaces/${encodeURIComponent(
+        name,
+      )}/resourcequotas/${encodeURIComponent(quota.metadata.name)}`,
+      {
+        method: 'PATCH',
+        data: {
+          spec: {
+            hard,
+          },
+        },
+        ...(options || {}),
+        headers: {
+          'Content-Type': 'application/merge-patch+json',
+          'X-Cluster-ID': clusterId,
+          ...options?.headers,
+        },
+      },
+    )
+  }
+
+  if (!hasProjectQuotaValue(params)) {
+    return {
+      code: 20000,
+      message: '',
+      data: {},
+    } as API.ApiResponse<Record<string, never>>
+  }
+
+  return request<API.ApiResponse<KubernetesResourceQuota>>(
+    `/kapi/v1/namespaces/${encodeURIComponent(name)}/resourcequotas`,
+    {
+      method: 'POST',
+      data: {
+        apiVersion: 'v1',
+        kind: 'ResourceQuota',
+        metadata: {
+          name: 'kubeflare-project-quota',
+        },
+        spec: {
+          hard: Object.fromEntries(
+            Object.entries(hard).filter(([, value]) => value),
+          ),
         },
       },
       ...(options || {}),

@@ -6,7 +6,7 @@ const useStyles = createStyles(({ token }) => ({
   fields: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: token.marginXL,
+    gap: token.marginLG,
 
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
@@ -18,13 +18,13 @@ const useStyles = createStyles(({ token }) => ({
   rows: {
     display: 'flex',
     flexDirection: 'column',
-    gap: token.marginSM,
+    gap: token.marginXS,
   },
   row: {
     display: 'grid',
     gridTemplateColumns: '72px minmax(0, 1fr)',
     alignItems: 'center',
-    gap: token.marginSM,
+    gap: token.marginXS,
   },
   label: {
     color: token.colorTextSecondary,

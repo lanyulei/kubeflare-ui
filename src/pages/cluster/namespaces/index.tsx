@@ -11,7 +11,7 @@ import {
   ProTable,
 } from '@ant-design/pro-components';
 import { Link, useIntl } from '@umijs/max';
-import { App, Button, Input, Popconfirm, Space } from 'antd';
+import { App, Button, Input, Space } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -121,7 +121,7 @@ const getNamespaceStatusType = (
 
 const Namespaces = () => {
   const intl = useIntl();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const { styles } = useStyles();
   const actionRef = useRef<ActionType | null>(null);
   const keywordRef = useRef('');
@@ -133,6 +133,38 @@ const Namespaces = () => {
     default: styles.statusDotDefault,
     success: styles.statusDotSuccess,
     warning: styles.statusDotWarning,
+  };
+
+  const handleDeleteNamespace = (name?: string) => {
+    if (!name) {
+      return;
+    }
+
+    modal.confirm({
+      title: intl.formatMessage({
+        id: 'pages.cluster.namespaces.delete.confirm',
+        defaultMessage: '确认删除该命名空间吗？',
+      }),
+      okText: intl.formatMessage({
+        id: 'pages.cluster.namespaces.delete',
+        defaultMessage: '删除',
+      }),
+      okButtonProps: {
+        danger: true,
+      },
+      cancelText: '取消',
+      onOk: async () => {
+        await deleteClusterNamespace(name);
+        message.success(
+          intl.formatMessage({
+            id: 'pages.cluster.namespaces.delete.success',
+            defaultMessage: '命名空间已删除',
+          }),
+        );
+        continueTokenRef.current = { 1: '' };
+        actionRef.current?.reloadAndRest?.();
+      },
+    });
   };
 
   useEffect(() => {
@@ -201,32 +233,13 @@ const Namespaces = () => {
       key: 'option',
       width: 120,
       render: (_, record) => [
-        <Popconfirm
-          key="delete"
-          title={intl.formatMessage({
-            id: 'pages.cluster.namespaces.delete.confirm',
-            defaultMessage: '确认删除该命名空间吗？',
+        <a key="delete" onClick={() => handleDeleteNamespace(record.name)}>
+          <DeleteOutlined />{' '}
+          {intl.formatMessage({
+            id: 'pages.cluster.namespaces.delete',
+            defaultMessage: '删除',
           })}
-          onConfirm={async () => {
-            await deleteClusterNamespace(record.name);
-            message.success(
-              intl.formatMessage({
-                id: 'pages.cluster.namespaces.delete.success',
-                defaultMessage: '命名空间已删除',
-              }),
-            );
-            continueTokenRef.current = { 1: '' };
-            actionRef.current?.reloadAndRest?.();
-          }}
-        >
-          <a>
-            <DeleteOutlined />{' '}
-            {intl.formatMessage({
-              id: 'pages.cluster.namespaces.delete',
-              defaultMessage: '删除',
-            })}
-          </a>
-        </Popconfirm>,
+        </a>,
       ],
     },
   ];
