@@ -312,6 +312,17 @@ declare namespace API {
     name: string
   }
 
+  type UpdateClusterNamespaceAnnotationsParams = {
+    annotations: Record<string, string | null>
+  }
+
+  type UpdateClusterNamespaceDefaultContainerQuotaParams = {
+    cpuRequest?: string
+    cpuLimit?: string
+    memoryRequest?: string
+    memoryLimit?: string
+  }
+
   type ClusterNamespaceResourceStatus = {
     pods: number
     deployments: number

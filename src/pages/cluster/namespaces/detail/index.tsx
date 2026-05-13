@@ -4,23 +4,46 @@ import {
   AppstoreOutlined,
   ClusterOutlined,
   DatabaseOutlined,
+  DeleteOutlined,
   DeploymentUnitOutlined,
+  DownOutlined,
+  EditOutlined,
   FieldTimeOutlined,
   HddOutlined,
   PlaySquareOutlined,
 } from '@ant-design/icons';
 import { PageContainer, ProDescriptions } from '@ant-design/pro-components';
 import { history, useIntl, useParams } from '@umijs/max';
-import { Button, Card, Empty, Spin, Tabs } from 'antd';
+import {
+  App,
+  Button,
+  Card,
+  Dropdown,
+  Empty,
+  Form,
+  Modal,
+  Spin,
+  Tabs,
+} from 'antd';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ClusterMetadata, ClusterPodList, SectionTitle } from '@/components';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ClusterMetadata,
+  ClusterPodList,
+  ComputeQuotaFields,
+  KeyValueEditor,
+  SectionTitle,
+} from '@/components';
+import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+import {
+  deleteClusterNamespace,
   getClusterNamespaceDetail,
   getClusterNamespacePodList,
   getClusterNamespaceQuotaSummary,
   getClusterNamespaceResourceStatus,
+  updateClusterNamespaceAnnotations,
+  updateClusterNamespaceDefaultContainerQuota,
 } from '@/services/kubeflare/cluster/namespace';
 
 const useStyles = createStyles(({ token }) => ({
@@ -249,6 +272,12 @@ const useStyles = createStyles(({ token }) => ({
     fontSize: 13,
     lineHeight: '18px',
   },
+  quotaForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginLG,
+    padding: '10px 0',
+  },
 }));
 
 const DEFAULT_RESOURCE_STATUS: API.ClusterNamespaceResourceStatus = {
@@ -381,12 +410,56 @@ const getQuotaUsagePercent = (
   return Math.min(100, Math.round((usedValue / hardValue) * 100));
 };
 
+type DefaultContainerQuotaFormValues = {
+  cpuRequest?: number | null;
+  cpuLimit?: number | null;
+  memoryRequest?: number | null;
+  memoryLimit?: number | null;
+};
+
+const normalizeNumberValue = (value?: number | null) => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  return String(value);
+};
+
+const normalizeMemoryMiValue = (value?: number | null) => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  return `${value}Mi`;
+};
+
+const getCpuFormValue = (value?: string) => parseCpuQuantity(value);
+
+const getMemoryMiFormValue = (value?: string) => {
+  const bytes = parseMemoryQuantity(value);
+
+  if (!bytes) {
+    return undefined;
+  }
+
+  return Math.round(bytes / 1024 ** 2);
+};
+
 const NamespaceDetail = () => {
   const intl = useIntl();
   const params = useParams<{ name?: string }>();
+  const { message, modal } = App.useApp();
   const { styles } = useStyles();
+  const [defaultContainerQuotaForm] =
+    Form.useForm<DefaultContainerQuotaFormValues>();
+  const annotationRowIdRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [namespace, setNamespace] = useState<API.ClusterNamespaceItem>();
+  const [annotationModalOpen, setAnnotationModalOpen] = useState(false);
+  const [annotationSaving, setAnnotationSaving] = useState(false);
+  const [annotationRows, setAnnotationRows] = useState<KeyValueEditorItem[]>(
+    [],
+  );
   const [podLoading, setPodLoading] = useState(false);
   const [pods, setPods] = useState<API.ClusterNodePodItem[]>([]);
   const [resourceLoading, setResourceLoading] = useState(false);
@@ -395,6 +468,10 @@ const NamespaceDetail = () => {
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [quotaSummary, setQuotaSummary] =
     useState<API.ClusterNamespaceQuotaSummary>(DEFAULT_QUOTA_SUMMARY);
+  const [defaultContainerQuotaModalOpen, setDefaultContainerQuotaModalOpen] =
+    useState(false);
+  const [defaultContainerQuotaSaving, setDefaultContainerQuotaSaving] =
+    useState(false);
   const namespaceName = useMemo(
     () => decodeNamespaceName(params.name),
     [params.name],
@@ -404,6 +481,16 @@ const NamespaceDetail = () => {
     success: styles.statusDotSuccess,
     warning: styles.statusDotWarning,
   };
+  const createAnnotationRow = useCallback((keyName = '', value = '') => {
+    const nextId = annotationRowIdRef.current;
+    annotationRowIdRef.current += 1;
+
+    return {
+      id: `annotation-${nextId}`,
+      keyName,
+      value,
+    };
+  }, []);
 
   const fetchNamespace = useCallback(async () => {
     if (!namespaceName) {
@@ -482,6 +569,96 @@ const NamespaceDetail = () => {
   useEffect(() => {
     fetchQuotaSummary();
   }, [fetchQuotaSummary]);
+
+  const openAnnotationModal = () => {
+    const rows = Object.entries(namespace?.annotations || {}).map(
+      ([keyName, value]) => createAnnotationRow(keyName, value),
+    );
+
+    setAnnotationRows(rows);
+    setAnnotationModalOpen(true);
+  };
+  const handleSaveAnnotations = async () => {
+    if (!namespaceName) {
+      return;
+    }
+
+    const nextAnnotations: Record<string, string> = {};
+    const annotationKeys = new Set<string>();
+
+    for (const row of annotationRows) {
+      const keyName = row.keyName.trim();
+
+      if (!keyName) {
+        message.warning('注解 Key 不能为空');
+        return;
+      }
+      if (annotationKeys.has(keyName)) {
+        message.warning('注解 Key 不能重复');
+        return;
+      }
+
+      annotationKeys.add(keyName);
+      nextAnnotations[keyName] = row.value.trim();
+    }
+
+    const annotationsPatch: Record<string, string | null> = {};
+    Object.keys(namespace?.annotations || {}).forEach((keyName) => {
+      if (!annotationKeys.has(keyName)) {
+        annotationsPatch[keyName] = null;
+      }
+    });
+    Object.entries(nextAnnotations).forEach(([keyName, value]) => {
+      annotationsPatch[keyName] = value;
+    });
+
+    setAnnotationSaving(true);
+    try {
+      await updateClusterNamespaceAnnotations(namespaceName, {
+        annotations: annotationsPatch,
+      });
+      message.success('命名空间注解已更新');
+      setAnnotationModalOpen(false);
+      await fetchNamespace();
+    } finally {
+      setAnnotationSaving(false);
+    }
+  };
+  const openDefaultContainerQuotaModal = () => {
+    defaultContainerQuotaForm.setFieldsValue({
+      cpuRequest: getCpuFormValue(quotaSummary.defaultContainer.cpuRequest),
+      cpuLimit: getCpuFormValue(quotaSummary.defaultContainer.cpuLimit),
+      memoryRequest: getMemoryMiFormValue(
+        quotaSummary.defaultContainer.memoryRequest,
+      ),
+      memoryLimit: getMemoryMiFormValue(
+        quotaSummary.defaultContainer.memoryLimit,
+      ),
+    });
+    setDefaultContainerQuotaModalOpen(true);
+  };
+  const handleSaveDefaultContainerQuota = async () => {
+    if (!namespaceName) {
+      return;
+    }
+
+    const values = await defaultContainerQuotaForm.validateFields();
+
+    setDefaultContainerQuotaSaving(true);
+    try {
+      await updateClusterNamespaceDefaultContainerQuota(namespaceName, {
+        cpuRequest: normalizeNumberValue(values.cpuRequest),
+        cpuLimit: normalizeNumberValue(values.cpuLimit),
+        memoryRequest: normalizeMemoryMiValue(values.memoryRequest),
+        memoryLimit: normalizeMemoryMiValue(values.memoryLimit),
+      });
+      message.success('默认容器配额已更新');
+      setDefaultContainerQuotaModalOpen(false);
+      await fetchQuotaSummary();
+    } finally {
+      setDefaultContainerQuotaSaving(false);
+    }
+  };
 
   const resourceStatusItems = [
     {
@@ -605,18 +782,98 @@ const NamespaceDetail = () => {
         id: 'pages.cluster.namespaces.detail',
         defaultMessage: '命名空间详情',
       });
+  const namespaceActionItems = [
+    {
+      key: 'editAnnotations',
+      icon: <EditOutlined />,
+      label: '编辑注解',
+    },
+    {
+      key: 'editQuota',
+      icon: <DatabaseOutlined />,
+      label: '编辑配额',
+    },
+    {
+      key: 'editDefaultContainerQuota',
+      icon: <HddOutlined />,
+      label: '编辑默认容器配额',
+    },
+    {
+      key: 'delete',
+      icon: <DeleteOutlined />,
+      label: intl.formatMessage({
+        id: 'pages.cluster.namespaces.delete',
+        defaultMessage: '删除',
+      }),
+      danger: true,
+    },
+  ];
+  const handleDeleteNamespace = () => {
+    if (!namespaceName) {
+      return;
+    }
+
+    modal.confirm({
+      title: intl.formatMessage({
+        id: 'pages.cluster.namespaces.delete.confirm',
+        defaultMessage: '确认删除该命名空间吗？',
+      }),
+      okText: intl.formatMessage({
+        id: 'pages.cluster.namespaces.delete',
+        defaultMessage: '删除',
+      }),
+      okButtonProps: {
+        danger: true,
+      },
+      cancelText: '取消',
+      onOk: async () => {
+        await deleteClusterNamespace(namespaceName);
+        message.success(
+          intl.formatMessage({
+            id: 'pages.cluster.namespaces.delete.success',
+            defaultMessage: '命名空间已删除',
+          }),
+        );
+        history.push('/cluster/namespaces');
+      },
+    });
+  };
+  const handleActionMenuClick = ({ key }: { key: string }) => {
+    if (key === 'delete') {
+      handleDeleteNamespace();
+      return;
+    }
+    if (key === 'editAnnotations') {
+      openAnnotationModal();
+      return;
+    }
+    if (key === 'editDefaultContainerQuota') {
+      openDefaultContainerQuotaModal();
+      return;
+    }
+
+    message.info('该操作暂未开放');
+  };
 
   return (
     <PageContainer
       title={title}
       onBack={() => history.back()}
       extra={[
-        <Button key="back" onClick={() => history.back()}>
-          {intl.formatMessage({
-            id: 'pages.cluster.namespaces.detail.back',
-            defaultMessage: '返回',
-          })}
-        </Button>,
+        <Dropdown
+          disabled={!namespace}
+          key="namespace-actions"
+          menu={{
+            items: namespaceActionItems,
+            onClick: handleActionMenuClick,
+          }}
+          trigger={['click']}
+        >
+          <Button disabled={!namespace}>
+            操作
+            <DownOutlined />
+          </Button>
+        </Dropdown>,
       ]}
     >
       <div>
@@ -864,6 +1121,69 @@ const NamespaceDetail = () => {
           />
         </Card>
       </div>
+      <Modal
+        destroyOnHidden
+        confirmLoading={defaultContainerQuotaSaving}
+        open={defaultContainerQuotaModalOpen}
+        title="编辑默认容器配额"
+        width={800}
+        okText="保存"
+        cancelText="取消"
+        onCancel={() => setDefaultContainerQuotaModalOpen(false)}
+        onOk={handleSaveDefaultContainerQuota}
+      >
+        <Form<DefaultContainerQuotaFormValues>
+          className={styles.quotaForm}
+          form={defaultContainerQuotaForm}
+          layout="vertical"
+        >
+          <ComputeQuotaFields
+            cpuFields={[
+              {
+                label: 'CPU 预留',
+                name: 'cpuRequest',
+                placeholder: '无预留',
+              },
+              {
+                label: 'CPU 限制',
+                name: 'cpuLimit',
+                placeholder: '无上限',
+              },
+            ]}
+            memoryFields={[
+              {
+                label: '内存预留',
+                name: 'memoryRequest',
+                placeholder: '无预留',
+              },
+              {
+                label: '内存上限',
+                name: 'memoryLimit',
+                placeholder: '无上限',
+              },
+            ]}
+          />
+        </Form>
+      </Modal>
+      <Modal
+        destroyOnHidden
+        confirmLoading={annotationSaving}
+        open={annotationModalOpen}
+        title="编辑注解"
+        width={900}
+        okText="保存"
+        cancelText="取消"
+        onCancel={() => setAnnotationModalOpen(false)}
+        onOk={handleSaveAnnotations}
+      >
+        <KeyValueEditor
+          value={annotationRows}
+          deleteAriaLabel="删除注解"
+          onAddBlocked={() => message.warning('请先填写已有注解的 Key')}
+          onChange={setAnnotationRows}
+          onCreateItem={() => createAnnotationRow()}
+        />
+      </Modal>
     </PageContainer>
   );
 };

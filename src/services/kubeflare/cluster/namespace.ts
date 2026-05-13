@@ -129,6 +129,13 @@ type KubernetesResourceQuotaList = {
 }
 
 type KubernetesLimitRange = {
+  apiVersion?: string
+  kind?: string
+  metadata?: {
+    uid?: string
+    name?: string
+    creationTimestamp?: string
+  }
   spec?: {
     limits?: {
       type?: string
@@ -473,6 +480,33 @@ const getNamespaceLimitRanges = async (
   return res.data?.items || []
 }
 
+const hasDefaultContainerQuota = (limitRange: KubernetesLimitRange) =>
+  (limitRange.spec?.limits || []).some((limit) => limit.type === 'Container')
+
+const getDefaultContainerLimit = (
+  params: API.UpdateClusterNamespaceDefaultContainerQuotaParams,
+) => ({
+  type: 'Container',
+  defaultRequest: {
+    ...(params.cpuRequest ? { cpu: params.cpuRequest } : {}),
+    ...(params.memoryRequest ? { memory: params.memoryRequest } : {}),
+  },
+  default: {
+    ...(params.cpuLimit ? { cpu: params.cpuLimit } : {}),
+    ...(params.memoryLimit ? { memory: params.memoryLimit } : {}),
+  },
+})
+
+const hasDefaultContainerQuotaValue = (
+  params: API.UpdateClusterNamespaceDefaultContainerQuotaParams,
+) =>
+  Boolean(
+    params.cpuRequest ||
+      params.cpuLimit ||
+      params.memoryRequest ||
+      params.memoryLimit,
+  )
+
 /** 获取命名空间列表 GET /kapi/v1/namespaces */
 export async function getClusterNamespaceList(
   params?: API.ClusterNamespaceListParams,
@@ -743,6 +777,118 @@ export async function createClusterNamespace(
       ...options?.headers,
     },
   })
+}
+
+/** 更新命名空间注解 PATCH /kapi/v1/namespaces/:name */
+export async function updateClusterNamespaceAnnotations(
+  name: string,
+  params: API.UpdateClusterNamespaceAnnotationsParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return {
+      code: 20000,
+      message: '',
+      data: {},
+    } as API.ApiResponse<Record<string, never>>
+  }
+
+  return request<API.ApiResponse<KubernetesNamespace>>(
+    `/kapi/v1/namespaces/${encodeURIComponent(name)}`,
+    {
+      method: 'PATCH',
+      data: {
+        metadata: {
+          annotations: params.annotations,
+        },
+      },
+      ...(options || {}),
+      headers: {
+        'Content-Type': 'application/merge-patch+json',
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+}
+
+/** 更新命名空间默认容器配额 PATCH/POST /kapi/v1/namespaces/:name/limitranges */
+export async function updateClusterNamespaceDefaultContainerQuota(
+  name: string,
+  params: API.UpdateClusterNamespaceDefaultContainerQuotaParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return {
+      code: 20000,
+      message: '',
+      data: {},
+    } as API.ApiResponse<Record<string, never>>
+  }
+
+  const limitRanges = await getNamespaceLimitRanges(name, clusterId, options)
+  const limitRange =
+    limitRanges.find(hasDefaultContainerQuota) ||
+    limitRanges.find((item) => item.metadata?.name)
+  const containerLimit = getDefaultContainerLimit(params)
+  const otherLimits = (limitRange?.spec?.limits || []).filter(
+    (limit) => limit.type !== 'Container',
+  )
+  const nextLimits = [...otherLimits, containerLimit]
+
+  if (limitRange?.metadata?.name) {
+    return request<API.ApiResponse<KubernetesLimitRange>>(
+      `/kapi/v1/namespaces/${encodeURIComponent(
+        name,
+      )}/limitranges/${encodeURIComponent(limitRange.metadata.name)}`,
+      {
+        method: 'PATCH',
+        data: {
+          spec: {
+            limits: nextLimits,
+          },
+        },
+        ...(options || {}),
+        headers: {
+          'Content-Type': 'application/merge-patch+json',
+          'X-Cluster-ID': clusterId,
+          ...options?.headers,
+        },
+      },
+    )
+  }
+
+  if (!hasDefaultContainerQuotaValue(params)) {
+    return {
+      code: 20000,
+      message: '',
+      data: {},
+    } as API.ApiResponse<Record<string, never>>
+  }
+
+  return request<API.ApiResponse<KubernetesLimitRange>>(
+    `/kapi/v1/namespaces/${encodeURIComponent(name)}/limitranges`,
+    {
+      method: 'POST',
+      data: {
+        apiVersion: 'v1',
+        kind: 'LimitRange',
+        metadata: {
+          name: 'kubeflare-default-container-quota',
+        },
+        spec: {
+          limits: [containerLimit],
+        },
+      },
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
 }
 
 /** 删除命名空间 DELETE /kapi/v1/namespaces/:name */

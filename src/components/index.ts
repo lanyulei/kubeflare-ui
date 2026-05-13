@@ -7,6 +7,7 @@
  */
 import ClusterMetadata from './ClusterMetadata';
 import ClusterPodList from './ClusterPodList';
+import ComputeQuotaFields from './ComputeQuotaFields';
 import Footer from './Footer';
 import KeyValueEditor from './KeyValueEditor';
 import KeyValueList from './KeyValueList';
@@ -22,6 +23,7 @@ export {
   ClusterMetadata,
   ClusterPodList,
   ClusterSwitch,
+  ComputeQuotaFields,
   Footer,
   KeyValueEditor,
   KeyValueList,
