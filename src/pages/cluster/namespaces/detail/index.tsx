@@ -91,10 +91,9 @@ const useStyles = createStyles(({ token }) => ({
   overview: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    border: `1px solid ${token.colorBorderSecondary}`,
+    gap: 12,
     borderRadius: token.borderRadius,
     backgroundColor: token.colorBgContainer,
-    overflow: 'hidden',
 
     '@media (max-width: 1200px)': {
       gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -109,6 +108,8 @@ const useStyles = createStyles(({ token }) => ({
     gridTemplateColumns: '52px 1fr',
     alignItems: 'center',
     minHeight: 62,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: 4,
     backgroundColor: token.colorFillQuaternary,
     transition: `background-color ${token.motionDurationMid}`,
 
@@ -478,6 +479,7 @@ const APP_QUOTA_OPTIONS: AppQuotaField[] = [
 ];
 
 const APP_QUOTA_OPTION_VALUES = APP_QUOTA_OPTIONS.map((option) => option.name);
+const DEFAULT_APP_QUOTA_OPTION = APP_QUOTA_OPTIONS[0]?.name;
 
 const normalizeNumberValue = (value?: number | null) => {
   if (value === undefined || value === null) {
@@ -673,7 +675,7 @@ const NamespaceDetail = () => {
       ([keyName, value]) => createAnnotationRow(keyName, value),
     );
 
-    setAnnotationRows(rows);
+    setAnnotationRows(rows.length > 0 ? rows : [createAnnotationRow()]);
     setAnnotationModalOpen(true);
   };
   const handleSaveAnnotations = async () => {
@@ -688,11 +690,11 @@ const NamespaceDetail = () => {
       const keyName = row.keyName.trim();
 
       if (!keyName) {
-        message.warning('注解 Key 不能为空');
+        message.warning('注解 键 不能为空');
         return;
       }
       if (annotationKeys.has(keyName)) {
-        message.warning('注解 Key 不能重复');
+        message.warning('注解 键 不能重复');
         return;
       }
 
@@ -766,16 +768,16 @@ const NamespaceDetail = () => {
       ),
       memoryLimit: getMemoryGiFormValue(quotaSummary.project.memoryLimit.hard),
     });
-    setAppQuotaRows(
-      APP_QUOTA_OPTIONS.flatMap((option) => {
-        const value = parseCountQuantity(
-          quotaSummary.project[option.name].hard,
-        );
+    const nextAppQuotaRows = APP_QUOTA_OPTIONS.flatMap((option) => {
+      const value = parseCountQuantity(quotaSummary.project[option.name].hard);
 
-        return value === undefined
-          ? []
-          : [createAppQuotaRow(option.name, value)];
-      }),
+      return value === undefined ? [] : [createAppQuotaRow(option.name, value)];
+    });
+
+    setAppQuotaRows(
+      nextAppQuotaRows.length > 0
+        ? nextAppQuotaRows
+        : [createAppQuotaRow(DEFAULT_APP_QUOTA_OPTION)],
     );
     setProjectQuotaModalOpen(true);
   };

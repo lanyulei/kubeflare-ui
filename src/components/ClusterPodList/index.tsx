@@ -65,9 +65,14 @@ const useStyles = createStyles(({ token }) => ({
     overflow: 'hidden',
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
-    backgroundColor: token.colorBgContainer,
+    backgroundColor: token.colorFillQuaternary,
     color: token.colorText,
     lineHeight: 1.5,
+    transition: `background-color ${token.motionDurationMid}`,
+
+    '&:hover': {
+      backgroundColor: token.colorFillSecondary,
+    },
   },
   itemHeader: {
     display: 'grid',

@@ -66,7 +66,7 @@ type KeyValueEditorProps = {
 const KeyValueEditor = ({
   addText = '添加',
   deleteAriaLabel = '删除',
-  keyPlaceholder = 'Key',
+  keyPlaceholder = '键',
   value = [],
   valuePlaceholder = '值',
   onAddBlocked,
