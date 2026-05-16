@@ -440,7 +440,7 @@ const getNamespaceStatusLabel = (status?: string) => {
   const normalizedStatus = status?.toLowerCase();
 
   if (normalizedStatus === 'active') {
-    return '运行中';
+    return '活跃';
   }
   if (normalizedStatus === 'terminating') {
     return '删除中';
