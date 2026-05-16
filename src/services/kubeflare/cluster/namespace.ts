@@ -133,6 +133,21 @@ type KubernetesResourceQuotaList = {
   items?: KubernetesResourceQuota[]
 }
 
+type KubernetesStorageClass = {
+  metadata?: {
+    name?: string
+  }
+  provisioner?: string
+}
+
+type KubernetesStorageClassList = {
+  metadata?: {
+    continue?: string
+    remainingItemCount?: number
+  }
+  items?: KubernetesStorageClass[]
+}
+
 type KubernetesLimitRange = {
   apiVersion?: string
   kind?: string
@@ -367,6 +382,59 @@ const getQuotaResourceValue = (
   return undefined
 }
 
+const storageClassQuotaResourceRegExp =
+  /^(.+)\.storageclass\.storage\.k8s\.io\/(requests\.storage|limits\.storage|persistentvolumeclaims)$/
+
+const getStorageClassQuotaResourceName = (
+  storageClassName: string,
+  resource: 'requests.storage' | 'limits.storage' | 'persistentvolumeclaims',
+) => `${storageClassName}.storageclass.storage.k8s.io/${resource}`
+
+const getStorageClassQuotaSummaries = (
+  quotas: KubernetesResourceQuota[],
+): API.ClusterNamespaceStorageClassQuota[] => {
+  const quotaMap = new Map<string, API.ClusterNamespaceStorageClassQuota>()
+
+  quotas.forEach((quota) => {
+    const hard = { ...(quota.status?.hard || {}), ...(quota.spec?.hard || {}) }
+    const used = quota.status?.used || {}
+    const resources = new Set([...Object.keys(hard), ...Object.keys(used)])
+
+    resources.forEach((resourceName) => {
+      const matched = resourceName.match(storageClassQuotaResourceRegExp)
+
+      if (!matched) {
+        return
+      }
+
+      const [, storageClassName, resource] = matched
+      const quotaSummary =
+        quotaMap.get(storageClassName) ||
+        ({
+          storageClassName,
+        } as API.ClusterNamespaceStorageClassQuota)
+      const value = {
+        used: used[resourceName],
+        hard: hard[resourceName],
+      }
+
+      if (resource === 'requests.storage') {
+        quotaSummary.requestsStorage = value
+      }
+      if (resource === 'limits.storage') {
+        quotaSummary.limitsStorage = value
+      }
+      if (resource === 'persistentvolumeclaims') {
+        quotaSummary.persistentVolumeClaims = value
+      }
+
+      quotaMap.set(storageClassName, quotaSummary)
+    })
+  })
+
+  return Array.from(quotaMap.values())
+}
+
 const toClusterNamespaceQuotaSummary = (
   quotas: KubernetesResourceQuota[],
   limitRanges: KubernetesLimitRange[],
@@ -406,6 +474,14 @@ const toClusterNamespaceQuotaSummary = (
           ['limits.memory', 'memory'],
           'hard',
         ),
+      },
+      storageRequest: {
+        used: getQuotaResourceValue(quotas, ['requests.storage'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['requests.storage'], 'hard'),
+      },
+      storageLimit: {
+        used: getQuotaResourceValue(quotas, ['limits.storage'], 'used'),
+        hard: getQuotaResourceValue(quotas, ['limits.storage'], 'hard'),
       },
       pods: {
         used: getQuotaResourceValue(quotas, ['pods'], 'used'),
@@ -483,9 +559,17 @@ const toClusterNamespaceQuotaSummary = (
         used: getQuotaResourceValue(quotas, ['configmaps'], 'used'),
         hard: getQuotaResourceValue(quotas, ['configmaps'], 'hard'),
       },
+      storageClassQuotas: getStorageClassQuotaSummaries(quotas),
     },
   }
 }
+
+const toClusterStorageClassItem = (
+  storageClass: KubernetesStorageClass,
+): API.ClusterStorageClassItem => ({
+  name: storageClass.metadata?.name || '-',
+  provisioner: storageClass.provisioner,
+})
 
 const getResourceCount = async (
   namespace: string,
@@ -584,6 +668,8 @@ const projectQuotaResourceKeys = [
   'limits.cpu',
   'requests.memory',
   'limits.memory',
+  'requests.storage',
+  'limits.storage',
   'pods',
   'count/deployments.apps',
   'count/statefulsets.apps',
@@ -597,13 +683,58 @@ const projectQuotaResourceKeys = [
   'configmaps',
 ]
 
+const getProjectStorageClassQuotaHardPatch = (
+  params: API.UpdateClusterNamespaceProjectQuotaParams,
+  quotas: KubernetesResourceQuota[],
+) => {
+  const hard: Record<string, string | null> = {}
+
+  quotas.forEach((quota) => {
+    const resources = {
+      ...(quota.status?.hard || {}),
+      ...(quota.spec?.hard || {}),
+    }
+
+    Object.keys(resources).forEach((resourceName) => {
+      if (storageClassQuotaResourceRegExp.test(resourceName)) {
+        hard[resourceName] = null
+      }
+    })
+  })
+
+  params.storageClassQuotas?.forEach((quota) => {
+    const storageClassName = quota.storageClassName?.trim()
+
+    if (!storageClassName) {
+      return
+    }
+
+    hard[
+      getStorageClassQuotaResourceName(storageClassName, 'requests.storage')
+    ] = quota.requestsStorage || null
+    hard[getStorageClassQuotaResourceName(storageClassName, 'limits.storage')] =
+      quota.limitsStorage || null
+    hard[
+      getStorageClassQuotaResourceName(
+        storageClassName,
+        'persistentvolumeclaims',
+      )
+    ] = quota.persistentVolumeClaims || null
+  })
+
+  return hard
+}
+
 const getProjectQuotaHardPatch = (
   params: API.UpdateClusterNamespaceProjectQuotaParams,
+  quotas: KubernetesResourceQuota[],
 ) => ({
   'requests.cpu': params.cpuRequest || null,
   'limits.cpu': params.cpuLimit || null,
   'requests.memory': params.memoryRequest || null,
   'limits.memory': params.memoryLimit || null,
+  'requests.storage': params.storageRequest || null,
+  'limits.storage': params.storageLimit || null,
   pods: params.pods || null,
   'count/deployments.apps': params.deployments || null,
   'count/statefulsets.apps': params.statefulsets || null,
@@ -615,6 +746,7 @@ const getProjectQuotaHardPatch = (
   'count/ingresses.networking.k8s.io': params.ingresses || null,
   secrets: params.secrets || null,
   configmaps: params.configMaps || null,
+  ...getProjectStorageClassQuotaHardPatch(params, quotas),
 })
 
 const hasProjectQuotaResource = (quota: KubernetesResourceQuota) => {
@@ -623,7 +755,10 @@ const hasProjectQuotaResource = (quota: KubernetesResourceQuota) => {
     ...(quota.spec?.hard || {}),
   }
 
-  return projectQuotaResourceKeys.some((key) => hard[key])
+  return (
+    projectQuotaResourceKeys.some((key) => hard[key]) ||
+    Object.keys(hard).some((key) => storageClassQuotaResourceRegExp.test(key))
+  )
 }
 
 const hasProjectQuotaValue = (
@@ -634,6 +769,8 @@ const hasProjectQuotaValue = (
       params.cpuLimit ||
       params.memoryRequest ||
       params.memoryLimit ||
+      params.storageRequest ||
+      params.storageLimit ||
       params.pods ||
       params.deployments ||
       params.statefulsets ||
@@ -644,7 +781,14 @@ const hasProjectQuotaValue = (
       params.services ||
       params.ingresses ||
       params.secrets ||
-      params.configMaps,
+      params.configMaps ||
+      params.storageClassQuotas?.some(
+        (quota) =>
+          quota.storageClassName &&
+          (quota.requestsStorage ||
+            quota.limitsStorage ||
+            quota.persistentVolumeClaims),
+      ),
   )
 
 /** 获取命名空间列表 GET /kapi/v1/namespaces */
@@ -800,6 +944,47 @@ export async function getClusterNamespaceQuotaSummary(
     message: '',
     data: toClusterNamespaceQuotaSummary(quotas, limitRanges),
   } as API.ApiResponse<API.ClusterNamespaceQuotaSummary>
+}
+
+/** 获取存储类列表 GET /kapis/storage.k8s.io/v1/storageclasses */
+export async function getClusterStorageClassList(
+  params?: API.ClusterStorageClassListParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return {
+      code: 20000,
+      message: '',
+      data: {
+        items: [],
+        continue: '',
+        remainingItemCount: 0,
+      },
+    } as API.ApiResponse<API.ClusterStorageClassListData>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesStorageClassList>>(
+    '/kapis/storage.k8s.io/v1/storageclasses',
+    {
+      method: 'GET',
+      params: { ...params },
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  return {
+    ...res,
+    data: {
+      items: (res.data?.items || []).map(toClusterStorageClassItem),
+      continue: res.data?.metadata?.continue || '',
+      remainingItemCount: res.data?.metadata?.remainingItemCount,
+    },
+  } as API.ApiResponse<API.ClusterStorageClassListData>
 }
 
 /** 获取命名空间容器组列表 GET /kapi/v1/namespaces/:name/pods */
@@ -1050,7 +1235,7 @@ export async function updateClusterNamespaceProjectQuota(
   const quota =
     quotas.find(hasProjectQuotaResource) ||
     quotas.find((item) => item.metadata?.name)
-  const hard = getProjectQuotaHardPatch(params)
+  const hard = getProjectQuotaHardPatch(params, quotas)
 
   if (quota?.metadata?.name) {
     return request<API.ApiResponse<KubernetesResourceQuota>>(

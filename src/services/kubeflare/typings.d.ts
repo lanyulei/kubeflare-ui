@@ -328,6 +328,8 @@ declare namespace API {
     cpuLimit?: string
     memoryRequest?: string
     memoryLimit?: string
+    storageRequest?: string
+    storageLimit?: string
     pods?: string
     deployments?: string
     statefulsets?: string
@@ -339,6 +341,14 @@ declare namespace API {
     ingresses?: string
     secrets?: string
     configMaps?: string
+    storageClassQuotas?: UpdateClusterNamespaceStorageClassQuotaParams[]
+  }
+
+  type UpdateClusterNamespaceStorageClassQuotaParams = {
+    storageClassName?: string
+    requestsStorage?: string
+    limitsStorage?: string
+    persistentVolumeClaims?: string
   }
 
   type ClusterNamespaceResourceStatus = {
@@ -399,6 +409,8 @@ declare namespace API {
       cpuLimit: ClusterNamespaceProjectQuotaValue
       memoryRequest: ClusterNamespaceProjectQuotaValue
       memoryLimit: ClusterNamespaceProjectQuotaValue
+      storageRequest: ClusterNamespaceProjectQuotaValue
+      storageLimit: ClusterNamespaceProjectQuotaValue
       pods: ClusterNamespaceProjectQuotaValue
       deployments: ClusterNamespaceProjectQuotaValue
       statefulsets: ClusterNamespaceProjectQuotaValue
@@ -410,7 +422,31 @@ declare namespace API {
       ingresses: ClusterNamespaceProjectQuotaValue
       secrets: ClusterNamespaceProjectQuotaValue
       configMaps: ClusterNamespaceProjectQuotaValue
+      storageClassQuotas: ClusterNamespaceStorageClassQuota[]
     }
+  }
+
+  type ClusterNamespaceStorageClassQuota = {
+    storageClassName: string
+    requestsStorage?: ClusterNamespaceProjectQuotaValue
+    limitsStorage?: ClusterNamespaceProjectQuotaValue
+    persistentVolumeClaims?: ClusterNamespaceProjectQuotaValue
+  }
+
+  type ClusterStorageClassItem = {
+    name: string
+    provisioner?: string
+  }
+
+  type ClusterStorageClassListData = {
+    items: ClusterStorageClassItem[]
+    continue?: string
+    remainingItemCount?: number
+  }
+
+  type ClusterStorageClassListParams = {
+    limit?: number
+    continue?: string
   }
 
   type CreateUserParams = {

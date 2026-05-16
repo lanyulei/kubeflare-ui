@@ -21,9 +21,14 @@ import {
   Dropdown,
   Empty,
   Form,
+  InputNumber,
   Modal,
+  Select,
+  Slider,
   Spin,
   Tabs,
+  Tooltip,
+  Typography,
 } from 'antd';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
@@ -44,6 +49,7 @@ import {
   getClusterNamespacePodList,
   getClusterNamespaceQuotaSummary,
   getClusterNamespaceResourceStatus,
+  getClusterStorageClassList,
   updateClusterNamespaceAnnotations,
   updateClusterNamespaceDefaultContainerQuota,
   updateClusterNamespaceProjectQuota,
@@ -292,6 +298,104 @@ const useStyles = createStyles(({ token }) => ({
       marginTop: 0,
     },
   },
+  storageQuotaCard: {
+    padding: ` 0 ${token.padding}px ${token.padding}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadius,
+    backgroundColor: token.colorFillQuaternary,
+  },
+  storageQuotaTabs: {
+    '.ant-tabs-nav': {
+      marginBottom: token.marginSM,
+    },
+  },
+  storageQuotaFields: {
+    display: 'flex',
+    flexDirection: 'column',
+    // gap: token.marginSM,
+  },
+  storageQuotaSlider: {
+    marginBottom: 16,
+
+    '.ant-form-item-control-input-content': {
+      boxSizing: 'border-box',
+      padding: `0 ${token.paddingLG}px`,
+    },
+
+    '.ant-slider': {
+      width: '100%',
+    },
+  },
+  storageQuotaGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: `20px`,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  storageQuotaGridItem: {
+    marginBottom: 0,
+  },
+  storageQuotaTotalBlock: {
+    minHeight: 64,
+    padding: `11px 15px 15px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadius,
+    backgroundColor: token.colorBgContainer,
+    boxShadow: token.boxShadowTertiary,
+  },
+  storageClassList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+    marginBottom: token.marginSM,
+  },
+  storageClassQuotaItem: {
+    display: 'grid',
+    gridTemplateColumns:
+      '52px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 76px',
+    alignItems: 'center',
+    minHeight: 64,
+    padding: `${token.paddingXS}px ${token.paddingSM}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadius,
+    backgroundColor: token.colorBgContainer,
+    boxShadow: token.boxShadowTertiary,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '44px minmax(0, 1fr) 76px',
+      rowGap: token.marginXS,
+    },
+  },
+  storageClassIcon: {
+    color: '#34465a',
+    fontSize: 26,
+    textAlign: 'center',
+  },
+  storageClassMetric: {
+    minWidth: 0,
+  },
+  storageClassActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  storageClassSelectBox: {
+    padding: token.paddingSM,
+    border: `1px dashed ${token.colorBorder}`,
+    borderRadius: token.borderRadius,
+    backgroundColor: token.colorBgContainer,
+  },
+  storageClassSelectHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginSM,
+    marginBottom: token.marginSM,
+  },
+  storageClassFields: {
+    marginTop: token.marginMD,
+  },
 }));
 
 const DEFAULT_RESOURCE_STATUS: API.ClusterNamespaceResourceStatus = {
@@ -313,6 +417,8 @@ const DEFAULT_QUOTA_SUMMARY: API.ClusterNamespaceQuotaSummary = {
     cpuLimit: {},
     memoryRequest: {},
     memoryLimit: {},
+    storageRequest: {},
+    storageLimit: {},
     pods: {},
     deployments: {},
     statefulsets: {},
@@ -324,6 +430,7 @@ const DEFAULT_QUOTA_SUMMARY: API.ClusterNamespaceQuotaSummary = {
     ingresses: {},
     secrets: {},
     configMaps: {},
+    storageClassQuotas: [],
   },
 };
 
@@ -446,6 +553,9 @@ type ProjectQuotaFormValues = {
   cpuLimit?: number | null;
   memoryRequest?: number | null;
   memoryLimit?: number | null;
+  storageRequest?: number | null;
+  storageLimit?: number | null;
+  storagePersistentVolumeClaims?: number | null;
   pods?: number | null;
   deployments?: number | null;
   statefulsets?: number | null;
@@ -459,9 +569,30 @@ type ProjectQuotaFormValues = {
   configMaps?: number | null;
 };
 
+type AppQuotaName =
+  | 'pods'
+  | 'deployments'
+  | 'statefulsets'
+  | 'daemonsets'
+  | 'jobs'
+  | 'cronjobs'
+  | 'services'
+  | 'ingresses'
+  | 'secrets'
+  | 'configMaps';
+
 type AppQuotaField = {
   label: string;
-  name: keyof ProjectQuotaFormValues;
+  name: AppQuotaName;
+};
+
+type StorageClassQuotaRow = {
+  id: string;
+  storageClassName?: string;
+  requestsStorage?: number | null;
+  limitsStorage?: number | null;
+  persistentVolumeClaims?: number | null;
+  persistentVolumeClaimsUsed?: string;
 };
 
 const APP_QUOTA_OPTIONS: AppQuotaField[] = [
@@ -471,7 +602,6 @@ const APP_QUOTA_OPTIONS: AppQuotaField[] = [
   { label: '守护进程集数量', name: 'daemonsets' },
   { label: '任务数量', name: 'jobs' },
   { label: '定时任务数量', name: 'cronjobs' },
-  { label: '持久卷声明数量', name: 'persistentVolumeClaims' },
   { label: '服务数量', name: 'services' },
   { label: '应用路由数量', name: 'ingresses' },
   { label: '保密字典数量', name: 'secrets' },
@@ -544,6 +674,16 @@ const NamespaceDetail = () => {
     [],
   );
   const [appQuotaRows, setAppQuotaRows] = useState<SelectValueEditorItem[]>([]);
+  const [storageClassQuotaRows, setStorageClassQuotaRows] = useState<
+    StorageClassQuotaRow[]
+  >([]);
+  const [activeStorageClassName, setActiveStorageClassName] = useState<
+    string | undefined
+  >();
+  const [storageClasses, setStorageClasses] = useState<
+    API.ClusterStorageClassItem[]
+  >([]);
+  const [storageClassLoading, setStorageClassLoading] = useState(false);
   const [podLoading, setPodLoading] = useState(false);
   const [pods, setPods] = useState<API.ClusterNodePodItem[]>([]);
   const [resourceLoading, setResourceLoading] = useState(false);
@@ -559,6 +699,7 @@ const NamespaceDetail = () => {
   const [projectQuotaModalOpen, setProjectQuotaModalOpen] = useState(false);
   const [projectQuotaSaving, setProjectQuotaSaving] = useState(false);
   const appQuotaRowIdRef = useRef(0);
+  const storageClassQuotaRowIdRef = useRef(0);
   const namespaceName = useMemo(
     () => decodeNamespaceName(params.name),
     [params.name],
@@ -587,6 +728,22 @@ const NamespaceDetail = () => {
         id: `app-quota-${nextId}`,
         keyName,
         value,
+      };
+    },
+    [],
+  );
+  const createStorageClassQuotaRow = useCallback(
+    (
+      storageClassName?: string,
+      values?: Omit<StorageClassQuotaRow, 'id' | 'storageClassName'>,
+    ) => {
+      const nextId = storageClassQuotaRowIdRef.current;
+      storageClassQuotaRowIdRef.current += 1;
+
+      return {
+        id: `storage-class-quota-${nextId}`,
+        storageClassName,
+        ...values,
       };
     },
     [],
@@ -653,6 +810,16 @@ const NamespaceDetail = () => {
       setQuotaLoading(false);
     }
   }, [namespaceName]);
+
+  const fetchStorageClasses = useCallback(async () => {
+    setStorageClassLoading(true);
+    try {
+      const res = await getClusterStorageClassList({ limit: 500 });
+      setStorageClasses(res.data.items || []);
+    } finally {
+      setStorageClassLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchNamespace();
@@ -767,18 +934,41 @@ const NamespaceDetail = () => {
         quotaSummary.project.memoryRequest.hard,
       ),
       memoryLimit: getMemoryGiFormValue(quotaSummary.project.memoryLimit.hard),
+      storageRequest: getMemoryGiFormValue(
+        quotaSummary.project.storageRequest.hard,
+      ),
+      storageLimit: getMemoryGiFormValue(
+        quotaSummary.project.storageLimit.hard,
+      ),
+      storagePersistentVolumeClaims: parseCountQuantity(
+        quotaSummary.project.persistentVolumeClaims.hard,
+      ),
     });
     const nextAppQuotaRows = APP_QUOTA_OPTIONS.flatMap((option) => {
       const value = parseCountQuantity(quotaSummary.project[option.name].hard);
 
       return value === undefined ? [] : [createAppQuotaRow(option.name, value)];
     });
+    const nextStorageClassQuotaRows =
+      quotaSummary.project.storageClassQuotas.map((quota) =>
+        createStorageClassQuotaRow(quota.storageClassName, {
+          requestsStorage: getMemoryGiFormValue(quota.requestsStorage?.hard),
+          limitsStorage: getMemoryGiFormValue(quota.limitsStorage?.hard),
+          persistentVolumeClaims: parseCountQuantity(
+            quota.persistentVolumeClaims?.hard,
+          ),
+          persistentVolumeClaimsUsed: quota.persistentVolumeClaims?.used,
+        }),
+      );
 
     setAppQuotaRows(
       nextAppQuotaRows.length > 0
         ? nextAppQuotaRows
         : [createAppQuotaRow(DEFAULT_APP_QUOTA_OPTION)],
     );
+    setStorageClassQuotaRows(nextStorageClassQuotaRows);
+    setActiveStorageClassName(nextStorageClassQuotaRows[0]?.storageClassName);
+    fetchStorageClasses();
     setProjectQuotaModalOpen(true);
   };
   const handleSaveProjectQuota = async () => {
@@ -787,9 +977,7 @@ const NamespaceDetail = () => {
     }
 
     const values = await projectQuotaForm.validateFields();
-    const appQuotaValues: Partial<
-      Record<keyof ProjectQuotaFormValues, number>
-    > = {};
+    const appQuotaValues: Partial<Record<AppQuotaName, number>> = {};
     const appQuotaKeys = new Set<string>();
 
     for (const row of appQuotaRows) {
@@ -807,8 +995,11 @@ const NamespaceDetail = () => {
       }
 
       appQuotaKeys.add(row.keyName);
-      appQuotaValues[row.keyName as keyof ProjectQuotaFormValues] = row.value;
+      appQuotaValues[row.keyName as AppQuotaName] = row.value;
     }
+    const nextStorageClassQuotaRows = storageClassQuotaRows.filter(
+      (row) => row.storageClassName,
+    );
 
     setProjectQuotaSaving(true);
     try {
@@ -817,6 +1008,10 @@ const NamespaceDetail = () => {
         cpuLimit: normalizeNumberValue(values.cpuLimit),
         memoryRequest: normalizeMemoryGiValue(values.memoryRequest),
         memoryLimit: normalizeMemoryGiValue(values.memoryLimit),
+        storageRequest: normalizeMemoryGiValue(
+          values.storageRequest ? values.storageRequest : undefined,
+        ),
+        storageLimit: normalizeMemoryGiValue(values.storageLimit),
         pods: normalizeNumberValue(appQuotaValues.pods),
         deployments: normalizeNumberValue(appQuotaValues.deployments),
         statefulsets: normalizeNumberValue(appQuotaValues.statefulsets),
@@ -824,12 +1019,22 @@ const NamespaceDetail = () => {
         jobs: normalizeNumberValue(appQuotaValues.jobs),
         cronjobs: normalizeNumberValue(appQuotaValues.cronjobs),
         persistentVolumeClaims: normalizeNumberValue(
-          appQuotaValues.persistentVolumeClaims,
+          values.storagePersistentVolumeClaims,
         ),
         services: normalizeNumberValue(appQuotaValues.services),
         ingresses: normalizeNumberValue(appQuotaValues.ingresses),
         secrets: normalizeNumberValue(appQuotaValues.secrets),
         configMaps: normalizeNumberValue(appQuotaValues.configMaps),
+        storageClassQuotas: nextStorageClassQuotaRows.map((row) => ({
+          storageClassName: row.storageClassName,
+          requestsStorage: normalizeMemoryGiValue(
+            row.requestsStorage ? row.requestsStorage : undefined,
+          ),
+          limitsStorage: normalizeMemoryGiValue(row.limitsStorage),
+          persistentVolumeClaims: normalizeNumberValue(
+            row.persistentVolumeClaims,
+          ),
+        })),
       });
       message.success('项目配额已更新');
       setProjectQuotaModalOpen(false);
@@ -838,6 +1043,40 @@ const NamespaceDetail = () => {
       setProjectQuotaSaving(false);
     }
   };
+  const updateStorageClassQuotaRow = (
+    storageClassName: string,
+    field: keyof Omit<StorageClassQuotaRow, 'id' | 'storageClassName'>,
+    value?: number | null,
+  ) => {
+    setStorageClassQuotaRows((rows) =>
+      rows.map((row) =>
+        row.storageClassName === storageClassName
+          ? { ...row, [field]: value }
+          : row,
+      ),
+    );
+  };
+  const selectStorageClassQuota = (storageClassName: string) => {
+    setStorageClassQuotaRows((rows) => {
+      if (rows.some((row) => row.storageClassName === storageClassName)) {
+        return rows;
+      }
+
+      return [...rows, createStorageClassQuotaRow(storageClassName)];
+    });
+    setActiveStorageClassName(storageClassName);
+  };
+  const deleteStorageClassQuota = (storageClassName?: string) => {
+    setStorageClassQuotaRows((rows) =>
+      rows.filter((row) => row.storageClassName !== storageClassName),
+    );
+    setActiveStorageClassName((current) =>
+      current === storageClassName ? undefined : current,
+    );
+  };
+  const activeStorageClassQuotaRow = storageClassQuotaRows.find(
+    (row) => row.storageClassName === activeStorageClassName,
+  );
 
   const resourceStatusItems = [
     {
@@ -948,6 +1187,135 @@ const NamespaceDetail = () => {
       quota: quotaSummary.project.persistentVolumeClaims,
     },
   ];
+  const storageClassOptions = storageClasses.map((item) => ({
+    label: item.name,
+    value: item.name,
+    disabled:
+      item.name !== activeStorageClassName &&
+      storageClassQuotaRows.some((row) => row.storageClassName === item.name),
+  }));
+  const renderStorageQuotaFields = (
+    storageRequestName: keyof ProjectQuotaFormValues,
+    storageLimitName: keyof ProjectQuotaFormValues,
+    persistentVolumeClaimsName: keyof ProjectQuotaFormValues,
+  ) => (
+    <div className={styles.storageQuotaTotalBlock}>
+      <div className={styles.storageQuotaFields}>
+        <Form.Item
+          label="持久卷声明容量(Gi)"
+          name={storageRequestName}
+          className={styles.storageQuotaSlider}
+        >
+          <Slider
+            marks={{
+              0: '无预留',
+              512: '512',
+              1024: '1024',
+              1536: '1536',
+              2048: '无上限',
+            }}
+            max={2048}
+            min={0}
+            step={1}
+          />
+        </Form.Item>
+        <div className={styles.storageQuotaGrid}>
+          <Form.Item
+            label="资源上限"
+            name={storageLimitName}
+            className={styles.storageQuotaGridItem}
+          >
+            <InputNumber
+              min={0}
+              placeholder="无上限"
+              precision={0}
+              suffix="Gi"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item
+            label="持久卷声明总量"
+            name={persistentVolumeClaimsName}
+            className={styles.storageQuotaGridItem}
+          >
+            <InputNumber
+              min={0}
+              placeholder="无上限"
+              precision={0}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </div>
+      </div>
+    </div>
+  );
+  const renderStorageClassQuotaFields = () => (
+    <div className={styles.storageQuotaFields}>
+      <Form.Item
+        label="持久卷声明容量(Gi)"
+        className={styles.storageQuotaSlider}
+      >
+        <Slider
+          marks={{
+            0: '无预留',
+            512: '512',
+            1024: '1024',
+            1536: '1536',
+            2048: '无上限',
+          }}
+          max={2048}
+          min={0}
+          step={1}
+          value={activeStorageClassQuotaRow?.requestsStorage || 0}
+          onChange={(value) =>
+            activeStorageClassName &&
+            updateStorageClassQuotaRow(
+              activeStorageClassName,
+              'requestsStorage',
+              value,
+            )
+          }
+        />
+      </Form.Item>
+      <div className={styles.storageQuotaGrid}>
+        <Form.Item label="资源上限">
+          <InputNumber
+            min={0}
+            placeholder="无上限"
+            precision={0}
+            suffix="Gi"
+            style={{ width: '100%' }}
+            value={activeStorageClassQuotaRow?.limitsStorage}
+            onChange={(value) =>
+              activeStorageClassName &&
+              updateStorageClassQuotaRow(
+                activeStorageClassName,
+                'limitsStorage',
+                value,
+              )
+            }
+          />
+        </Form.Item>
+        <Form.Item label="持久卷声明总量">
+          <InputNumber
+            min={0}
+            placeholder="无上限"
+            precision={0}
+            style={{ width: '100%' }}
+            value={activeStorageClassQuotaRow?.persistentVolumeClaims}
+            onChange={(value) =>
+              activeStorageClassName &&
+              updateStorageClassQuotaRow(
+                activeStorageClassName,
+                'persistentVolumeClaims',
+                value,
+              )
+            }
+          />
+        </Form.Item>
+      </div>
+    </div>
+  );
 
   const title = namespaceName
     ? intl.formatMessage(
@@ -1348,6 +1716,128 @@ const NamespaceDetail = () => {
             ]}
             memoryUnit="Gi"
           />
+          <div className={styles.quotaFormSectionTitle}>存储资源配额</div>
+          <div className={styles.storageQuotaCard}>
+            <Tabs
+              className={styles.storageQuotaTabs}
+              items={[
+                {
+                  key: 'storage-total',
+                  label: '存储资源总量',
+                  children: renderStorageQuotaFields(
+                    'storageRequest',
+                    'storageLimit',
+                    'storagePersistentVolumeClaims',
+                  ),
+                },
+                {
+                  key: 'storage-class',
+                  label: '存储类关联资源',
+                  children: (
+                    <>
+                      {storageClassQuotaRows.length > 0 && (
+                        <div className={styles.storageClassList}>
+                          {storageClassQuotaRows.map((row) => {
+                            const storageClass = storageClasses.find(
+                              (item) => item.name === row.storageClassName,
+                            );
+
+                            return (
+                              <div
+                                className={styles.storageClassQuotaItem}
+                                key={row.id}
+                              >
+                                <DatabaseOutlined
+                                  className={styles.storageClassIcon}
+                                />
+                                <div className={styles.storageClassMetric}>
+                                  <div className={styles.quotaMetricValue}>
+                                    {row.storageClassName}
+                                  </div>
+                                  <div className={styles.quotaMetricLabel}>
+                                    名称
+                                  </div>
+                                </div>
+                                <div className={styles.storageClassMetric}>
+                                  <div className={styles.quotaMetricValue}>
+                                    {row.persistentVolumeClaimsUsed || 0}
+                                  </div>
+                                  <div className={styles.quotaMetricLabel}>
+                                    已关联的持久卷声明数量
+                                  </div>
+                                </div>
+                                <div className={styles.storageClassMetric}>
+                                  <div className={styles.quotaMetricValue}>
+                                    {storageClass?.provisioner || '-'}
+                                  </div>
+                                  <div className={styles.quotaMetricLabel}>
+                                    供应者
+                                  </div>
+                                </div>
+                                <div className={styles.storageClassActions}>
+                                  <Tooltip title="删除">
+                                    <Button
+                                      aria-label="删除存储类关联资源"
+                                      icon={<DeleteOutlined />}
+                                      type="text"
+                                      onClick={() =>
+                                        deleteStorageClassQuota(
+                                          row.storageClassName,
+                                        )
+                                      }
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="编辑">
+                                    <Button
+                                      aria-label="编辑存储类关联资源"
+                                      icon={<EditOutlined />}
+                                      type="text"
+                                      onClick={() =>
+                                        setActiveStorageClassName(
+                                          row.storageClassName,
+                                        )
+                                      }
+                                    />
+                                  </Tooltip>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className={styles.storageClassSelectBox}>
+                        <div className={styles.storageClassSelectHeader}>
+                          <DatabaseOutlined
+                            className={styles.storageClassIcon}
+                          />
+                          <div>
+                            <Typography.Text strong>选择存储类</Typography.Text>
+                            <div className={styles.quotaMetricLabel}>
+                              设置与存储类关联的持久卷声明配额。
+                            </div>
+                          </div>
+                        </div>
+                        <Select
+                          loading={storageClassLoading}
+                          options={storageClassOptions}
+                          placeholder="请选择存储类"
+                          showSearch
+                          style={{ width: '100%' }}
+                          value={activeStorageClassName}
+                          onChange={selectStorageClassQuota}
+                        />
+                      </div>
+                      {activeStorageClassName && (
+                        <div className={styles.storageClassFields}>
+                          {renderStorageClassQuotaFields()}
+                        </div>
+                      )}
+                    </>
+                  ),
+                },
+              ]}
+            />
+          </div>
           <div className={styles.quotaFormSectionTitle}>应用资源配额</div>
           <SelectValueEditor
             value={appQuotaRows}
