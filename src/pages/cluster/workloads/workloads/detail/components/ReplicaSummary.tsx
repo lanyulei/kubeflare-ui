@@ -46,20 +46,28 @@ const useStyles = createStyles(({ token }) => ({
   content: {
     position: 'relative',
     zIndex: 1,
+    display: 'flex',
+    flexDirection: 'column',
     minWidth: 0,
     marginLeft: token.marginMD,
+    paddingRight: token.paddingMD,
     color: '#ffffff',
   },
   title: {
-    marginBottom: 2,
     fontSize: token.fontSize,
     fontWeight: 600,
-    lineHeight: 1.45,
+    lineHeight: 1.5,
+  },
+  metaList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    marginTop: 4,
   },
   meta: {
     color: 'rgba(255, 255, 255, 0.86)',
     fontSize: token.fontSizeSM,
-    lineHeight: 1.45,
+    lineHeight: 1.5,
   },
   actions: {
     position: 'absolute',
@@ -121,16 +129,18 @@ const ReplicaSummary = ({
         className={styles.progress}
         format={() => `${currentReplicas}/${desiredReplicas}`}
         percent={getReplicaPercent(currentReplicas, desiredReplicas)}
-        size={54}
+        size={60}
         strokeColor={token.colorSuccess}
-        strokeWidth={8}
+        strokeWidth={10}
         trailColor="rgba(255, 255, 255, 0.18)"
         type="circle"
       />
       <div className={styles.content}>
         <div className={styles.title}>副本</div>
-        <div className={styles.meta}>期望副本数: {desiredReplicas}</div>
-        <div className={styles.meta}>当前副本数: {currentReplicas}</div>
+        <div className={styles.metaList}>
+          <div className={styles.meta}>期望副本数: {desiredReplicas}</div>
+          <div className={styles.meta}>当前副本数: {currentReplicas}</div>
+        </div>
       </div>
       <div className={styles.actions}>
         <Tooltip title={canScale ? '增加副本' : '该类型不支持手动调整副本'}>
