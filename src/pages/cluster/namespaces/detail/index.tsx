@@ -192,6 +192,7 @@ const useStyles = createStyles(({ token }) => ({
     minWidth: 0,
   },
   quotaMetricValue: {
+    display: 'block',
     overflow: 'hidden',
     color: token.colorText,
     fontSize: 14,
@@ -201,6 +202,7 @@ const useStyles = createStyles(({ token }) => ({
     whiteSpace: 'nowrap',
   },
   quotaMetricLabel: {
+    display: 'block',
     marginTop: 2,
     overflow: 'hidden',
     color: token.colorTextSecondary,
@@ -340,7 +342,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   storageQuotaTotalBlock: {
     minHeight: 64,
-    padding: `11px 15px 15px`,
+    padding: `12px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadius,
     backgroundColor: token.colorBgContainer,
@@ -1278,7 +1280,7 @@ const NamespaceDetail = () => {
         />
       </Form.Item>
       <div className={styles.storageQuotaGrid}>
-        <Form.Item label="资源上限">
+        <Form.Item label="资源上限" className={styles.storageQuotaGridItem}>
           <InputNumber
             min={0}
             placeholder="无上限"
@@ -1296,7 +1298,10 @@ const NamespaceDetail = () => {
             }
           />
         </Form.Item>
-        <Form.Item label="持久卷声明总量">
+        <Form.Item
+          label="持久卷声明总量"
+          className={styles.storageQuotaGridItem}
+        >
           <InputNumber
             min={0}
             placeholder="无上限"
@@ -1826,12 +1831,12 @@ const NamespaceDetail = () => {
                           value={activeStorageClassName}
                           onChange={selectStorageClassQuota}
                         />
+                        {activeStorageClassName && (
+                          <div className={styles.storageClassFields}>
+                            {renderStorageClassQuotaFields()}
+                          </div>
+                        )}
                       </div>
-                      {activeStorageClassName && (
-                        <div className={styles.storageClassFields}>
-                          {renderStorageClassQuotaFields()}
-                        </div>
-                      )}
                     </>
                   ),
                 },
