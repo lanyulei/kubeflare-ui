@@ -11,6 +11,7 @@ export default {
   'menu.cluster.clusterNamespacesDetail': '命名空间详情',
   'menu.cluster.clusterWorkloads': '应用负载',
   'menu.cluster.clusterWorkloads.clusterWorkloadsList': '工作负载',
+  'menu.cluster.clusterWorkloads.clusterWorkloadsDetail': '工作负载详情',
   'menu.cluster.clusterWorkloads.clusterWorkloadsJobs': '任务',
   'menu.cluster.clusterWorkloads.clusterWorkloadsCronJobs': '定时任务',
   'menu.cluster.clusterWorkloads.clusterWorkloadsPods': '容器组',

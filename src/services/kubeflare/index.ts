@@ -6,6 +6,7 @@ import * as accountSettings from './account/settings'
 import * as api from './api'
 import * as clusterInfo from './cluster/info'
 import * as clusterNode from './cluster/node'
+import * as clusterWorkload from './cluster/workload'
 import * as systemUsers from './system/users'
 import * as upload from './upload'
 import * as userLogin from './user/login'
@@ -15,6 +16,7 @@ export default {
   api,
   clusterInfo,
   clusterNode,
+  clusterWorkload,
   systemUsers,
   upload,
   userLogin,

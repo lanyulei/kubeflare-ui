@@ -19,12 +19,10 @@ const useStyles = createStyles(({ token }) => ({
   },
   nodeNameText: {
     color: token.colorText,
-    fontWeight: token.fontWeightStrong,
     lineHeight: token.lineHeight,
   },
   nodeNameLink: {
     color: token.colorText,
-    fontWeight: token.fontWeightStrong,
     lineHeight: token.lineHeight,
 
     '&:hover': {

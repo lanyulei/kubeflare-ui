@@ -81,6 +81,12 @@ export default [
             component: './cluster/workloads/workloads',
           },
           {
+            path: '/cluster/workloads/detail/:type/:namespace/:name',
+            name: 'clusterWorkloadsDetail',
+            hideInMenu: true,
+            component: './cluster/workloads/workloads/detail',
+          },
+          {
             path: '/cluster/workloads/jobs',
             name: 'clusterWorkloadsJobs',
             component: './cluster/workloads/jobs',

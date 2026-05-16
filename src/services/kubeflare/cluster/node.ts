@@ -94,6 +94,7 @@ type KubernetesPod = {
     containers?: KubernetesContainer[]
   }
   status?: {
+    hostIP?: string
     podIP?: string
     phase?: string
     reason?: string
@@ -389,6 +390,7 @@ const toClusterNodePodItem = (pod: KubernetesPod): API.ClusterNodePodItem => ({
   name: pod.metadata?.name || '-',
   namespace: pod.metadata?.namespace,
   node_name: pod.spec?.nodeName,
+  node_ip: pod.status?.hostIP,
   pod_ip: pod.status?.podIP,
   phase: pod.status?.phase,
   ready: getPodReady(pod),

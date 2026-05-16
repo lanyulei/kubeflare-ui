@@ -11,6 +11,7 @@ export default {
   'menu.cluster.clusterNamespacesDetail': 'Namespace Detail',
   'menu.cluster.clusterWorkloads': 'Application Workloads',
   'menu.cluster.clusterWorkloads.clusterWorkloadsList': 'Workloads',
+  'menu.cluster.clusterWorkloads.clusterWorkloadsDetail': 'Workload Detail',
   'menu.cluster.clusterWorkloads.clusterWorkloadsJobs': 'Jobs',
   'menu.cluster.clusterWorkloads.clusterWorkloadsCronJobs': 'CronJobs',
   'menu.cluster.clusterWorkloads.clusterWorkloadsPods': 'Pods',

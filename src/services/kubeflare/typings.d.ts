@@ -226,6 +226,7 @@ declare namespace API {
     name: string
     namespace?: string
     node_name?: string
+    node_ip?: string
     pod_ip?: string
     phase?: string
     ready?: string
@@ -286,6 +287,7 @@ declare namespace API {
     labels?: Record<string, string>
     annotations?: Record<string, string>
     create_time?: string
+    update_time?: string
   }
 
   type ClusterNamespaceCondition = {
@@ -365,6 +367,7 @@ declare namespace API {
 
   type ClusterNamespacePodListParams = {
     namespace?: string
+    labelSelector?: string
     limit?: number
     continue?: string
   }
@@ -431,6 +434,43 @@ declare namespace API {
     requestsStorage?: ClusterNamespaceProjectQuotaValue
     limitsStorage?: ClusterNamespaceProjectQuotaValue
     persistentVolumeClaims?: ClusterNamespaceProjectQuotaValue
+  }
+
+  type ClusterWorkloadType = 'Deployment' | 'StatefulSet' | 'DaemonSet'
+
+  type ClusterWorkloadItem = {
+    id?: string
+    name: string
+    namespace?: string
+    type: ClusterWorkloadType
+    type_label?: string
+    status?: string
+    ready?: string
+    replicas?: number
+    ready_replicas?: number
+    available_replicas?: number
+    updated_replicas?: number
+    selector?: Record<string, string>
+    labels?: Record<string, string>
+    annotations?: Record<string, string>
+    create_time?: string
+    update_time?: string
+  }
+
+  type ClusterWorkloadListData = {
+    items: ClusterWorkloadItem[]
+  }
+
+  type ClusterWorkloadListParams = {
+    keyword?: string
+    type?: ClusterWorkloadType
+    namespace?: string
+  }
+
+  type ClusterWorkloadDetailParams = {
+    type: ClusterWorkloadType
+    namespace: string
+    name: string
   }
 
   type ClusterStorageClassItem = {
