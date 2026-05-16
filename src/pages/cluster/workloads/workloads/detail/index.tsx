@@ -25,7 +25,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     alignItems: 'stretch',
     flexWrap: 'wrap',
-    gap: token.marginLG,
+    gap: `20px`,
   },
   description: {
     flex: 1,

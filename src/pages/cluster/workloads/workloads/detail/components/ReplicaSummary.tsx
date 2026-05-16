@@ -77,7 +77,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     transform: 'translateY(-50%)',
     flexDirection: 'column',
-    gap: token.marginXS,
+    gap: `10px`,
   },
   actionButton: {
     width: 22,
