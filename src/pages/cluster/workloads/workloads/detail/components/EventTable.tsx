@@ -1,12 +1,14 @@
+import { SearchOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { Tooltip } from 'antd';
+import { Input, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { getClusterNodeEventList } from '@/services/kubeflare/cluster/node';
 
 const DEFAULT_PAGE_SIZE = 10;
+const EVENT_SEARCH_PAGE_SIZE = 500;
 
 type EventTableProps = {
   name?: string;
@@ -36,6 +38,9 @@ const useStyles = createStyles(({ token }) => ({
   },
   eventTypeError: {
     backgroundColor: token.colorError,
+  },
+  search: {
+    width: 260,
   },
 }));
 
@@ -77,11 +82,34 @@ const getEventTypeLabel = (type?: string) => {
   return type || '-';
 };
 
+const matchEventKeyword = (
+  event: API.ClusterNodeEventItem,
+  keyword?: string,
+) => {
+  const normalizedKeyword = keyword?.trim().toLowerCase();
+
+  if (!normalizedKeyword) {
+    return true;
+  }
+
+  return [
+    event.type,
+    getEventTypeLabel(event.type),
+    event.reason,
+    event.source,
+    event.message,
+  ]
+    .filter(Boolean)
+    .some((value) => value?.toLowerCase().includes(normalizedKeyword));
+};
+
 const EventTable = ({ name, namespace, type }: EventTableProps) => {
   const { styles } = useStyles();
   const actionRef = useRef<ActionType | null>(null);
   const continueTokenRef = useRef<Record<number, string>>({ 1: '' });
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
+  const keywordRef = useRef('');
+  const [keywordDraft, setKeywordDraft] = useState('');
   const getEventTypeClassName = (eventType?: string) => {
     const normalizedType = eventType?.toLowerCase();
 
@@ -169,6 +197,30 @@ const EventTable = ({ name, namespace, type }: EventTableProps) => {
         },
       }}
       columns={columns}
+      headerTitle={
+        <Input
+          allowClear
+          className={styles.search}
+          onChange={(event) => {
+            const nextKeyword = event.target.value;
+            setKeywordDraft(nextKeyword);
+
+            if (!nextKeyword) {
+              keywordRef.current = '';
+              continueTokenRef.current = { 1: '' };
+              actionRef.current?.reloadAndRest?.();
+            }
+          }}
+          onPressEnter={(event) => {
+            keywordRef.current = event.currentTarget.value.trim();
+            continueTokenRef.current = { 1: '' };
+            actionRef.current?.reloadAndRest?.();
+          }}
+          placeholder="搜索事件类型 / 原因 / 来源 / 消息"
+          suffix={<SearchOutlined />}
+          value={keywordDraft}
+        />
+      }
       pagination={{
         pageSize: DEFAULT_PAGE_SIZE,
         showSizeChanger: false,
@@ -176,6 +228,7 @@ const EventTable = ({ name, namespace, type }: EventTableProps) => {
       request={async (params) => {
         const current = params.current || 1;
         const pageSize = params.pageSize || DEFAULT_PAGE_SIZE;
+        const keyword = keywordRef.current.trim();
 
         if (pageSizeRef.current !== pageSize) {
           pageSizeRef.current = pageSize;
@@ -187,6 +240,35 @@ const EventTable = ({ name, namespace, type }: EventTableProps) => {
             data: [],
             success: true,
             total: 0,
+          };
+        }
+
+        if (keyword) {
+          let nextContinueToken = '';
+          const allItems: API.ClusterNodeEventItem[] = [];
+
+          do {
+            const res = await getClusterNodeEventList({
+              objectKind: type,
+              objectName: name,
+              namespace,
+              limit: EVENT_SEARCH_PAGE_SIZE,
+              continue: nextContinueToken || undefined,
+            });
+
+            allItems.push(...(res.data.items || []));
+            nextContinueToken = res.data.continue || '';
+          } while (nextContinueToken);
+
+          const items = allItems.filter((event) =>
+            matchEventKeyword(event, keyword),
+          );
+          const start = (current - 1) * pageSize;
+
+          return {
+            data: items.slice(start, start + pageSize),
+            success: true,
+            total: items.length,
           };
         }
 

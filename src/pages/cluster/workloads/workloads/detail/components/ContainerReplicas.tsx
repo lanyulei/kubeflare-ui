@@ -5,10 +5,20 @@ import {
   PauseCircleOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { App, Button, Modal, Space, Spin, Tooltip, Typography } from 'antd';
+import {
+  App,
+  Button,
+  Input,
+  Modal,
+  Space,
+  Spin,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { openContainerTerminalWindow } from '@/components/ClusterPodList/terminal';
@@ -108,6 +118,9 @@ const useStyles = createStyles(({ token }) => ({
     padding: token.paddingLG,
     color: token.colorTextTertiary,
   },
+  search: {
+    width: 260,
+  },
 }));
 
 const getLabelSelector = (selector?: Record<string, string>) =>
@@ -187,6 +200,20 @@ const getLogDownloadFileName = (
     container?.name || 'container'
   }.log`.replace(/[^\w.-]+/g, '-');
 
+const getRowKeywordValues = (row: ContainerReplicaRow) => [
+  row.pod.name,
+  row.pod.namespace,
+  row.pod.pod_ip,
+  row.pod.node_ip,
+  row.pod.node_name,
+  row.pod.status,
+  row.pod.phase,
+  row.container.name,
+  row.container.status,
+  getStatusLabel(row.pod.status || row.pod.phase),
+  getStatusLabel(row.container.status),
+];
+
 const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
   const { message } = App.useApp();
   const { styles } = useStyles();
@@ -201,6 +228,7 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
   const [logContent, setLogContent] = useState('');
   const [logLoading, setLogLoading] = useState(false);
   const [logFollowing, setLogFollowing] = useState(true);
+  const [keyword, setKeyword] = useState('');
   const labelSelector = useMemo(
     () => getLabelSelector(workload?.selector),
     [workload?.selector],
@@ -216,6 +244,19 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
       ),
     [pods],
   );
+  const filteredRows = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    if (!normalizedKeyword) {
+      return rows;
+    }
+
+    return rows.filter((row) =>
+      getRowKeywordValues(row)
+        .filter(Boolean)
+        .some((value) => value?.toLowerCase().includes(normalizedKeyword)),
+    );
+  }, [keyword, rows]);
   const statusDotClassNames = {
     default: styles.statusDotDefault,
     error: styles.statusDotError,
@@ -471,11 +512,21 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
         search={false}
         loading={loading}
         columns={columns}
-        dataSource={rows}
+        dataSource={filteredRows}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,
         }}
+        headerTitle={
+          <Input
+            allowClear
+            className={styles.search}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="搜索容器组名称 / IP / 节点 / 状态"
+            suffix={<SearchOutlined />}
+            value={keyword}
+          />
+        }
         options={{
           reload: fetchPods,
         }}
