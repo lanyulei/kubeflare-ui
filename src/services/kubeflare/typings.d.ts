@@ -217,6 +217,9 @@ declare namespace API {
 
   type ClusterNodeEventListParams = {
     nodeName?: string
+    objectKind?: string
+    objectName?: string
+    namespace?: string
     limit?: number
     continue?: string
   }
@@ -471,6 +474,10 @@ declare namespace API {
     type: ClusterWorkloadType
     namespace: string
     name: string
+  }
+
+  type UpdateClusterWorkloadReplicasParams = ClusterWorkloadDetailParams & {
+    replicas: number
   }
 
   type ClusterStorageClassItem = {

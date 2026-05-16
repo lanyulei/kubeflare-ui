@@ -1,11 +1,16 @@
 import { PageContainer, ProDescriptions } from '@ant-design/pro-components';
 import { history, useIntl, useParams } from '@umijs/max';
-import { Empty, Spin } from 'antd';
+import { App, Empty, Spin } from 'antd';
 import { createStyles } from 'antd-style';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SectionTitle } from '@/components';
-import { getClusterWorkloadDetail } from '@/services/kubeflare/cluster/workload';
+import {
+  getClusterWorkloadDetail,
+  updateClusterWorkloadReplicas,
+} from '@/services/kubeflare/cluster/workload';
 import ContainerReplicas from './components/ContainerReplicas';
+import EventTable from './components/EventTable';
+import ReplicaSummary from './components/ReplicaSummary';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 
@@ -15,6 +20,16 @@ const useStyles = createStyles(({ token }) => ({
     border: `1px solid ${token.colorBorder}80`,
     borderRadius: token.borderRadiusLG,
     padding: 20,
+  },
+  basicInfoContent: {
+    display: 'flex',
+    alignItems: 'stretch',
+    flexWrap: 'wrap',
+    gap: token.marginLG,
+  },
+  description: {
+    flex: 1,
+    minWidth: 420,
   },
   section: {
     marginTop: token.marginLG,
@@ -115,6 +130,7 @@ const isClusterWorkloadType = (
   type === 'Deployment' || type === 'StatefulSet' || type === 'DaemonSet';
 
 const WorkloadDetail = () => {
+  const { message } = App.useApp();
   const intl = useIntl();
   const { styles } = useStyles();
   const params = useParams<{
@@ -126,6 +142,7 @@ const WorkloadDetail = () => {
   const namespace = params.namespace;
   const name = params.name;
   const [loading, setLoading] = useState(false);
+  const [scaling, setScaling] = useState(false);
   const [workload, setWorkload] = useState<API.ClusterWorkloadItem>();
   const descriptionData =
     workload ||
@@ -145,33 +162,54 @@ const WorkloadDetail = () => {
     warning: styles.statusDotWarning,
   };
 
+  const fetchWorkload = useCallback(async () => {
+    if (!type || !namespace || !name) {
+      setWorkload(undefined);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await getClusterWorkloadDetail({
+        type,
+        namespace,
+        name,
+      });
+      setWorkload(res.data);
+    } finally {
+      setLoading(false);
+    }
+  }, [name, namespace, type]);
+
+  const handleScaleReplicas = async (replicas: number) => {
+    if (!type || !namespace || !name) {
+      return;
+    }
+
+    setScaling(true);
+    try {
+      const res = await updateClusterWorkloadReplicas({
+        type,
+        namespace,
+        name,
+        replicas,
+      });
+      message.success('副本数已更新');
+      setWorkload(res.data);
+      await fetchWorkload();
+    } finally {
+      setScaling(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchWorkload = async () => {
-      if (!type || !namespace || !name) {
-        setWorkload(undefined);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const res = await getClusterWorkloadDetail({
-          type,
-          namespace,
-          name,
-        });
-        setWorkload(res.data);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchWorkload();
 
     window.addEventListener(CURRENT_CLUSTER_CHANGE_EVENT, fetchWorkload);
     return () => {
       window.removeEventListener(CURRENT_CLUSTER_CHANGE_EVENT, fetchWorkload);
     };
-  }, [name, namespace, type]);
+  }, [fetchWorkload]);
 
   return (
     <PageContainer
@@ -189,79 +227,87 @@ const WorkloadDetail = () => {
         <div className={styles.content}>
           <Spin spinning={loading}>
             {descriptionData ? (
-              <ProDescriptions<API.ClusterWorkloadItem>
-                column={3}
-                dataSource={descriptionData}
-                columns={[
-                  {
-                    title: intl.formatMessage({
-                      id: 'pages.cluster.workloads.name',
-                      defaultMessage: '名称',
-                    }),
-                    dataIndex: 'name',
-                    copyable: true,
-                    renderText: (_, record) => record.name || name,
-                  },
-                  {
-                    title: intl.formatMessage({
-                      id: 'pages.cluster.workloads.namespace',
-                      defaultMessage: '命名空间',
-                    }),
-                    dataIndex: 'namespace',
-                    renderText: (_, record) => record.namespace || namespace,
-                  },
-                  {
-                    title: intl.formatMessage({
-                      id: 'pages.cluster.workloads.status',
-                      defaultMessage: '状态',
-                    }),
-                    dataIndex: 'status',
-                    render: (_, record) => {
-                      const statusType = getWorkloadStatusType(record.status);
-
-                      return (
-                        <span className={styles.status}>
-                          <span
-                            className={[
-                              styles.statusDot,
-                              statusDotClassNames[statusType],
-                            ].join(' ')}
-                          />
-                          <span>{getWorkloadStatusLabel(record.status)}</span>
-                        </span>
-                      );
+              <div className={styles.basicInfoContent}>
+                <ReplicaSummary
+                  loading={scaling}
+                  workload={descriptionData}
+                  onScale={handleScaleReplicas}
+                />
+                <ProDescriptions<API.ClusterWorkloadItem>
+                  className={styles.description}
+                  column={2}
+                  dataSource={descriptionData}
+                  columns={[
+                    {
+                      title: intl.formatMessage({
+                        id: 'pages.cluster.workloads.name',
+                        defaultMessage: '名称',
+                      }),
+                      dataIndex: 'name',
+                      copyable: true,
+                      renderText: (_, record) => record.name || name,
                     },
-                  },
-                  {
-                    title: intl.formatMessage({
-                      id: 'pages.cluster.workloads.type',
-                      defaultMessage: '类型',
-                    }),
-                    dataIndex: 'type',
-                    renderText: (_, record) =>
-                      record.type_label ||
-                      workloadTypeLabels[record.type] ||
-                      (type ? workloadTypeLabels[type] : '-'),
-                  },
-                  {
-                    title: intl.formatMessage({
-                      id: 'pages.cluster.workloads.createTime',
-                      defaultMessage: '创建时间',
-                    }),
-                    dataIndex: 'create_time',
-                    valueType: 'dateTime',
-                  },
-                  {
-                    title: intl.formatMessage({
-                      id: 'pages.cluster.workloads.updateTime',
-                      defaultMessage: '更新时间',
-                    }),
-                    dataIndex: 'update_time',
-                    valueType: 'dateTime',
-                    renderText: (_, record) => record.update_time || '-',
-                  },
-                ]}
-              />
+                    {
+                      title: intl.formatMessage({
+                        id: 'pages.cluster.workloads.namespace',
+                        defaultMessage: '命名空间',
+                      }),
+                      dataIndex: 'namespace',
+                      renderText: (_, record) => record.namespace || namespace,
+                    },
+                    {
+                      title: intl.formatMessage({
+                        id: 'pages.cluster.workloads.status',
+                        defaultMessage: '状态',
+                      }),
+                      dataIndex: 'status',
+                      render: (_, record) => {
+                        const statusType = getWorkloadStatusType(record.status);
+
+                        return (
+                          <span className={styles.status}>
+                            <span
+                              className={[
+                                styles.statusDot,
+                                statusDotClassNames[statusType],
+                              ].join(' ')}
+                            />
+                            <span>{getWorkloadStatusLabel(record.status)}</span>
+                          </span>
+                        );
+                      },
+                    },
+                    {
+                      title: intl.formatMessage({
+                        id: 'pages.cluster.workloads.type',
+                        defaultMessage: '类型',
+                      }),
+                      dataIndex: 'type',
+                      renderText: (_, record) =>
+                        record.type_label ||
+                        workloadTypeLabels[record.type] ||
+                        (type ? workloadTypeLabels[type] : '-'),
+                    },
+                    {
+                      title: intl.formatMessage({
+                        id: 'pages.cluster.workloads.createTime',
+                        defaultMessage: '创建时间',
+                      }),
+                      dataIndex: 'create_time',
+                      valueType: 'dateTime',
+                    },
+                    {
+                      title: intl.formatMessage({
+                        id: 'pages.cluster.workloads.updateTime',
+                        defaultMessage: '更新时间',
+                      }),
+                      dataIndex: 'update_time',
+                      valueType: 'dateTime',
+                      renderText: (_, record) => record.update_time || '-',
+                    },
+                  ]}
+                />
+              </div>
             ) : (
               <Empty
                 description={intl.formatMessage({
@@ -276,6 +322,10 @@ const WorkloadDetail = () => {
       <div className={styles.section}>
         <SectionTitle>容器组</SectionTitle>
         <ContainerReplicas workload={workload} />
+      </div>
+      <div className={styles.section}>
+        <SectionTitle>事件</SectionTitle>
+        <EventTable name={name} namespace={namespace} type={type} />
       </div>
     </PageContainer>
   );

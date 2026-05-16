@@ -317,3 +317,43 @@ export async function getClusterWorkloadDetail(
     data: res.data ? toClusterWorkloadItem(res.data, type) : undefined,
   } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
 }
+
+/** 更新工作负载副本数 PATCH /kapis/apps/v1/namespaces/:namespace/{deployments,statefulsets}/:name */
+export async function updateClusterWorkloadReplicas(
+  params: API.UpdateClusterWorkloadReplicasParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name, replicas } = params
+
+  if (!clusterId || !type || !namespace || !name) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+  }
+
+  const url = workloadDetailResourcePaths[type]
+    .replace(':namespace', encodeURIComponent(namespace))
+    .replace(':name', encodeURIComponent(name))
+  const res = await request<API.ApiResponse<KubernetesWorkload>>(url, {
+    method: 'PATCH',
+    data: {
+      spec: {
+        replicas,
+      },
+    },
+    ...(options || {}),
+    headers: {
+      'Content-Type': 'application/merge-patch+json',
+      'X-Cluster-ID': clusterId,
+      ...options?.headers,
+    },
+  })
+
+  return {
+    ...res,
+    data: res.data ? toClusterWorkloadItem(res.data, type) : undefined,
+  } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+}

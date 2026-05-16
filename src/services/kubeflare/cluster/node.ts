@@ -582,10 +582,17 @@ export async function getClusterNodeEventList(
     } as API.ApiResponse<API.ClusterNodeEventListData>
   }
 
-  const { nodeName, ...restParams } = params || {}
-  const fieldSelector = nodeName
-    ? `involvedObject.kind=Node,involvedObject.name=${nodeName}`
-    : undefined
+  const { namespace, nodeName, objectKind, objectName, ...restParams } =
+    params || {}
+  const fieldSelectors = nodeName
+    ? [`involvedObject.kind=Node`, `involvedObject.name=${nodeName}`]
+    : [
+        objectKind ? `involvedObject.kind=${objectKind}` : undefined,
+        objectName ? `involvedObject.name=${objectName}` : undefined,
+        namespace ? `involvedObject.namespace=${namespace}` : undefined,
+      ].filter(Boolean)
+  const fieldSelector =
+    fieldSelectors.length > 0 ? fieldSelectors.join(',') : undefined
 
   const res = await request<API.ApiResponse<KubernetesEventList>>(
     '/kapi/v1/events',
