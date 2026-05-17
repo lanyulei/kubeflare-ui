@@ -5,9 +5,6 @@ type WorkloadStorageType = 'none' | 'emptyDir' | 'persistentVolumeClaim';
 type CreateWorkloadFormValues = {
   name?: string;
   namespace?: string;
-  description?: string;
-  template?: string;
-  alias?: string;
   replicas?: number;
   containerName?: string;
   image?: string;

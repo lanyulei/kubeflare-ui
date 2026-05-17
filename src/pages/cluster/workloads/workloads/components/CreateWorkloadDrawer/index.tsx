@@ -18,7 +18,6 @@ import {
   Space,
   Steps,
   Switch,
-  Typography,
 } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
@@ -34,11 +33,7 @@ import {
 } from './helpers';
 import type { CreateWorkloadFormValues } from './types';
 
-const { Text } = Typography;
-
 const NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
-const ALIAS_PATTERN =
-  /^[\u4e00-\u9fa5A-Za-z0-9]([\u4e00-\u9fa5A-Za-z0-9-]*[\u4e00-\u9fa5A-Za-z0-9])?$/;
 
 const useStyles = createStyles(({ token }) => ({
   drawer: {
@@ -96,12 +91,6 @@ const useStyles = createStyles(({ token }) => ({
     height: 'calc(100vh - 166px)',
     padding: token.paddingLG,
     background: token.colorBgContainer,
-  },
-  formHelp: {
-    display: 'block',
-    marginTop: token.marginXXS,
-    color: token.colorTextTertiary,
-    fontSize: token.fontSizeSM,
   },
   footer: {
     display: 'flex',
@@ -293,68 +282,37 @@ const CreateWorkloadDrawer = ({
   };
 
   const renderBasicInfo = () => (
-    <Row gutter={24}>
+    <Row gutter={16}>
       <Col span={12}>
         <Form.Item
           label="名称"
           name="name"
           rules={[
-            { required: true, message: '请设置一个名称。' },
-            { max: 63, message: '名称最长 63 个字符。' },
+            { required: true, message: '请输入名称' },
+            { max: 63, message: '名称最长 63 个字符' },
             {
               pattern: NAME_PATTERN,
               message:
-                '名称只能包含小写字母、数字和连字符（-），且不能以连字符开头或结尾。',
+                '名称只能包含小写字母、数字和连字符（-），且不能以连字符开头或结尾',
             },
           ]}
         >
-          <Input autoFocus />
+          <Input placeholder='请输入名称' autoFocus />
         </Form.Item>
+      </Col>
+      <Col span={12}>
         <Form.Item
-          label="项目"
+          label="命名空间"
           name="namespace"
-          rules={[{ required: true, message: '请选择一个项目。' }]}
+          rules={[{ required: true, message: '请选择命名空间' }]}
         >
           <Select
             showSearch
             options={namespaceOptions}
             optionFilterProp="label"
-            placeholder="请选择"
+            placeholder="请选择命名空间"
           />
         </Form.Item>
-        <Form.Item label="描述" name="description">
-          <Input.TextArea maxLength={256} rows={3} />
-        </Form.Item>
-        <Text className={styles.formHelp}>
-          描述可包含任意字符，最长 256 个字符。
-        </Text>
-      </Col>
-      <Col span={12}>
-        <Form.Item label="工作负载模板" name="template">
-          <Select
-            options={[{ label: resourceName, value: type }]}
-            placeholder="请选择"
-          />
-        </Form.Item>
-        <Text className={styles.formHelp}>选择一个工作负载模板进行创建。</Text>
-        <Form.Item
-          label="别名"
-          name="alias"
-          rules={[
-            { max: 63, message: '别名最长 63 个字符。' },
-            {
-              pattern: ALIAS_PATTERN,
-              message:
-                '别名只能包含中文、字母、数字和连字符（-），不得以连字符开头或结尾。',
-            },
-          ]}
-        >
-          <Input />
-        </Form.Item>
-        <Text className={styles.formHelp}>
-          别名只能包含中文、字母、数字和连字符（-），不得以连字符（-）开头或结尾，最长
-          63 个字符。
-        </Text>
       </Col>
     </Row>
   );
@@ -366,12 +324,12 @@ const CreateWorkloadDrawer = ({
           label="容器名称"
           name="containerName"
           rules={[
-            { required: true, message: '请输入容器名称。' },
-            { max: 63, message: '容器名称最长 63 个字符。' },
+            { required: true, message: '请输入容器名称' },
+            { max: 63, message: '容器名称最长 63 个字符' },
             {
               pattern: NAME_PATTERN,
               message:
-                '容器名称只能包含小写字母、数字和连字符（-），且不能以连字符开头或结尾。',
+                '容器名称只能包含小写字母、数字和连字符（-），且不能以连字符开头或结尾',
             },
           ]}
         >
@@ -380,7 +338,7 @@ const CreateWorkloadDrawer = ({
         <Form.Item
           label="镜像"
           name="image"
-          rules={[{ required: true, message: '请输入容器镜像。' }]}
+          rules={[{ required: true, message: '请输入容器镜像' }]}
         >
           <Input placeholder="例如 nginx:1.27" />
         </Form.Item>
@@ -399,7 +357,7 @@ const CreateWorkloadDrawer = ({
           <Form.Item
             label="副本数"
             name="replicas"
-            rules={[{ required: true, message: '请输入副本数。' }]}
+            rules={[{ required: true, message: '请输入副本数' }]}
           >
             <InputNumber min={0} precision={0} style={{ width: '100%' }} />
           </Form.Item>
@@ -443,14 +401,14 @@ const CreateWorkloadDrawer = ({
             <Form.Item
               label="卷名称"
               name="volumeName"
-              rules={[{ required: true, message: '请输入卷名称。' }]}
+              rules={[{ required: true, message: '请输入卷名称' }]}
             >
               <Input placeholder="例如 data" />
             </Form.Item>
             <Form.Item
               label="挂载路径"
               name="mountPath"
-              rules={[{ required: true, message: '请输入挂载路径。' }]}
+              rules={[{ required: true, message: '请输入挂载路径' }]}
             >
               <Input placeholder="例如 /data" />
             </Form.Item>
@@ -463,7 +421,7 @@ const CreateWorkloadDrawer = ({
             <Form.Item
               label="PVC 名称"
               name="claimName"
-              rules={[{ required: true, message: '请输入 PVC 名称。' }]}
+              rules={[{ required: true, message: '请输入 PVC 名称' }]}
             >
               <Input placeholder="选择或输入已有 PVC 名称" />
             </Form.Item>

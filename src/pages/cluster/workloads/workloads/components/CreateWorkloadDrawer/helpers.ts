@@ -39,7 +39,6 @@ const getInitialCreateWorkloadValues = (
   namespace?: string,
 ): CreateWorkloadFormValues => ({
   namespace,
-  template: type,
   replicas: type === 'DaemonSet' ? undefined : 1,
   imagePullPolicy: 'IfNotPresent',
   protocol: 'TCP',
