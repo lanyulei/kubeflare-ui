@@ -13,6 +13,8 @@ type KubernetesWorkloadCondition = {
 }
 
 type KubernetesWorkload = {
+  apiVersion?: string
+  kind?: string
   metadata?: {
     uid?: string
     name?: string
@@ -46,6 +48,25 @@ type KubernetesWorkloadList = {
   items?: KubernetesWorkload[]
 }
 
+type KubernetesOwnerReference = {
+  kind?: string
+  name?: string
+}
+
+type KubernetesRevisionResource = {
+  metadata?: {
+    name?: string
+    annotations?: Record<string, string>
+    creationTimestamp?: string
+    ownerReferences?: KubernetesOwnerReference[]
+  }
+  revision?: number
+}
+
+type KubernetesRevisionResourceList = {
+  items?: KubernetesRevisionResource[]
+}
+
 const workloadResourcePaths: Record<API.ClusterWorkloadType, string> = {
   Deployment: '/kapis/apps/v1/deployments',
   StatefulSet: '/kapis/apps/v1/statefulsets',
@@ -65,6 +86,12 @@ const workloadDetailResourcePaths: Record<API.ClusterWorkloadType, string> = {
   DaemonSet: '/kapis/apps/v1/namespaces/:namespace/daemonsets/:name',
 }
 
+const workloadRevisionResourcePaths: Record<API.ClusterWorkloadType, string> = {
+  Deployment: '/kapis/apps/v1/namespaces/:namespace/replicasets',
+  StatefulSet: '/kapis/apps/v1/namespaces/:namespace/controllerrevisions',
+  DaemonSet: '/kapis/apps/v1/namespaces/:namespace/controllerrevisions',
+}
+
 const workloadTypeLabels: Record<API.ClusterWorkloadType, string> = {
   Deployment: '部署',
   StatefulSet: '有状态副本集',
@@ -77,6 +104,17 @@ const getCurrentClusterId = () => {
   }
   return window.localStorage.getItem(CURRENT_CLUSTER_STORAGE_KEY) || undefined
 }
+
+const getWorkloadDetailUrl = (params: API.ClusterWorkloadDetailParams) =>
+  workloadDetailResourcePaths[params.type]
+    .replace(':namespace', encodeURIComponent(params.namespace))
+    .replace(':name', encodeURIComponent(params.name))
+
+const getWorkloadRevisionUrl = (params: API.ClusterWorkloadDetailParams) =>
+  workloadRevisionResourcePaths[params.type].replace(
+    ':namespace',
+    encodeURIComponent(params.namespace),
+  )
 
 const getWorkloadReplicas = (
   workload: KubernetesWorkload,
@@ -193,6 +231,42 @@ const toClusterWorkloadItem = (
   }
 }
 
+const getRevisionResourceRevision = (
+  item: KubernetesRevisionResource,
+  type: API.ClusterWorkloadType,
+) => {
+  if (type === 'Deployment') {
+    return Number(item.metadata?.annotations?.['deployment.kubernetes.io/revision'])
+  }
+
+  return Number(item.revision)
+}
+
+const toClusterWorkloadRevisionItem = (
+  item: KubernetesRevisionResource,
+  type: API.ClusterWorkloadType,
+): API.ClusterWorkloadRevisionItem | undefined => {
+  const revision = getRevisionResourceRevision(item, type)
+
+  if (!Number.isFinite(revision) || revision <= 0) {
+    return undefined
+  }
+
+  return {
+    name: item.metadata?.name,
+    revision,
+    create_time: item.metadata?.creationTimestamp,
+  }
+}
+
+const matchRevisionOwner = (
+  item: KubernetesRevisionResource,
+  params: API.ClusterWorkloadDetailParams,
+) =>
+  item.metadata?.ownerReferences?.some(
+    (owner) => owner.kind === params.type && owner.name === params.name,
+  )
+
 const matchWorkloadKeyword = (
   workload: API.ClusterWorkloadItem,
   keyword?: string,
@@ -300,9 +374,7 @@ export async function getClusterWorkloadDetail(
     } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
   }
 
-  const url = workloadDetailResourcePaths[type]
-    .replace(':namespace', encodeURIComponent(namespace))
-    .replace(':name', encodeURIComponent(name))
+  const url = getWorkloadDetailUrl(params)
   const res = await request<API.ApiResponse<KubernetesWorkload>>(url, {
     method: 'GET',
     ...(options || {}),
@@ -334,9 +406,7 @@ export async function updateClusterWorkloadReplicas(
     } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
   }
 
-  const url = workloadDetailResourcePaths[type]
-    .replace(':namespace', encodeURIComponent(namespace))
-    .replace(':name', encodeURIComponent(name))
+  const url = getWorkloadDetailUrl(params)
   const res = await request<API.ApiResponse<KubernetesWorkload>>(url, {
     method: 'PATCH',
     data: {
@@ -356,4 +426,228 @@ export async function updateClusterWorkloadReplicas(
     ...res,
     data: res.data ? toClusterWorkloadItem(res.data, type) : undefined,
   } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+}
+
+/** 获取工作负载原始清单 GET /kapis/apps/v1/namespaces/:namespace/{deployments,statefulsets,daemonsets}/:name */
+export async function getClusterWorkloadManifest(
+  params: API.ClusterWorkloadDetailParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name } = params
+
+  if (!clusterId || !type || !namespace || !name) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  const res = await request<API.ApiResponse<Record<string, unknown>>>(
+    getWorkloadDetailUrl(params),
+    {
+      method: 'GET',
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  return res as API.ApiResponse<Record<string, unknown> | undefined>
+}
+
+/** 获取工作负载修订记录列表 GET /kapis/apps/v1/namespaces/:namespace/{replicasets,controllerrevisions} */
+export async function getClusterWorkloadRevisionList(
+  params: API.ClusterWorkloadDetailParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name } = params
+
+  if (!clusterId || !type || !namespace || !name) {
+    return {
+      code: 20000,
+      message: '',
+      data: {
+        items: [],
+      },
+    } as API.ApiResponse<API.ClusterWorkloadRevisionListData>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesRevisionResourceList>>(
+    getWorkloadRevisionUrl(params),
+    {
+      method: 'GET',
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  const revisions = (res.data?.items || [])
+    .filter((item) => matchRevisionOwner(item, params))
+    .map((item) => toClusterWorkloadRevisionItem(item, type))
+    .filter(Boolean) as API.ClusterWorkloadRevisionItem[]
+
+  return {
+    ...res,
+    data: {
+      items: revisions.sort((first, second) => second.revision - first.revision),
+    },
+  } as API.ApiResponse<API.ClusterWorkloadRevisionListData>
+}
+
+/** 更新工作负载清单 PUT /kapis/apps/v1/namespaces/:namespace/{deployments,statefulsets,daemonsets}/:name */
+export async function updateClusterWorkloadManifest(
+  params: API.UpdateClusterWorkloadManifestParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name, manifest } = params
+
+  if (!clusterId || !type || !namespace || !name) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesWorkload>>(
+    getWorkloadDetailUrl(params),
+    {
+      method: 'PUT',
+      data: manifest,
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  return {
+    ...res,
+    data: res.data ? toClusterWorkloadItem(res.data, type) : undefined,
+  } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+}
+
+/** 重新创建工作负载 PATCH /kapis/apps/v1/namespaces/:namespace/{deployments,statefulsets,daemonsets}/:name */
+export async function recreateClusterWorkload(
+  params: API.ClusterWorkloadDetailParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name } = params
+
+  if (!clusterId || !type || !namespace || !name) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesWorkload>>(
+    getWorkloadDetailUrl(params),
+    {
+      method: 'PATCH',
+      data: {
+        spec: {
+          template: {
+            metadata: {
+              annotations: {
+                'kubeflare.io/restarted-at': new Date().toISOString(),
+              },
+            },
+          },
+        },
+      },
+      ...(options || {}),
+      headers: {
+        'Content-Type': 'application/merge-patch+json',
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  return {
+    ...res,
+    data: res.data ? toClusterWorkloadItem(res.data, type) : undefined,
+  } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+}
+
+/** 回退工作负载 POST /kapis/apps/v1/namespaces/:namespace/{deployments,statefulsets,daemonsets}/:name/rollback */
+export async function rollbackClusterWorkload(
+  params: API.RollbackClusterWorkloadParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name, target_revision } = params
+
+  if (!clusterId || !type || !namespace || !name) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesWorkload>>(
+    `${getWorkloadDetailUrl(params)}/rollback`,
+    {
+      method: 'POST',
+      data: {
+        rollbackTo: {
+          revision: target_revision,
+        },
+        revision: target_revision,
+      },
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  return {
+    ...res,
+    data: res.data ? toClusterWorkloadItem(res.data, type) : undefined,
+  } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+}
+
+/** 删除工作负载 DELETE /kapis/apps/v1/namespaces/:namespace/{deployments,statefulsets,daemonsets}/:name */
+export async function deleteClusterWorkload(
+  params: API.ClusterWorkloadDetailParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name } = params
+
+  if (!clusterId || !type || !namespace || !name) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(
+    getWorkloadDetailUrl(params),
+    {
+      method: 'DELETE',
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
 }

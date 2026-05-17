@@ -511,6 +511,24 @@ declare namespace API {
     replicas: number
   }
 
+  type UpdateClusterWorkloadManifestParams = ClusterWorkloadDetailParams & {
+    manifest: Record<string, unknown>
+  }
+
+  type RollbackClusterWorkloadParams = ClusterWorkloadDetailParams & {
+    target_revision: number
+  }
+
+  type ClusterWorkloadRevisionItem = {
+    name?: string
+    revision: number
+    create_time?: string
+  }
+
+  type ClusterWorkloadRevisionListData = {
+    items: ClusterWorkloadRevisionItem[]
+  }
+
   type ClusterStorageClassItem = {
     name: string
     provisioner?: string

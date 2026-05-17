@@ -1,11 +1,38 @@
+import {
+  DeleteOutlined,
+  DownOutlined,
+  FileTextOutlined,
+  ReloadOutlined,
+  RollbackOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
 import { PageContainer, ProDescriptions } from '@ant-design/pro-components';
 import { history, useIntl, useParams } from '@umijs/max';
-import { App, Empty, Spin } from 'antd';
+import {
+  App,
+  Button,
+  Drawer,
+  Dropdown,
+  Empty,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Spin,
+} from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useState } from 'react';
-import { SectionTitle } from '@/components';
+import { parse, stringify } from 'yaml';
+import { SectionTitle, YamlEditor } from '@/components';
 import {
+  deleteClusterWorkload,
   getClusterWorkloadDetail,
+  getClusterWorkloadManifest,
+  getClusterWorkloadRevisionList,
+  recreateClusterWorkload,
+  rollbackClusterWorkload,
+  updateClusterWorkloadManifest,
   updateClusterWorkloadReplicas,
 } from '@/services/kubeflare/cluster/workload';
 import ContainerReplicas from './components/ContainerReplicas';
@@ -15,6 +42,21 @@ import ReplicaSummary from './components/ReplicaSummary';
 import useWorkloadPods from './components/useWorkloadPods';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
+
+type WorkloadActionKey =
+  | 'rollback'
+  | 'settings'
+  | 'yaml'
+  | 'recreate'
+  | 'delete';
+
+type WorkloadSettingsFormValues = {
+  replicas?: number;
+};
+
+type WorkloadRollbackFormValues = {
+  target_revision?: number;
+};
 
 const useStyles = createStyles(({ token }) => ({
   content: {
@@ -35,6 +77,20 @@ const useStyles = createStyles(({ token }) => ({
   },
   section: {
     marginTop: token.marginLG,
+  },
+  yamlDrawerBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  yamlDrawerEditor: {
+    flex: 1,
+    minHeight: 0,
+  },
+  yamlDrawerFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: token.marginSM,
   },
   status: {
     display: 'inline-flex',
@@ -132,9 +188,11 @@ const isClusterWorkloadType = (
   type === 'Deployment' || type === 'StatefulSet' || type === 'DaemonSet';
 
 const WorkloadDetail = () => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const intl = useIntl();
   const { styles } = useStyles();
+  const [settingsForm] = Form.useForm<WorkloadSettingsFormValues>();
+  const [rollbackForm] = Form.useForm<WorkloadRollbackFormValues>();
   const params = useParams<{
     type?: string;
     namespace?: string;
@@ -145,6 +203,15 @@ const WorkloadDetail = () => {
   const name = params.name;
   const [loading, setLoading] = useState(false);
   const [scaling, setScaling] = useState(false);
+  const [actionLoading, setActionLoading] = useState<WorkloadActionKey>();
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [rollbackModalOpen, setRollbackModalOpen] = useState(false);
+  const [revisionLoading, setRevisionLoading] = useState(false);
+  const [revisions, setRevisions] = useState<API.ClusterWorkloadRevisionItem[]>(
+    [],
+  );
+  const [yamlModalOpen, setYamlModalOpen] = useState(false);
+  const [yamlValue, setYamlValue] = useState('');
   const [workload, setWorkload] = useState<API.ClusterWorkloadItem>();
   const {
     loading: podLoading,
@@ -162,12 +229,55 @@ const WorkloadDetail = () => {
           type_label: workloadTypeLabels[type],
         } as API.ClusterWorkloadItem)
       : undefined);
+  const detailParams =
+    type && namespace && name
+      ? {
+          type,
+          namespace,
+          name,
+        }
+      : undefined;
   const statusDotClassNames = {
     default: styles.statusDotDefault,
     error: styles.statusDotError,
     success: styles.statusDotSuccess,
     warning: styles.statusDotWarning,
   };
+  const workloadActionItems = [
+    {
+      key: 'rollback',
+      icon: <RollbackOutlined />,
+      label: '回退',
+    },
+    {
+      key: 'settings',
+      disabled: type === 'DaemonSet',
+      icon: <SettingOutlined />,
+      label: '编辑设置',
+    },
+    {
+      key: 'yaml',
+      icon: <FileTextOutlined />,
+      label: '编辑 YAML',
+    },
+    {
+      key: 'recreate',
+      icon: <ReloadOutlined />,
+      label: '重新创建',
+    },
+    {
+      danger: true,
+      key: 'delete',
+      icon: <DeleteOutlined />,
+      label: '删除',
+    },
+  ];
+  const currentRevision = Number(
+    descriptionData?.annotations?.['deployment.kubernetes.io/revision'],
+  );
+  const currentRevisionLabel = Number.isFinite(currentRevision)
+    ? `#${currentRevision}`
+    : '-';
 
   const fetchWorkload = useCallback(async () => {
     if (!type || !namespace || !name) {
@@ -209,6 +319,187 @@ const WorkloadDetail = () => {
     }
   };
 
+  const refreshDetail = async () => {
+    await fetchWorkload();
+    await reloadPods();
+  };
+
+  const openSettingsModal = () => {
+    settingsForm.setFieldsValue({
+      replicas: descriptionData?.replicas || 0,
+    });
+    setSettingsModalOpen(true);
+  };
+
+  const handleSaveSettings = async () => {
+    if (!detailParams) {
+      return;
+    }
+
+    const values = await settingsForm.validateFields();
+    const replicas = values.replicas ?? 0;
+
+    setActionLoading('settings');
+    try {
+      const res = await updateClusterWorkloadReplicas({
+        ...detailParams,
+        replicas,
+      });
+      message.success('工作负载设置已更新');
+      setWorkload(res.data);
+      setSettingsModalOpen(false);
+      await refreshDetail();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const openRollbackModal = async () => {
+    if (!detailParams) {
+      return;
+    }
+
+    rollbackForm.resetFields();
+    setRollbackModalOpen(true);
+    setRevisionLoading(true);
+    try {
+      const res = await getClusterWorkloadRevisionList(detailParams);
+      setRevisions(res.data.items || []);
+    } finally {
+      setRevisionLoading(false);
+    }
+  };
+
+  const handleSaveRollback = async () => {
+    if (!detailParams) {
+      return;
+    }
+
+    const values = await rollbackForm.validateFields();
+
+    if (!values.target_revision) {
+      message.warning('请选择目标修改记录');
+      return;
+    }
+
+    setActionLoading('rollback');
+    try {
+      const res = await rollbackClusterWorkload({
+        ...detailParams,
+        target_revision: values.target_revision,
+      });
+      message.success('工作负载已回退');
+      setWorkload(res.data);
+      setRollbackModalOpen(false);
+      await refreshDetail();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const openYamlModal = async () => {
+    if (!detailParams) {
+      return;
+    }
+
+    setYamlModalOpen(true);
+    setActionLoading('yaml');
+    try {
+      const res = await getClusterWorkloadManifest(detailParams);
+      setYamlValue(stringify(res.data || {}, { indent: 2 }));
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleSaveYaml = async () => {
+    if (!detailParams) {
+      return;
+    }
+
+    let manifest: unknown;
+
+    try {
+      manifest = parse(yamlValue);
+    } catch {
+      message.error('YAML 格式不正确，请检查后重试');
+      return;
+    }
+
+    if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+      message.error('YAML 内容必须是有效的资源对象');
+      return;
+    }
+
+    setActionLoading('yaml');
+    try {
+      const res = await updateClusterWorkloadManifest({
+        ...detailParams,
+        manifest: manifest as Record<string, unknown>,
+      });
+      message.success('工作负载 YAML 已更新');
+      setWorkload(res.data);
+      setYamlModalOpen(false);
+      await refreshDetail();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleRollback = () => {
+    void openRollbackModal();
+  };
+
+  const handleRecreate = () => {
+    if (!detailParams) {
+      return;
+    }
+
+    modal.confirm({
+      title: '确认重新创建该工作负载吗？',
+      content: '重新创建会触发容器组滚动重建，业务可能出现短暂波动。',
+      okText: '重新创建',
+      cancelText: '取消',
+      onOk: async () => {
+        setActionLoading('recreate');
+        try {
+          const res = await recreateClusterWorkload(detailParams);
+          message.success('工作负载已开始重新创建');
+          setWorkload(res.data);
+          await refreshDetail();
+        } finally {
+          setActionLoading(undefined);
+        }
+      },
+    });
+  };
+
+  const handleDelete = () => {
+    if (!detailParams) {
+      return;
+    }
+
+    modal.confirm({
+      title: '确认删除该工作负载吗？',
+      content: '删除后工作负载及其管理的容器组将被移除，请谨慎操作。',
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: {
+        danger: true,
+      },
+      onOk: async () => {
+        setActionLoading('delete');
+        try {
+          await deleteClusterWorkload(detailParams);
+          message.success('工作负载已删除');
+          history.push('/cluster/workloads/list');
+        } finally {
+          setActionLoading(undefined);
+        }
+      },
+    });
+  };
+
   useEffect(() => {
     fetchWorkload();
 
@@ -227,6 +518,38 @@ const WorkloadDetail = () => {
           defaultMessage: '工作负载详情',
         })
       }
+      extra={[
+        <Dropdown
+          disabled={!detailParams}
+          key="workload-actions"
+          menu={{
+            items: workloadActionItems,
+            onClick: ({ key }) => {
+              if (key === 'rollback') {
+                handleRollback();
+              }
+              if (key === 'settings') {
+                openSettingsModal();
+              }
+              if (key === 'yaml') {
+                openYamlModal();
+              }
+              if (key === 'recreate') {
+                handleRecreate();
+              }
+              if (key === 'delete') {
+                handleDelete();
+              }
+            },
+          }}
+          trigger={['click']}
+        >
+          <Button disabled={!detailParams} loading={Boolean(actionLoading)}>
+            操作
+            <DownOutlined />
+          </Button>
+        </Dropdown>,
+      ]}
       onBack={() => history.back()}
     >
       <div>
@@ -343,6 +666,102 @@ const WorkloadDetail = () => {
         <SectionTitle>事件</SectionTitle>
         <EventTable name={name} namespace={namespace} type={type} />
       </div>
+      <Modal
+        title={
+          <>
+            <RollbackOutlined /> 回退
+          </>
+        }
+        open={rollbackModalOpen}
+        confirmLoading={actionLoading === 'rollback'}
+        okText="确定"
+        cancelText="取消"
+        onCancel={() => setRollbackModalOpen(false)}
+        onOk={handleSaveRollback}
+      >
+        <Spin spinning={revisionLoading}>
+          <Form form={rollbackForm} layout="vertical">
+            <Form.Item label="资源名称">
+              <Input disabled value={descriptionData?.name || name || '-'} />
+            </Form.Item>
+            <Form.Item label="当前修改记录">
+              <Input disabled value={currentRevisionLabel} />
+            </Form.Item>
+            <Form.Item
+              label="目标修改记录"
+              name="target_revision"
+              rules={[{ required: true, message: '请选择目标修改记录' }]}
+            >
+              <Select<number>
+                loading={revisionLoading}
+                optionFilterProp="label"
+                placeholder="请选择目标修改记录"
+                showSearch
+                options={revisions
+                  .filter((item) => item.revision !== currentRevision)
+                  .map((item) => ({
+                    label: `#${item.revision}`,
+                    value: item.revision,
+                  }))}
+              />
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
+      <Modal
+        title="编辑设置"
+        open={settingsModalOpen}
+        confirmLoading={actionLoading === 'settings'}
+        okText="保存"
+        cancelText="取消"
+        onCancel={() => setSettingsModalOpen(false)}
+        onOk={handleSaveSettings}
+      >
+        <Form form={settingsForm} layout="vertical">
+          <Form.Item
+            label="副本数"
+            name="replicas"
+            rules={[{ required: true, message: '请输入副本数' }]}
+          >
+            <InputNumber min={0} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+      <Drawer
+        title={
+          <>
+            <FileTextOutlined /> 编辑当前资源 YAML
+          </>
+        }
+        open={yamlModalOpen}
+        width="65vw"
+        destroyOnHidden
+        footer={
+          <div className={styles.yamlDrawerFooter}>
+            <Button onClick={() => setYamlModalOpen(false)}>取消</Button>
+            <Button
+              loading={actionLoading === 'yaml'}
+              type="primary"
+              onClick={handleSaveYaml}
+            >
+              确定
+            </Button>
+          </div>
+        }
+        onClose={() => setYamlModalOpen(false)}
+      >
+        <Spin spinning={actionLoading === 'yaml' && !yamlValue}>
+          <div className={styles.yamlDrawerBody}>
+            <div className={styles.yamlDrawerEditor}>
+              <YamlEditor
+                height="100vh"
+                value={yamlValue}
+                onChange={setYamlValue}
+              />
+            </div>
+          </div>
+        </Spin>
+      </Drawer>
     </PageContainer>
   );
 };

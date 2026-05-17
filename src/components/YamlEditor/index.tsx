@@ -1,11 +1,13 @@
-import { yaml } from '@codemirror/lang-yaml'
-import CodeMirror, { EditorView } from '@uiw/react-codemirror'
-import { Typography } from 'antd'
-import { createStyles } from 'antd-style'
-import React from 'react'
+import { yaml } from '@codemirror/lang-yaml';
+import CodeMirror, { EditorView } from '@uiw/react-codemirror';
+import { Typography } from 'antd';
+import { createStyles } from 'antd-style';
+import React from 'react';
 
 const useStyles = createStyles(({ token }) => ({
   editor: {
+    display: 'flex',
+    flexDirection: 'column',
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadius,
     overflow: 'hidden',
@@ -16,7 +18,14 @@ const useStyles = createStyles(({ token }) => ({
       boxShadow: `0 0 0 2px ${token.colorPrimaryBg}`,
     },
 
+    '.cm-theme': {
+      flex: 1,
+      minHeight: 0,
+    },
+
     '.cm-editor': {
+      flex: 1,
+      minHeight: 0,
       fontSize: token.fontSize,
       fontFamily:
         'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
@@ -63,30 +72,44 @@ const useStyles = createStyles(({ token }) => ({
     color: token.colorTextTertiary,
     background: token.colorFillQuaternary,
   },
-}))
+}));
 
 type YamlEditorProps = {
-  value?: string
-  onChange?: (value: string) => void
-  readOnly?: boolean
-  minHeight?: number
-  maxHeight?: number
-  placeholder?: string
-}
+  value?: string;
+  onChange?: (value: string) => void;
+  readOnly?: boolean;
+  height?: number | string;
+  minHeight?: number | string;
+  maxHeight?: number | string;
+  placeholder?: string;
+};
+
+const getCssSize = (value: number | string) =>
+  typeof value === 'number' ? `${value}px` : value;
 
 const YamlEditor: React.FC<YamlEditorProps> = ({
   value = '',
   onChange,
   readOnly = false,
+  height,
   minHeight = 280,
   maxHeight = 520,
   placeholder,
 }) => {
-  const { styles, cx } = useStyles()
-  const lineCount = value ? value.split(/\r\n|\r|\n/).length : 1
+  const { styles, cx } = useStyles();
+  const lineCount = value ? value.split(/\r\n|\r|\n/).length : 1;
+  const editorStyle: React.CSSProperties = height
+    ? { height: getCssSize(height) }
+    : {
+        minHeight: getCssSize(minHeight),
+        maxHeight: getCssSize(maxHeight),
+      };
 
   return (
-    <div className={cx(styles.editor, readOnly && styles.readOnly)}>
+    <div
+      className={cx(styles.editor, readOnly && styles.readOnly)}
+      style={editorStyle}
+    >
       <CodeMirror
         value={value}
         basicSetup={{
@@ -99,8 +122,7 @@ const YamlEditor: React.FC<YamlEditorProps> = ({
         editable={!readOnly}
         readOnly={readOnly}
         extensions={[yaml(), EditorView.lineWrapping]}
-        height={`${minHeight}px`}
-        maxHeight={`${maxHeight}px`}
+        height="100%"
         placeholder={placeholder}
         onChange={(nextValue) => onChange?.(nextValue)}
       />
@@ -109,7 +131,7 @@ const YamlEditor: React.FC<YamlEditorProps> = ({
         <Typography.Text type="secondary">{lineCount} 行</Typography.Text>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default YamlEditor
+export default YamlEditor;
