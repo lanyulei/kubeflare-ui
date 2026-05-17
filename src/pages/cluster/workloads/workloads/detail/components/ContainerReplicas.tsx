@@ -9,9 +9,11 @@ import {
 } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
+import type { MenuProps } from 'antd';
 import {
   App,
   Button,
+  Dropdown,
   Input,
   Modal,
   Space,
@@ -20,7 +22,14 @@ import {
   Typography,
 } from 'antd';
 import { createStyles } from 'antd-style';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { openContainerTerminalWindow } from '@/components/ClusterPodList/terminal';
 import { getClusterNamespacePodList } from '@/services/kubeflare/cluster/namespace';
 import { getClusterNodePodContainerLogs } from '@/services/kubeflare/cluster/node';
@@ -29,15 +38,14 @@ const LOG_TAIL_LINES = 500;
 const LOG_FOLLOW_INTERVAL = 5000;
 const DEFAULT_PAGE_SIZE = 10;
 
-type ContainerReplicaRow = {
-  id: string;
-  pod: API.ClusterNodePodItem;
-  container: API.ClusterNodePodContainer;
-};
-
 type ContainerReplicasProps = {
   workload?: API.ClusterWorkloadItem;
 };
+
+type ContainerActionHandler = (
+  pod: API.ClusterNodePodItem,
+  container: API.ClusterNodePodContainer,
+) => void;
 
 const useStyles = createStyles(({ token }) => ({
   status: {
@@ -200,19 +208,54 @@ const getLogDownloadFileName = (
     container?.name || 'container'
   }.log`.replace(/[^\w.-]+/g, '-');
 
-const getRowKeywordValues = (row: ContainerReplicaRow) => [
-  row.pod.name,
-  row.pod.namespace,
-  row.pod.pod_ip,
-  row.pod.node_ip,
-  row.pod.node_name,
-  row.pod.status,
-  row.pod.phase,
-  row.container.name,
-  row.container.status,
-  getStatusLabel(row.pod.status || row.pod.phase),
-  getStatusLabel(row.container.status),
+const getPodRestartCount = (pod: API.ClusterNodePodItem) =>
+  (pod.containers || []).reduce(
+    (total, container) => total + (container.restart_count || 0),
+    0,
+  );
+
+const getPodKeywordValues = (pod: API.ClusterNodePodItem) => [
+  pod.name,
+  pod.namespace,
+  pod.pod_ip,
+  pod.node_ip,
+  pod.node_name,
+  pod.status,
+  pod.phase,
+  pod.ready,
+  getStatusLabel(pod.status || pod.phase),
+  ...(pod.containers || []).flatMap((container) => [
+    container.name,
+    container.status,
+    getStatusLabel(container.status),
+  ]),
 ];
+
+const matchWorkloadPod = (
+  pod: API.ClusterNodePodItem,
+  workload?: API.ClusterWorkloadItem,
+) => {
+  if (!workload?.name) {
+    return true;
+  }
+
+  if (workload.type === 'Deployment') {
+    const deploymentPodPattern = new RegExp(`^${workload.name}-.+-.+$`);
+    return deploymentPodPattern.test(pod.name);
+  }
+
+  return pod.name === workload.name || pod.name.startsWith(`${workload.name}-`);
+};
+
+const getContainerMenuItems = (
+  pod: API.ClusterNodePodItem,
+  onSelect: ContainerActionHandler,
+): MenuProps['items'] =>
+  (pod.containers || []).map((container) => ({
+    key: container.name || '',
+    label: container.name || '-',
+    onClick: () => onSelect(pod, container),
+  }));
 
 const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
   const { message } = App.useApp();
@@ -233,30 +276,20 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
     () => getLabelSelector(workload?.selector),
     [workload?.selector],
   );
-  const rows = useMemo(
-    () =>
-      pods.flatMap((pod) =>
-        (pod.containers || []).map((container) => ({
-          id: `${pod.id || pod.name}-${container.name}`,
-          pod,
-          container,
-        })),
-      ),
-    [pods],
-  );
-  const filteredRows = useMemo(() => {
+  const filteredPods = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
+    const workloadPods = pods.filter((pod) => matchWorkloadPod(pod, workload));
 
     if (!normalizedKeyword) {
-      return rows;
+      return workloadPods;
     }
 
-    return rows.filter((row) =>
-      getRowKeywordValues(row)
+    return workloadPods.filter((pod) =>
+      getPodKeywordValues(pod)
         .filter(Boolean)
         .some((value) => value?.toLowerCase().includes(normalizedKeyword)),
     );
-  }, [keyword, rows]);
+  }, [keyword, pods, workload]);
   const statusDotClassNames = {
     default: styles.statusDotDefault,
     error: styles.statusDotError,
@@ -316,21 +349,27 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
     }
   }, [logTarget, message]);
 
-  const openContainerLog = (row: ContainerReplicaRow) => {
+  const openContainerLog = (
+    pod: API.ClusterNodePodItem,
+    container: API.ClusterNodePodContainer,
+  ) => {
     setLogTarget({
-      pod: row.pod,
-      container: row.container,
+      pod,
+      container,
     });
     setLogContent('');
     setLogFollowing(true);
     setLogModalOpen(true);
   };
 
-  const openContainerTerminal = (row: ContainerReplicaRow) => {
+  const openContainerTerminal = (
+    pod: API.ClusterNodePodItem,
+    container: API.ClusterNodePodContainer,
+  ) => {
     const result = openContainerTerminalWindow({
-      namespace: row.pod.namespace,
-      podName: row.pod.name,
-      containerName: row.container.name,
+      namespace: pod.namespace,
+      podName: pod.name,
+      containerName: container.name,
     });
 
     if (!result.ok) {
@@ -411,7 +450,50 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
     );
   };
 
-  const columns: ProColumns<ContainerReplicaRow>[] = [
+  const renderContainerAction = (
+    pod: API.ClusterNodePodItem,
+    title: string,
+    icon: ReactNode,
+    onSelect: ContainerActionHandler,
+  ) => {
+    const containers = pod.containers || [];
+
+    if (containers.length === 0) {
+      return (
+        <Tooltip title={title}>
+          <Button disabled icon={icon} type="text" />
+        </Tooltip>
+      );
+    }
+
+    if (containers.length === 1) {
+      return (
+        <Tooltip title={title}>
+          <Button
+            aria-label={`${title} ${containers[0].name || '容器'}`}
+            icon={icon}
+            onClick={() => onSelect(pod, containers[0])}
+            type="text"
+          />
+        </Tooltip>
+      );
+    }
+
+    return (
+      <Dropdown
+        menu={{
+          items: getContainerMenuItems(pod, onSelect),
+        }}
+        trigger={['click']}
+      >
+        <Tooltip title={title}>
+          <Button aria-label={title} icon={icon} type="text" />
+        </Tooltip>
+      </Dropdown>
+    );
+  };
+
+  const columns: ProColumns<API.ClusterNodePodItem>[] = [
     {
       title: '序号',
       dataIndex: 'index',
@@ -421,62 +503,61 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
     },
     {
       title: '名称',
-      dataIndex: ['pod', 'name'],
+      dataIndex: 'name',
       ellipsis: true,
       render: (_, record) => {
-        if (!record.pod.name) {
+        if (!record.name) {
           return '-';
         }
 
         return (
-          <Typography.Text copyable={{ text: record.pod.name }} ellipsis>
-            {record.pod.name}
+          <Typography.Text copyable={{ text: record.name }} ellipsis>
+            {record.name}
           </Typography.Text>
         );
       },
     },
     {
       title: 'IP 地址',
-      dataIndex: ['pod', 'pod_ip'],
+      dataIndex: 'pod_ip',
       ellipsis: true,
-      renderText: (_, record) => record.pod.pod_ip || '-',
+      renderText: (_, record) => record.pod_ip || '-',
     },
     {
       title: '状态',
-      dataIndex: ['pod', 'status'],
-      render: (_, record) =>
-        renderStatus(record.pod.status || record.pod.phase),
+      dataIndex: 'status',
+      render: (_, record) => renderStatus(record.status || record.phase),
+    },
+    {
+      title: '就绪',
+      dataIndex: 'ready',
+      width: 88,
+      renderText: (_, record) => record.ready || '-',
     },
     {
       title: '重启次数',
-      dataIndex: ['container', 'restart_count'],
+      dataIndex: 'restart_count',
       width: 96,
-      renderText: (_, record) => record.container.restart_count || 0,
-    },
-    {
-      title: '容器状态',
-      dataIndex: ['container', 'status'],
-      render: (_, record) => renderStatus(record.container.status),
+      renderText: (_, record) => getPodRestartCount(record),
     },
     {
       title: '节点 IP',
-      dataIndex: ['pod', 'node_ip'],
+      dataIndex: 'node_ip',
       ellipsis: true,
-      renderText: (_, record) => record.pod.node_ip || '-',
+      renderText: (_, record) => record.node_ip || '-',
     },
     {
       title: '节点名称',
-      dataIndex: ['pod', 'node_name'],
+      dataIndex: 'node_name',
       ellipsis: true,
-      renderText: (_, record) => record.pod.node_name || '-',
+      renderText: (_, record) => record.node_name || '-',
     },
-
     {
       title: '创建时间',
-      dataIndex: ['pod', 'create_time'],
+      dataIndex: 'create_time',
       valueType: 'dateTime',
       width: 180,
-      renderText: (_, record) => record.pod.create_time || '-',
+      renderText: (_, record) => record.create_time || '-',
     },
     {
       title: '操作',
@@ -484,22 +565,18 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
       width: 132,
       render: (_, record) => (
         <Space size={4}>
-          <Tooltip title="容器日志">
-            <Button
-              aria-label={`查看 ${record.container.name || '容器'} 日志`}
-              icon={<FileTextOutlined />}
-              onClick={() => openContainerLog(record)}
-              type="text"
-            />
-          </Tooltip>
-          <Tooltip title="终端">
-            <Button
-              aria-label={`打开 ${record.container.name || '容器'} 终端`}
-              icon={<CodeOutlined />}
-              onClick={() => openContainerTerminal(record)}
-              type="text"
-            />
-          </Tooltip>
+          {renderContainerAction(
+            record,
+            '容器日志',
+            <FileTextOutlined />,
+            openContainerLog,
+          )}
+          {renderContainerAction(
+            record,
+            '终端',
+            <CodeOutlined />,
+            openContainerTerminal,
+          )}
         </Space>
       ),
     },
@@ -507,12 +584,12 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
 
   return (
     <>
-      <ProTable<ContainerReplicaRow>
+      <ProTable<API.ClusterNodePodItem>
         rowKey="id"
         search={false}
         loading={loading}
         columns={columns}
-        dataSource={filteredRows}
+        dataSource={filteredPods}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,
