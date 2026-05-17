@@ -38,12 +38,18 @@ const useStyles = createStyles(({ token }) => ({
   selector: {
     position: 'relative',
   },
+  selectorScroll: {
+    width: '100%',
+    overflowX: 'auto',
+    overflowY: 'hidden',
+  },
   selectedRow: {
     display: 'grid',
     gridTemplateColumns:
       'minmax(220px, 1.25fr) repeat(4, minmax(132px, 1fr)) 28px',
     alignItems: 'center',
-    width: '100%',
+    boxSizing: 'border-box',
+    width: 'max(100%, 920px)',
     minHeight: 64,
     padding: `0 ${token.padding}px`,
     columnGap: token.marginLG,
@@ -70,18 +76,23 @@ const useStyles = createStyles(({ token }) => ({
     left: 0,
     zIndex: 10,
     maxHeight: 256,
-    overflowY: 'auto',
+    overflow: 'hidden',
     border: `1px solid ${token.colorBorder}`,
     borderTop: 0,
     boxShadow: token.boxShadowSecondary,
     backgroundColor: token.colorBgContainer,
+  },
+  selectorListScroll: {
+    maxHeight: 256,
+    overflow: 'auto',
   },
   row: {
     display: 'grid',
     gridTemplateColumns:
       'minmax(220px, 1.25fr) repeat(4, minmax(132px, 1fr)) 28px',
     alignItems: 'center',
-    width: '100%',
+    boxSizing: 'border-box',
+    width: 'max(100%, 920px)',
     minHeight: 64,
     padding: `0 ${token.padding}px`,
     columnGap: token.marginLG,
@@ -660,25 +671,29 @@ const ContainerStatusManagement = ({
         {containers.length > 0 && activeContainer ? (
           <>
             <div className={styles.selector}>
-              {renderContainerRow(activeContainer, {
-                className: styles.selectedRow,
-                onClick: () => setSelectorOpen((open) => !open),
-                toggleIcon: true,
-              })}
+              <div className={styles.selectorScroll}>
+                {renderContainerRow(activeContainer, {
+                  className: styles.selectedRow,
+                  onClick: () => setSelectorOpen((open) => !open),
+                  toggleIcon: true,
+                })}
+              </div>
               {selectorOpen ? (
                 <div className={styles.selectorList}>
-                  {containers.map((container) =>
-                    renderContainerRow(container, {
-                      className: cx(
-                        styles.row,
-                        container.key === activeContainer.key &&
-                          styles.activeRow,
-                        container.key === activeContainer.key &&
-                          styles.selectedIndicator,
-                      ),
-                      onClick: () => selectContainer(container),
-                    }),
-                  )}
+                  <div className={styles.selectorListScroll}>
+                    {containers.map((container) =>
+                      renderContainerRow(container, {
+                        className: cx(
+                          styles.row,
+                          container.key === activeContainer.key &&
+                            styles.activeRow,
+                          container.key === activeContainer.key &&
+                            styles.selectedIndicator,
+                        ),
+                        onClick: () => selectContainer(container),
+                      }),
+                    )}
+                  </div>
                 </div>
               ) : null}
             </div>

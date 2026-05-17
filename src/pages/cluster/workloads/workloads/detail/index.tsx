@@ -457,7 +457,7 @@ const WorkloadDetail = () => {
 
     modal.confirm({
       title: '确认重新创建该工作负载吗？',
-      content: '重新创建会触发容器组滚动重建，业务可能出现短暂波动。',
+      content: '重新创建将会根据更新策略触发容器组重建，业务可能出现短暂波动。',
       okText: '重新创建',
       cancelText: '取消',
       onOk: async () => {
@@ -754,7 +754,7 @@ const WorkloadDetail = () => {
           <div className={styles.yamlDrawerBody}>
             <div className={styles.yamlDrawerEditor}>
               <YamlEditor
-                height="calc(100vh - 169px)"
+                height="calc(100vh - 154px)"
                 value={yamlValue}
                 onChange={setYamlValue}
               />

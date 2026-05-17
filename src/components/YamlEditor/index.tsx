@@ -18,11 +18,6 @@ const useStyles = createStyles(({ token }) => ({
       boxShadow: `0 0 0 2px ${token.colorPrimaryBg}`,
     },
 
-    '.cm-theme': {
-      flex: 1,
-      minHeight: 0,
-    },
-
     '.cm-editor': {
       flex: 1,
       minHeight: 0,
@@ -33,6 +28,7 @@ const useStyles = createStyles(({ token }) => ({
 
     '.cm-scroller': {
       lineHeight: 1.65,
+      overflow: 'auto',
     },
 
     '.cm-gutters': {
@@ -58,6 +54,13 @@ const useStyles = createStyles(({ token }) => ({
       overflowWrap: 'anywhere',
     },
   },
+  codeMirror: {
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    minHeight: 0,
+    overflow: 'hidden',
+  },
   readOnly: {
     '.cm-cursor': {
       display: 'none',
@@ -71,6 +74,7 @@ const useStyles = createStyles(({ token }) => ({
     borderTop: `1px solid ${token.colorBorderSecondary}`,
     color: token.colorTextTertiary,
     background: token.colorFillQuaternary,
+    flexShrink: 0,
   },
 }));
 
@@ -111,6 +115,7 @@ const YamlEditor: React.FC<YamlEditorProps> = ({
       style={editorStyle}
     >
       <CodeMirror
+        className={styles.codeMirror}
         value={value}
         basicSetup={{
           bracketMatching: true,
