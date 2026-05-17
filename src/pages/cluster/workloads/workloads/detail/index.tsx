@@ -9,8 +9,10 @@ import {
   updateClusterWorkloadReplicas,
 } from '@/services/kubeflare/cluster/workload';
 import ContainerReplicas from './components/ContainerReplicas';
+import ContainerStatusManagement from './components/ContainerStatusManagement';
 import EventTable from './components/EventTable';
 import ReplicaSummary from './components/ReplicaSummary';
+import useWorkloadPods from './components/useWorkloadPods';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 
@@ -144,6 +146,11 @@ const WorkloadDetail = () => {
   const [loading, setLoading] = useState(false);
   const [scaling, setScaling] = useState(false);
   const [workload, setWorkload] = useState<API.ClusterWorkloadItem>();
+  const {
+    loading: podLoading,
+    pods,
+    reload: reloadPods,
+  } = useWorkloadPods(workload);
   const descriptionData =
     workload ||
     (type && namespace && name
@@ -320,8 +327,17 @@ const WorkloadDetail = () => {
         </div>
       </div>
       <div className={styles.section}>
+        <SectionTitle>容器状态管理</SectionTitle>
+        <ContainerStatusManagement loading={podLoading} pods={pods} />
+      </div>
+      <div className={styles.section}>
         <SectionTitle>容器组</SectionTitle>
-        <ContainerReplicas workload={workload} />
+        <ContainerReplicas
+          loading={podLoading}
+          onReload={reloadPods}
+          pods={pods}
+          workload={workload}
+        />
       </div>
       <div className={styles.section}>
         <SectionTitle>事件</SectionTitle>

@@ -26,12 +26,10 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
 import { openContainerTerminalWindow } from '@/components/ClusterPodList/terminal';
-import { getClusterNamespacePodList } from '@/services/kubeflare/cluster/namespace';
 import { getClusterNodePodContainerLogs } from '@/services/kubeflare/cluster/node';
 
 const LOG_TAIL_LINES = 500;
@@ -39,6 +37,9 @@ const LOG_FOLLOW_INTERVAL = 5000;
 const DEFAULT_PAGE_SIZE = 10;
 
 type ContainerReplicasProps = {
+  loading?: boolean;
+  onReload?: () => void;
+  pods?: API.ClusterNodePodItem[];
   workload?: API.ClusterWorkloadItem;
 };
 
@@ -130,12 +131,6 @@ const useStyles = createStyles(({ token }) => ({
     width: 260,
   },
 }));
-
-const getLabelSelector = (selector?: Record<string, string>) =>
-  Object.entries(selector || {})
-    .filter(([key, value]) => key && value)
-    .map(([key, value]) => `${key}=${value}`)
-    .join(',');
 
 const statusLabelMap: Record<string, string> = {
   running: '运行中',
@@ -231,22 +226,6 @@ const getPodKeywordValues = (pod: API.ClusterNodePodItem) => [
   ]),
 ];
 
-const matchWorkloadPod = (
-  pod: API.ClusterNodePodItem,
-  workload?: API.ClusterWorkloadItem,
-) => {
-  if (!workload?.name) {
-    return true;
-  }
-
-  if (workload.type === 'Deployment') {
-    const deploymentPodPattern = new RegExp(`^${workload.name}-.+-.+$`);
-    return deploymentPodPattern.test(pod.name);
-  }
-
-  return pod.name === workload.name || pod.name.startsWith(`${workload.name}-`);
-};
-
 const getContainerMenuItems = (
   pod: API.ClusterNodePodItem,
   onSelect: ContainerActionHandler,
@@ -257,12 +236,14 @@ const getContainerMenuItems = (
     onClick: () => onSelect(pod, container),
   }));
 
-const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
+const ContainerReplicas = ({
+  loading = false,
+  onReload,
+  pods = [],
+}: ContainerReplicasProps) => {
   const { message } = App.useApp();
   const { styles } = useStyles();
   const logContentRef = useRef<HTMLPreElement>(null);
-  const [loading, setLoading] = useState(false);
-  const [pods, setPods] = useState<API.ClusterNodePodItem[]>([]);
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [logTarget, setLogTarget] = useState<{
     pod: API.ClusterNodePodItem;
@@ -272,48 +253,25 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
   const [logLoading, setLogLoading] = useState(false);
   const [logFollowing, setLogFollowing] = useState(true);
   const [keyword, setKeyword] = useState('');
-  const labelSelector = useMemo(
-    () => getLabelSelector(workload?.selector),
-    [workload?.selector],
-  );
-  const filteredPods = useMemo(() => {
+  const filteredPods = (() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
-    const workloadPods = pods.filter((pod) => matchWorkloadPod(pod, workload));
 
     if (!normalizedKeyword) {
-      return workloadPods;
+      return pods;
     }
 
-    return workloadPods.filter((pod) =>
+    return pods.filter((pod) =>
       getPodKeywordValues(pod)
         .filter(Boolean)
         .some((value) => value?.toLowerCase().includes(normalizedKeyword)),
     );
-  }, [keyword, pods, workload]);
+  })();
   const statusDotClassNames = {
     default: styles.statusDotDefault,
     error: styles.statusDotError,
     success: styles.statusDotSuccess,
     warning: styles.statusDotWarning,
   };
-
-  const fetchPods = useCallback(async () => {
-    if (!workload?.namespace || !labelSelector) {
-      setPods([]);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await getClusterNamespacePodList({
-        namespace: workload.namespace,
-        labelSelector,
-      });
-      setPods(res.data.items || []);
-    } finally {
-      setLoading(false);
-    }
-  }, [labelSelector, workload?.namespace]);
 
   const fetchContainerLogs = useCallback(async () => {
     if (!logTarget) {
@@ -405,10 +363,6 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
     link.click();
     URL.revokeObjectURL(url);
   };
-
-  useEffect(() => {
-    fetchPods();
-  }, [fetchPods]);
 
   useEffect(() => {
     if (logModalOpen && logTarget) {
@@ -605,7 +559,7 @@ const ContainerReplicas = ({ workload }: ContainerReplicasProps) => {
           />
         }
         options={{
-          reload: fetchPods,
+          reload: onReload,
         }}
       />
       <Modal

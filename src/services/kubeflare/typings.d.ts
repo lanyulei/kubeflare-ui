@@ -241,11 +241,18 @@ declare namespace API {
   type ClusterNodePodContainer = {
     name?: string
     image?: string
+    image_pull_policy?: string
+    resources?: ClusterNodePodContainerResources
     status?: string
     ready?: boolean
     restart_count?: number
     ports?: ClusterNodePodContainerPort[]
     probes?: ClusterNodePodContainerProbe[]
+  }
+
+  type ClusterNodePodContainerResources = {
+    requests?: Record<string, string>
+    limits?: Record<string, string>
   }
 
   type ClusterNodePodContainerPort = {

@@ -59,6 +59,11 @@ type KubernetesContainerPort = {
 type KubernetesContainer = {
   name?: string
   image?: string
+  imagePullPolicy?: string
+  resources?: {
+    requests?: Record<string, string>
+    limits?: Record<string, string>
+  }
   ports?: KubernetesContainerPort[]
   readinessProbe?: KubernetesProbe
   livenessProbe?: KubernetesProbe
@@ -327,6 +332,8 @@ const toClusterNodePodItem = (pod: KubernetesPod): API.ClusterNodePodItem => ({
     return {
       name: container.name,
       image: container.image,
+      image_pull_policy: container.imagePullPolicy,
+      resources: container.resources,
       status: getContainerStatus(status),
       ready: status?.ready,
       restart_count: status?.restartCount || 0,
