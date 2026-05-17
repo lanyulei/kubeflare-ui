@@ -92,6 +92,7 @@ type KubernetesPod = {
   spec?: {
     nodeName?: string
     containers?: KubernetesContainer[]
+    volumes?: KubernetesVolume[]
   }
   status?: {
     hostIP?: string
@@ -100,6 +101,27 @@ type KubernetesPod = {
     reason?: string
     containerStatuses?: KubernetesContainerStatus[]
   }
+}
+
+type KubernetesVolume = {
+  name?: string
+  configMap?: {
+    name?: string
+  }
+  secret?: {
+    secretName?: string
+  }
+  hostPath?: {
+    path?: string
+    type?: string
+  }
+  emptyDir?: Record<string, unknown>
+  persistentVolumeClaim?: {
+    claimName?: string
+    readOnly?: boolean
+  }
+  projected?: Record<string, unknown>
+  downwardAPI?: Record<string, unknown>
 }
 
 type KubernetesProbe = {
@@ -129,6 +151,7 @@ type KubernetesContainer = {
   image?: string
   imagePullPolicy?: string
   env?: KubernetesContainerEnv[]
+  volumeMounts?: KubernetesContainerVolumeMount[]
   resources?: {
     requests?: Record<string, string>
     limits?: Record<string, string>
@@ -137,6 +160,13 @@ type KubernetesContainer = {
   readinessProbe?: KubernetesProbe
   livenessProbe?: KubernetesProbe
   startupProbe?: KubernetesProbe
+}
+
+type KubernetesContainerVolumeMount = {
+  name?: string
+  mountPath?: string
+  subPath?: string
+  readOnly?: boolean
 }
 
 type KubernetesContainerEnv = {
@@ -427,6 +457,69 @@ const toClusterNodePodProbe = (
   }
 }
 
+const toClusterNodePodVolume = (
+  volume: KubernetesVolume,
+): API.ClusterNodePodVolume => {
+  if (volume.configMap) {
+    return {
+      name: volume.name,
+      type: 'ConfigMap',
+      source_name: volume.configMap.name,
+    }
+  }
+
+  if (volume.secret) {
+    return {
+      name: volume.name,
+      type: 'Secret',
+      source_name: volume.secret.secretName,
+    }
+  }
+
+  if (volume.hostPath) {
+    return {
+      name: volume.name,
+      type: 'HostPath',
+      source_path: volume.hostPath.path,
+    }
+  }
+
+  if (volume.emptyDir) {
+    return {
+      name: volume.name,
+      type: 'EmptyDir',
+    }
+  }
+
+  if (volume.persistentVolumeClaim) {
+    return {
+      name: volume.name,
+      type: 'PersistentVolumeClaim',
+      source_name: volume.persistentVolumeClaim.claimName,
+      read_only: volume.persistentVolumeClaim.readOnly,
+    }
+  }
+
+  if (volume.projected) {
+    return {
+      name: volume.name,
+      type: 'Projected',
+    }
+  }
+
+  if (volume.downwardAPI) {
+    return {
+      name: volume.name,
+      type: 'DownwardAPI',
+    }
+  }
+
+  return {
+    name: volume.name,
+    type: 'Volume',
+  }
+}
+
 const toClusterNodeEventItem = (
   event: KubernetesEvent,
 ): API.ClusterNodeEventItem => ({
@@ -449,6 +542,7 @@ const toClusterNodePodItem = (pod: KubernetesPod): API.ClusterNodePodItem => ({
   ready: getPodReady(pod),
   status: getPodStatus(pod),
   create_time: pod.metadata?.creationTimestamp,
+  volumes: (pod.spec?.volumes || []).map(toClusterNodePodVolume),
   containers: (pod.spec?.containers || []).map((container) => {
     const status = pod.status?.containerStatuses?.find(
       (item) => item.name === container.name,
@@ -462,6 +556,12 @@ const toClusterNodePodItem = (pod: KubernetesPod): API.ClusterNodePodItem => ({
       status: getContainerStatus(status),
       ready: status?.ready,
       restart_count: status?.restartCount || 0,
+      volume_mounts: (container.volumeMounts || []).map((mount) => ({
+        name: mount.name,
+        mount_path: mount.mountPath,
+        sub_path: mount.subPath,
+        read_only: mount.readOnly,
+      })),
       ports: (container.ports || []).map((port) => ({
         name: port.name,
         container_port: port.containerPort,

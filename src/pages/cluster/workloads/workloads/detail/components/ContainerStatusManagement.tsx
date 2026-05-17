@@ -3,6 +3,12 @@ import {
   CaretRightOutlined,
   CaretUpOutlined,
   CloudServerOutlined,
+  DatabaseOutlined,
+  FolderOpenOutlined,
+  HddOutlined,
+  KeyOutlined,
+  SettingOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 import { Empty, Radio, Spin, Tooltip, Typography } from 'antd';
 import { createStyles } from 'antd-style';
@@ -17,6 +23,7 @@ type ContainerStatusManagementProps = {
 type ManagedContainer = API.ClusterNodePodContainer & {
   key: string;
   podNames: string[];
+  volumes?: API.ClusterNodePodVolume[];
 };
 
 type ContainerConfigKey = 'env' | 'ports' | 'mounts';
@@ -201,6 +208,86 @@ const useStyles = createStyles(({ token }) => ({
   empty: {
     padding: `${token.paddingLG}px 0`,
   },
+  mountList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+  },
+  mountCard: {
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    padding: `${token.padding}px`,
+    backgroundColor: token.colorBgContainer,
+  },
+  mountInfo: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(220px, 1fr) minmax(220px, 1fr)',
+    columnGap: token.marginXL,
+    rowGap: token.marginSM,
+    marginBottom: token.marginMD,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  mountSummary: {
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: 0,
+    gap: token.marginSM,
+  },
+  mountIcon: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    flex: '0 0 auto',
+    color: '#3a4b63',
+    fontSize: 24,
+  },
+  mountContent: {
+    minWidth: 0,
+  },
+  mountTitle: {
+    color: token.colorText,
+    fontSize: token.fontSize,
+    fontWeight: 600,
+    lineHeight: 1.5,
+  },
+  mountDescription: {
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: 1.5,
+  },
+  mountRows: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(220px, 1fr) minmax(220px, 1fr)',
+    columnGap: token.marginXL,
+    rowGap: token.marginXS,
+    padding: `${token.paddingSM}px ${token.padding}px`,
+    backgroundColor: token.colorFillQuaternary,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  mountRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginSM,
+    minWidth: 0,
+    color: token.colorText,
+    fontSize: token.fontSize,
+    lineHeight: 1.5,
+  },
+  mountRowIcon: {
+    flex: '0 0 auto',
+    color: '#3a4b63',
+  },
+  mountPath: {
+    minWidth: 0,
+  },
 }));
 
 const getContainerKey = (container: API.ClusterNodePodContainer) =>
@@ -225,6 +312,7 @@ const getManagedContainers = (
         ...container,
         key,
         podNames: [pod.name],
+        volumes: pod.volumes,
       });
     });
   });
@@ -275,6 +363,52 @@ const getContainerEnvItems = (env?: API.ClusterNodePodContainerEnv[]) =>
       key: item.name || '',
       value: item.value || item.value_from || '-',
     }));
+
+const getVolumeSourceLabel = (type?: string) => {
+  if (type === 'ConfigMap') {
+    return '配置字典';
+  }
+  if (type === 'Secret') {
+    return '保密字典';
+  }
+  if (type === 'HostPath') {
+    return 'HostPath';
+  }
+  if (type === 'EmptyDir') {
+    return 'EmptyDir';
+  }
+  if (type === 'PersistentVolumeClaim') {
+    return '存储卷声明';
+  }
+  if (type === 'Projected') {
+    return '投射卷';
+  }
+  if (type === 'DownwardAPI') {
+    return 'DownwardAPI';
+  }
+
+  return type || 'Volume';
+};
+
+const getVolumeSourceValue = (volume?: API.ClusterNodePodVolume) =>
+  volume?.source_name || volume?.source_path || '-';
+
+const getVolumeIcon = (type?: string) => {
+  if (type === 'ConfigMap') {
+    return <ToolOutlined />;
+  }
+  if (type === 'Secret') {
+    return <KeyOutlined />;
+  }
+  if (type === 'HostPath' || type === 'EmptyDir') {
+    return <HddOutlined />;
+  }
+  if (type === 'PersistentVolumeClaim') {
+    return <DatabaseOutlined />;
+  }
+
+  return <FolderOpenOutlined />;
+};
 
 const containerConfigOptions: { label: string; value: ContainerConfigKey }[] = [
   { label: '容器环境变量', value: 'env' },
@@ -437,11 +571,85 @@ const ContainerStatusManagement = ({
 
     return (
       <div className={styles.tabContent}>
-        <Empty
-          className={styles.empty}
-          description="暂无数据"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        {container.volume_mounts && container.volume_mounts.length > 0 ? (
+          <div className={styles.mountList}>
+            {container.volume_mounts.map((mount) => {
+              const volume = container.volumes?.find(
+                (item) => item.name === mount.name,
+              );
+              const sourceLabel = getVolumeSourceLabel(volume?.type);
+              const sourceValue = getVolumeSourceValue(volume);
+              const mountPath = mount.mount_path || '-';
+
+              return (
+                <div
+                  className={styles.mountCard}
+                  key={`${mount.name || ''}-${mount.mount_path || ''}`}
+                >
+                  <div className={styles.mountInfo}>
+                    <div className={styles.mountSummary}>
+                      <span className={styles.mountIcon}>
+                        {getVolumeIcon(volume?.type)}
+                      </span>
+                      <div className={styles.mountContent}>
+                        <Tooltip title={mount.name || '-'}>
+                          <Typography.Text
+                            className={styles.mountTitle}
+                            ellipsis
+                          >
+                            {mount.name || '-'}
+                          </Typography.Text>
+                        </Tooltip>
+                        <div className={styles.mountDescription}>
+                          卷类型：{sourceLabel}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={styles.mountContent}>
+                      <Tooltip title={sourceValue} placement="topLeft">
+                        <Typography.Text className={styles.mountTitle} ellipsis>
+                          {sourceValue}
+                        </Typography.Text>
+                      </Tooltip>
+                      <div className={styles.mountDescription}>
+                        {sourceLabel}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.mountRows}>
+                    <div className={styles.mountRow}>
+                      <CloudServerOutlined className={styles.mountRowIcon} />
+                      <Tooltip
+                        title={container.name || '-'}
+                        placement="topLeft"
+                      >
+                        <Typography.Text className={styles.mountPath} ellipsis>
+                          {container.name || '-'}
+                        </Typography.Text>
+                      </Tooltip>
+                    </div>
+                    <div className={styles.mountRow}>
+                      <SettingOutlined className={styles.mountRowIcon} />
+                      <Tooltip title={mountPath} placement="topLeft">
+                        <Typography.Text className={styles.mountPath} ellipsis>
+                          {mountPath}
+                          {mount.sub_path ? ` / ${mount.sub_path}` : ''}
+                          {mount.read_only ? '（只读）' : ''}
+                        </Typography.Text>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <Empty
+            className={styles.empty}
+            description="暂无数据"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )}
       </div>
     );
   };

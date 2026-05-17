@@ -236,6 +236,7 @@ declare namespace API {
     status?: string
     create_time?: string
     containers?: ClusterNodePodContainer[]
+    volumes?: ClusterNodePodVolume[]
   }
 
   type ClusterNodePodContainer = {
@@ -249,6 +250,7 @@ declare namespace API {
     env?: ClusterNodePodContainerEnv[]
     ports?: ClusterNodePodContainerPort[]
     probes?: ClusterNodePodContainerProbe[]
+    volume_mounts?: ClusterNodePodContainerVolumeMount[]
   }
 
   type ClusterNodePodContainerResources = {
@@ -274,6 +276,21 @@ declare namespace API {
     detail?: string
     initial_delay_seconds?: number
     timeout_seconds?: number
+  }
+
+  type ClusterNodePodContainerVolumeMount = {
+    name?: string
+    mount_path?: string
+    sub_path?: string
+    read_only?: boolean
+  }
+
+  type ClusterNodePodVolume = {
+    name?: string
+    type?: string
+    source_name?: string
+    source_path?: string
+    read_only?: boolean
   }
 
   type ClusterNodePodListData = {
