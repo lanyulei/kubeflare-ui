@@ -38,7 +38,7 @@ const useStyles = createStyles(({ token }) => ({
     flex: '0 0 auto',
 
     '.ant-progress-text': {
-      color: '#ffffff',
+      color: '#ffffff !important',
       fontSize: 18,
       fontWeight: 500,
     },
