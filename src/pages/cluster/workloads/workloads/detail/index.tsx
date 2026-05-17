@@ -754,7 +754,7 @@ const WorkloadDetail = () => {
           <div className={styles.yamlDrawerBody}>
             <div className={styles.yamlDrawerEditor}>
               <YamlEditor
-                height="100vh"
+                height="calc(100vh - 169px)"
                 value={yamlValue}
                 onChange={setYamlValue}
               />
