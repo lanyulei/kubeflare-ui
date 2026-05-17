@@ -128,6 +128,7 @@ type KubernetesContainer = {
   name?: string
   image?: string
   imagePullPolicy?: string
+  env?: KubernetesContainerEnv[]
   resources?: {
     requests?: Record<string, string>
     limits?: Record<string, string>
@@ -136,6 +137,27 @@ type KubernetesContainer = {
   readinessProbe?: KubernetesProbe
   livenessProbe?: KubernetesProbe
   startupProbe?: KubernetesProbe
+}
+
+type KubernetesContainerEnv = {
+  name?: string
+  value?: string
+  valueFrom?: {
+    configMapKeyRef?: {
+      name?: string
+      key?: string
+    }
+    secretKeyRef?: {
+      name?: string
+      key?: string
+    }
+    fieldRef?: {
+      fieldPath?: string
+    }
+    resourceFieldRef?: {
+      resource?: string
+    }
+  }
 }
 
 type KubernetesContainerStatus = {
@@ -328,6 +350,32 @@ const getPodStatus = (pod: KubernetesPod) => {
     pod.status?.phase ||
     '-'
   )
+}
+
+const getContainerEnvValueFrom = (env: KubernetesContainerEnv) => {
+  const valueFrom = env.valueFrom
+
+  if (valueFrom?.configMapKeyRef) {
+    return `ConfigMap: ${valueFrom.configMapKeyRef.name || '-'}/${
+      valueFrom.configMapKeyRef.key || '-'
+    }`
+  }
+
+  if (valueFrom?.secretKeyRef) {
+    return `Secret: ${valueFrom.secretKeyRef.name || '-'}/${
+      valueFrom.secretKeyRef.key || '-'
+    }`
+  }
+
+  if (valueFrom?.fieldRef) {
+    return `字段引用: ${valueFrom.fieldRef.fieldPath || '-'}`
+  }
+
+  if (valueFrom?.resourceFieldRef) {
+    return `资源引用: ${valueFrom.resourceFieldRef.resource || '-'}`
+  }
+
+  return undefined
 }
 
 const getProbeHandler = (probe: KubernetesProbe) => {

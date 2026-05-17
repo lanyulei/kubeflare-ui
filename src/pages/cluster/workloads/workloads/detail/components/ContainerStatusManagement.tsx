@@ -7,6 +7,7 @@ import {
 import { Empty, Radio, Spin, Tooltip, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
+import { KeyValueList } from '@/components';
 
 type ContainerStatusManagementProps = {
   loading?: boolean;
@@ -173,10 +174,11 @@ const useStyles = createStyles(({ token }) => ({
   },
   tabContent: {
     minHeight: 160,
-    padding: token.paddingLG,
+    padding: `12px`,
     backgroundColor: token.colorFillQuaternary,
   },
   portTable: {
+    backgroundColor: `#ffffff`,
     width: '100%',
   },
   portRow: {
@@ -265,6 +267,14 @@ const getPullPolicyLabel = (policy?: string) => {
 
   return '优先使用本地镜像';
 };
+
+const getContainerEnvItems = (env?: API.ClusterNodePodContainerEnv[]) =>
+  (env || [])
+    .filter((item) => Boolean(item.name))
+    .map((item) => ({
+      key: item.name || '',
+      value: item.value || item.value_from || '-',
+    }));
 
 const containerConfigOptions: { label: string; value: ContainerConfigKey }[] = [
   { label: '容器环境变量', value: 'env' },
@@ -376,6 +386,17 @@ const ContainerStatusManagement = ({
   );
 
   const renderConfigContent = (container: ManagedContainer) => {
+    if (activeConfigKey === 'env') {
+      return (
+        <div className={styles.tabContent}>
+          <KeyValueList
+            itemBackgroundColor="#ffffff"
+            items={getContainerEnvItems(container.env)}
+          />
+        </div>
+      );
+    }
+
     if (activeConfigKey === 'ports') {
       return (
         <div className={styles.tabContent}>

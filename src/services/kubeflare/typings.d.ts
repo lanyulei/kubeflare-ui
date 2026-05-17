@@ -246,6 +246,7 @@ declare namespace API {
     status?: string
     ready?: boolean
     restart_count?: number
+    env?: ClusterNodePodContainerEnv[]
     ports?: ClusterNodePodContainerPort[]
     probes?: ClusterNodePodContainerProbe[]
   }
@@ -253,6 +254,12 @@ declare namespace API {
   type ClusterNodePodContainerResources = {
     requests?: Record<string, string>
     limits?: Record<string, string>
+  }
+
+  type ClusterNodePodContainerEnv = {
+    name?: string
+    value?: string
+    value_from?: string
   }
 
   type ClusterNodePodContainerPort = {

@@ -47,7 +47,8 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginMD,
     // minHeight: 72,
     padding: `${token.paddingSM}px`,
-    borderRadius: token.borderRadius,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusLG,
     backgroundColor: itemBackgroundColor,
   },
   healthIconWrap: {

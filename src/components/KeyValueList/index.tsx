@@ -2,7 +2,7 @@ import { Empty, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
 
-const itemBackgroundColor = 'rgba(0, 0, 0, 0.03)';
+const defaultItemBackgroundColor = 'rgba(0, 0, 0, 0.03)';
 
 const useStyles = createStyles(({ token }) => ({
   list: {
@@ -19,7 +19,6 @@ const useStyles = createStyles(({ token }) => ({
     padding: '0 16px',
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
-    backgroundColor: itemBackgroundColor,
     color: token.colorText,
     lineHeight: 1.5,
 
@@ -58,6 +57,7 @@ type KeyValueListItem = {
 type KeyValueListProps = {
   data?: Record<string, ReactNode>;
   items?: KeyValueListItem[];
+  itemBackgroundColor?: string;
   keyLabel?: ReactNode;
   valueLabel?: ReactNode;
 };
@@ -81,6 +81,7 @@ const getTooltipTitle = (value?: ReactNode) =>
 const KeyValueList = ({
   data,
   items,
+  itemBackgroundColor = defaultItemBackgroundColor,
   keyLabel = '键:',
   valueLabel = '值:',
 }: KeyValueListProps) => {
@@ -97,7 +98,11 @@ const KeyValueList = ({
         const value = item.value || '-';
 
         return (
-          <div className={styles.item} key={item.key}>
+          <div
+            className={styles.item}
+            key={item.key}
+            style={{ backgroundColor: itemBackgroundColor }}
+          >
             <div className={styles.field}>
               <span className={styles.label}>{keyLabel}</span>
               <Tooltip title={item.key} placement="topLeft">
