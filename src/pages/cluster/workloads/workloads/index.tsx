@@ -2,11 +2,15 @@ import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Link, useIntl } from '@umijs/max';
-import { Button, Input, Select, Space } from 'antd';
+import { Button, Input, message, Select, Space } from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getClusterNamespaceList } from '@/services/kubeflare/cluster/namespace';
-import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
+import {
+  createClusterWorkload,
+  getClusterWorkloadList,
+} from '@/services/kubeflare/cluster/workload';
+import CreateWorkloadDrawer from './components/CreateWorkloadDrawer';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 const DEFAULT_PAGE_SIZE = 10;
@@ -166,6 +170,8 @@ const Workloads = () => {
   const activeWorkloadTypeRef = useRef<API.ClusterWorkloadType>('Deployment');
   const [keywordDraft, setKeywordDraft] = useState('');
   const [namespaceValue, setNamespaceValue] = useState(ALL_NAMESPACES_VALUE);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
   const [namespaceOptions, setNamespaceOptions] = useState<
     { label: string; value: string }[]
   >([]);
@@ -281,6 +287,26 @@ const Workloads = () => {
     },
   ];
 
+  const handleCreateWorkload = async (values: {
+    namespace: string;
+    name: string;
+    manifest: Record<string, unknown>;
+  }) => {
+    setCreateLoading(true);
+    try {
+      await createClusterWorkload({
+        type: activeWorkloadType,
+        namespace: values.namespace,
+        manifest: values.manifest,
+      });
+      message.success('工作负载已创建');
+      setCreateOpen(false);
+      actionRef.current?.reloadAndRest?.();
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   return (
     <PageContainer
       title={intl.formatMessage({
@@ -329,7 +355,11 @@ const Workloads = () => {
         }}
         headerTitle={
           <Space className={styles.toolbar}>
-            <Button type="primary" icon={<PlusOutlined />}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateOpen(true)}
+            >
               {intl.formatMessage({
                 id: 'pages.cluster.workloads.create',
                 defaultMessage: '新建',
@@ -378,6 +408,17 @@ const Workloads = () => {
             />
           </Space>
         }
+      />
+      <CreateWorkloadDrawer
+        defaultNamespace={
+          namespaceValue === ALL_NAMESPACES_VALUE ? undefined : namespaceValue
+        }
+        loading={createLoading}
+        namespaceOptions={namespaceOptions}
+        open={createOpen}
+        type={activeWorkloadType}
+        onCancel={() => setCreateOpen(false)}
+        onSubmit={handleCreateWorkload}
       />
     </PageContainer>
   );

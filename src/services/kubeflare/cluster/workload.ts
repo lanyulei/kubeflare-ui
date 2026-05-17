@@ -358,6 +358,42 @@ export async function getClusterWorkloadList(
   } as API.ApiResponse<API.ClusterWorkloadListData>
 }
 
+/** 创建工作负载 POST /kapis/apps/v1/namespaces/:namespace/{deployments,statefulsets,daemonsets} */
+export async function createClusterWorkload(
+  params: API.CreateClusterWorkloadParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, manifest } = params
+
+  if (!clusterId || !type || !namespace || !manifest) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+  }
+
+  const url = namespacedWorkloadResourcePaths[type].replace(
+    ':namespace',
+    encodeURIComponent(namespace),
+  )
+  const res = await request<API.ApiResponse<KubernetesWorkload>>(url, {
+    method: 'POST',
+    data: manifest,
+    ...(options || {}),
+    headers: {
+      'X-Cluster-ID': clusterId,
+      ...options?.headers,
+    },
+  })
+
+  return {
+    ...res,
+    data: res.data ? toClusterWorkloadItem(res.data, type) : undefined,
+  } as API.ApiResponse<API.ClusterWorkloadItem | undefined>
+}
+
 /** 获取工作负载详情 GET /kapis/apps/v1/namespaces/:namespace/{deployments,statefulsets,daemonsets}/:name */
 export async function getClusterWorkloadDetail(
   params: API.ClusterWorkloadDetailParams,

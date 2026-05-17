@@ -507,6 +507,12 @@ declare namespace API {
     name: string
   }
 
+  type CreateClusterWorkloadParams = {
+    type: ClusterWorkloadType
+    namespace: string
+    manifest: Record<string, unknown>
+  }
+
   type UpdateClusterWorkloadReplicasParams = ClusterWorkloadDetailParams & {
     replicas: number
   }
