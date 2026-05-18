@@ -449,6 +449,7 @@ const CreateWorkloadDrawer = ({
           </div>
         </div>
       }
+      maskClosable={false}
       open={open}
       title={`创建${resourceName}`}
       width="78vw"

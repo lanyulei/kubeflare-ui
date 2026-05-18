@@ -1,8 +1,22 @@
-import { DockerOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  DockerOutlined,
+  EditOutlined,
+  MinusOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import { Button, Col, Form, Input, InputNumber, Row, Select } from 'antd';
+import {
+  Button,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Row,
+  Select,
+} from 'antd';
 import { createStyles } from 'antd-style';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PodGracefulTerminationFields from './PodGracefulTerminationFields';
 import PodMetadataFields from './PodMetadataFields';
 import PodSchedulingRuleSelector from './PodSchedulingRuleSelector';
@@ -11,6 +25,13 @@ import type { CreateWorkloadFormValues } from './types';
 import WorkloadUpdateStrategySelector from './WorkloadUpdateStrategySelector';
 
 const NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
+const CONTAINER_FIELD_NAMES: (keyof CreateWorkloadFormValues)[] = [
+  'containerName',
+  'image',
+  'imagePullPolicy',
+  'containerPort',
+  'protocol',
+];
 
 const useStyles = createStyles(({ token }) => ({
   replicaPanel: {
@@ -110,6 +131,16 @@ const useStyles = createStyles(({ token }) => ({
     color: token.colorText,
     fontWeight: 500,
   },
+  containerInfo: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: `${token.marginXS}px ${token.marginLG}px`,
+    color: token.colorTextSecondary,
+    fontSize: token.fontSizeSM,
+  },
+  containerValue: {
+    color: token.colorText,
+  },
 }));
 
 type ContainerSettingsProps = {
@@ -122,8 +153,13 @@ const normalizeName = (value?: string) => value?.trim() || '';
 const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   const { styles } = useStyles();
   const [showContainerForm, setShowContainerForm] = useState(false);
+  const [containerModalOpen, setContainerModalOpen] = useState(false);
+  const containerSnapshotRef = useRef<Partial<CreateWorkloadFormValues>>({});
   const containerName = Form.useWatch('containerName', form);
   const image = Form.useWatch('image', form);
+  const imagePullPolicy = Form.useWatch('imagePullPolicy', form);
+  const containerPort = Form.useWatch('containerPort', form);
+  const protocol = Form.useWatch('protocol', form);
   const replicas = Form.useWatch('replicas', form) ?? 1;
   const hasContainer = Boolean(containerName || image || showContainerForm);
 
@@ -137,12 +173,44 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
     form.setFieldValue('replicas', Math.max(0, replicas + offset));
   };
 
-  const addContainer = () => {
+  const getContainerSnapshot = () =>
+    CONTAINER_FIELD_NAMES.reduce<Partial<CreateWorkloadFormValues>>(
+      (snapshot, fieldName) => {
+        snapshot[fieldName] = form.getFieldValue(fieldName);
+        return snapshot;
+      },
+      {},
+    );
+
+  const openContainerModal = (shouldPrefillName = false) => {
+    containerSnapshotRef.current = getContainerSnapshot();
     const workloadName = normalizeName(form.getFieldValue('name'));
-    if (!form.getFieldValue('containerName') && workloadName) {
+    if (
+      shouldPrefillName &&
+      !form.getFieldValue('containerName') &&
+      workloadName
+    ) {
       form.setFieldValue('containerName', workloadName);
     }
     setShowContainerForm(true);
+    setContainerModalOpen(true);
+  };
+
+  const cancelContainerModal = () => {
+    form.setFieldsValue(containerSnapshotRef.current);
+    if (
+      !containerSnapshotRef.current.containerName &&
+      !containerSnapshotRef.current.image
+    ) {
+      setShowContainerForm(false);
+    }
+    setContainerModalOpen(false);
+  };
+
+  const saveContainerModal = async () => {
+    await form.validateFields(CONTAINER_FIELD_NAMES);
+    setShowContainerForm(true);
+    setContainerModalOpen(false);
   };
 
   return (
@@ -189,68 +257,40 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
               <DockerOutlined />
               <span>{containerName || '新容器'}</span>
             </div>
+            <Button
+              icon={<EditOutlined />}
+              type="link"
+              onClick={() => openContainerModal(false)}
+            >
+              编辑配置
+            </Button>
           </div>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                label="容器名称"
-                name="containerName"
-                rules={[
-                  { required: true, message: '请输入容器名称' },
-                  { max: 63, message: '容器名称最长 63 个字符' },
-                  {
-                    pattern: NAME_PATTERN,
-                    message:
-                      '容器名称只能包含小写字母、数字和连字符（-），且不能以连字符开头或结尾',
-                  },
-                ]}
-              >
-                <Input placeholder="例如 nginx" />
-              </Form.Item>
-              <Form.Item
-                label="镜像"
-                name="image"
-                rules={[{ required: true, message: '请输入容器镜像' }]}
-              >
-                <Input placeholder="例如 nginx:1.27" />
-              </Form.Item>
-              <Form.Item label="镜像拉取策略" name="imagePullPolicy">
-                <Select
-                  options={[
-                    { label: 'IfNotPresent', value: 'IfNotPresent' },
-                    { label: 'Always', value: 'Always' },
-                    { label: 'Never', value: 'Never' },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="容器端口" name="containerPort">
-                <InputNumber
-                  min={1}
-                  max={65535}
-                  precision={0}
-                  style={{ width: '100%' }}
-                  placeholder="可选"
-                />
-              </Form.Item>
-              <Form.Item label="协议" name="protocol">
-                <Select
-                  options={[
-                    { label: 'TCP', value: 'TCP' },
-                    { label: 'UDP', value: 'UDP' },
-                    { label: 'SCTP', value: 'SCTP' },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+          <div className={styles.containerInfo}>
+            <span>
+              镜像：
+              <span className={styles.containerValue}>{image || '未填写'}</span>
+            </span>
+            <span>
+              拉取策略：
+              <span className={styles.containerValue}>
+                {imagePullPolicy || 'IfNotPresent'}
+              </span>
+            </span>
+            <span>
+              端口：
+              <span className={styles.containerValue}>
+                {containerPort
+                  ? `${containerPort}/${protocol || 'TCP'}`
+                  : '未设置'}
+              </span>
+            </span>
+          </div>
         </div>
       ) : (
         <button
           className={styles.addContainer}
           type="button"
-          onClick={addContainer}
+          onClick={() => openContainerModal(true)}
         >
           <DockerOutlined className={styles.addIcon} />
           <span className={styles.addTitle}>添加容器</span>
@@ -269,6 +309,72 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       <div style={{ marginBottom: `16px` }}>
         <PodMetadataFields />
       </div>
+
+      <Modal
+        destroyOnHidden
+        maskClosable={false}
+        open={containerModalOpen}
+        title="编辑容器配置"
+        width={760}
+        onCancel={cancelContainerModal}
+        onOk={saveContainerModal}
+      >
+        <Row gutter={24}>
+          <Col span={12}>
+            <Form.Item
+              label="容器名称"
+              name="containerName"
+              rules={[
+                { required: true, message: '请输入容器名称' },
+                { max: 63, message: '容器名称最长 63 个字符' },
+                {
+                  pattern: NAME_PATTERN,
+                  message:
+                    '容器名称只能包含小写字母、数字和连字符（-），且不能以连字符开头或结尾',
+                },
+              ]}
+            >
+              <Input placeholder="例如 nginx" />
+            </Form.Item>
+            <Form.Item
+              label="镜像"
+              name="image"
+              rules={[{ required: true, message: '请输入容器镜像' }]}
+            >
+              <Input placeholder="例如 nginx:1.27" />
+            </Form.Item>
+            <Form.Item label="镜像拉取策略" name="imagePullPolicy">
+              <Select
+                options={[
+                  { label: 'IfNotPresent', value: 'IfNotPresent' },
+                  { label: 'Always', value: 'Always' },
+                  { label: 'Never', value: 'Never' },
+                ]}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="容器端口" name="containerPort">
+              <InputNumber
+                min={1}
+                max={65535}
+                precision={0}
+                style={{ width: '100%' }}
+                placeholder="可选"
+              />
+            </Form.Item>
+            <Form.Item label="协议" name="protocol">
+              <Select
+                options={[
+                  { label: 'TCP', value: 'TCP' },
+                  { label: 'UDP', value: 'UDP' },
+                  { label: 'SCTP', value: 'SCTP' },
+                ]}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Modal>
     </>
   );
 };
