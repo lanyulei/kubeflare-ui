@@ -268,7 +268,7 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       <div style={{ marginTop: `16px` }}>
         <PodGracefulTerminationFields />
       </div>
-      <div style={{ marginTop: `16px` }}>
+      <div style={{ marginTop: `16px`, marginBottom: `16px` }}>
         <PodMetadataFields />
       </div>
     </>

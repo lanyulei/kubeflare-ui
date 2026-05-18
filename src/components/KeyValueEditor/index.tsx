@@ -81,6 +81,7 @@ const KeyValueEditor = ({
   onCreateItem,
 }: KeyValueEditorProps) => {
   const { styles } = useStyles({ footerJustify });
+  const addDisabled = value.some((item) => !item.keyName.trim());
 
   const updateItem = (
     id: string,
@@ -95,7 +96,7 @@ const KeyValueEditor = ({
   };
 
   const addItem = () => {
-    if (value.some((item) => !item.keyName.trim())) {
+    if (addDisabled) {
       onAddBlocked?.();
       return;
     }
@@ -139,7 +140,7 @@ const KeyValueEditor = ({
         ))}
       </div>
       <div className={styles.footer}>
-        <Button onClick={addItem}>
+        <Button disabled={addDisabled} onClick={addItem}>
           {addIcon && <PlusOutlined />}
           {addText}
         </Button>

@@ -10,6 +10,7 @@ import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
+import type { WorkloadSchedulingCustomRule } from './types';
 
 type PodSchedulingRuleType = 'default' | 'spread' | 'centralized' | 'custom';
 
@@ -26,6 +27,14 @@ type DeploymentOption = {
   namespace?: string;
   selector?: Record<string, string>;
 };
+
+const createEmptyCustomRule = () => ({
+  type: undefined,
+  strategy: undefined,
+  target: undefined,
+  targetName: undefined,
+  targetLabels: undefined,
+});
 
 const useStyles = createStyles(({ token }) => ({
   schedulingRules: {
@@ -119,6 +128,10 @@ const useStyles = createStyles(({ token }) => ({
     borderRadius: 999,
     background: token.colorFillQuaternary,
 
+    '& + &': {
+      marginTop: token.marginSM,
+    },
+
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
       borderRadius: token.borderRadiusSM,
@@ -206,6 +219,11 @@ const PodSchedulingRuleSelector = ({
     (Form.useWatch(name, form) as PodSchedulingRuleType) || 'default';
   const namespace = Form.useWatch('namespace', form);
   const workloadName = Form.useWatch('name', form);
+  const customRules = (Form.useWatch('podSchedulingCustomRules', form) ||
+    []) as WorkloadSchedulingCustomRule[];
+  const customRuleAddDisabled =
+    customRules.length === 0 ||
+    customRules.some((rule) => !(rule?.type && rule?.strategy && rule?.target));
   const selectedRule =
     schedulingRuleOptions.find((option) => option.value === schedulingRule) ||
     schedulingRuleOptions[0];
@@ -276,8 +294,17 @@ const PodSchedulingRuleSelector = ({
     };
   }, [schedulingRule]);
 
+  useEffect(() => {
+    if (schedulingRule === 'custom' && customRules.length === 0) {
+      form.setFieldValue('podSchedulingCustomRules', [createEmptyCustomRule()]);
+    }
+  }, [customRules.length, form, schedulingRule]);
+
   const selectRule = (value: PodSchedulingRuleType) => {
     form.setFieldValue(name, value);
+    if (value === 'custom') {
+      form.setFieldValue('podSchedulingCustomRules', [createEmptyCustomRule()]);
+    }
     if (value !== 'custom') {
       form.setFieldsValue({
         podSchedulingCustomType: undefined,
@@ -285,30 +312,31 @@ const PodSchedulingRuleSelector = ({
         podSchedulingCustomTarget: undefined,
         podSchedulingCustomTargetName: undefined,
         podSchedulingCustomTargetLabels: undefined,
+        podSchedulingCustomRules: [],
       });
     }
     setOpen(false);
   };
 
-  const clearCustomRule = () => {
-    form.setFieldsValue({
-      podSchedulingCustomType: undefined,
-      podSchedulingCustomStrategy: undefined,
-      podSchedulingCustomTarget: undefined,
-      podSchedulingCustomTargetName: undefined,
-      podSchedulingCustomTargetLabels: undefined,
-    });
+  const clearCustomRule = (index: number) => {
+    form.setFieldValue(
+      ['podSchedulingCustomRules', index],
+      createEmptyCustomRule(),
+    );
   };
 
-  const selectTargetDeployment = (targetValue: string) => {
+  const selectTargetDeployment = (targetValue: string, index: number) => {
     const target = deploymentOptions.find(
       (option) => option.value === targetValue,
     );
-    form.setFieldsValue({
-      podSchedulingCustomTarget: targetValue,
-      podSchedulingCustomTargetName: target?.name,
-      podSchedulingCustomTargetLabels: target?.selector,
-    });
+    form.setFieldValue(
+      ['podSchedulingCustomRules', index, 'targetName'],
+      target?.name,
+    );
+    form.setFieldValue(
+      ['podSchedulingCustomRules', index, 'targetLabels'],
+      target?.selector,
+    );
   };
 
   const renderRuleOption = (
@@ -358,57 +386,76 @@ const PodSchedulingRuleSelector = ({
       {schedulingRule === 'custom' && (
         <div className={styles.customRule}>
           <div className={styles.customRuleLabel}>自定义规则</div>
-          <div className={styles.customRuleRow}>
-            <Form.Item
-              name="podSchedulingCustomType"
-              rules={[{ required: true, message: '请选择类型' }]}
-              style={{ marginBottom: 0 }}
-            >
-              <Select
-                showSearch
-                options={customTypeOptions}
-                optionFilterProp="label"
-                placeholder="请选择类型"
-              />
-            </Form.Item>
-            <Form.Item
-              name="podSchedulingCustomStrategy"
-              rules={[{ required: true, message: '请选择策略' }]}
-              style={{ marginBottom: 0 }}
-            >
-              <Select
-                showSearch
-                options={customStrategyOptions}
-                optionFilterProp="label"
-                placeholder="请选择策略"
-              />
-            </Form.Item>
-            <Form.Item
-              name="podSchedulingCustomTarget"
-              rules={[{ required: true, message: '请选择目标' }]}
-              style={{ marginBottom: 0 }}
-            >
-              <Select
-                showSearch
-                optionFilterProp="searchText"
-                options={targetOptions}
-                placeholder="请选择目标"
-                loading={deploymentLoading}
-                notFoundContent="暂无目标"
-                onChange={selectTargetDeployment}
-              />
-            </Form.Item>
-            <Button
-              aria-label="清空自定义调度规则"
-              className={styles.deleteButton}
-              icon={<DeleteOutlined />}
-              type="text"
-              onClick={clearCustomRule}
-            />
-          </div>
-          <div className={styles.customRuleActions}>
-            <Button disabled>添加</Button>
-          </div>
+          <Form.List name="podSchedulingCustomRules">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map((field) => (
+                  <div className={styles.customRuleRow} key={field.key}>
+                    <Form.Item
+                      name={[field.name, 'type']}
+                      rules={[{ required: true, message: '请选择类型' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Select
+                        showSearch
+                        options={customTypeOptions}
+                        optionFilterProp="label"
+                        placeholder="请选择类型"
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name={[field.name, 'strategy']}
+                      rules={[{ required: true, message: '请选择策略' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Select
+                        showSearch
+                        options={customStrategyOptions}
+                        optionFilterProp="label"
+                        placeholder="请选择策略"
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name={[field.name, 'target']}
+                      rules={[{ required: true, message: '请选择目标' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Select
+                        showSearch
+                        optionFilterProp="searchText"
+                        options={targetOptions}
+                        placeholder="请选择目标"
+                        loading={deploymentLoading}
+                        notFoundContent="暂无目标"
+                        onChange={(targetValue) =>
+                          selectTargetDeployment(targetValue, field.name)
+                        }
+                      />
+                    </Form.Item>
+                    <Button
+                      aria-label="清空自定义调度规则"
+                      className={styles.deleteButton}
+                      icon={<DeleteOutlined />}
+                      type="text"
+                      onClick={() =>
+                        fields.length > 1
+                          ? remove(field.name)
+                          : clearCustomRule(field.name)
+                      }
+                    />
+                  </div>
+                ))}
+                <div className={styles.customRuleActions}>
+                  <Button
+                    disabled={customRuleAddDisabled}
+                    onClick={() => add(createEmptyCustomRule())}
+                  >
+                    添加
+                  </Button>
+                </div>
+              </>
+            )}
+          </Form.List>
         </div>
       )}
     </div>

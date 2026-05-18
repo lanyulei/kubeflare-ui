@@ -10,6 +10,14 @@ type WorkloadSchedulingRuleType =
 type WorkloadSchedulingCustomType = 'affinity' | 'antiAffinity';
 type WorkloadSchedulingCustomStrategy = 'preferred' | 'required';
 
+type WorkloadSchedulingCustomRule = {
+  type?: WorkloadSchedulingCustomType;
+  strategy?: WorkloadSchedulingCustomStrategy;
+  target?: string;
+  targetName?: string;
+  targetLabels?: Record<string, string>;
+};
+
 type CreateWorkloadFormValues = {
   name?: string;
   namespace?: string;
@@ -35,6 +43,7 @@ type CreateWorkloadFormValues = {
   podSchedulingCustomTarget?: string;
   podSchedulingCustomTargetName?: string;
   podSchedulingCustomTargetLabels?: Record<string, string>;
+  podSchedulingCustomRules?: WorkloadSchedulingCustomRule[];
   containerName?: string;
   image?: string;
   imagePullPolicy?: string;
@@ -51,6 +60,7 @@ type CreateWorkloadFormValues = {
 
 export type {
   CreateWorkloadFormValues,
+  WorkloadSchedulingCustomRule,
   WorkloadSchedulingCustomStrategy,
   WorkloadSchedulingCustomType,
   WorkloadSchedulingRuleType,

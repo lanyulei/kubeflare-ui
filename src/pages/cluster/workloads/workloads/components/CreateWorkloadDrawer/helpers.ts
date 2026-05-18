@@ -1,6 +1,9 @@
 import { stringify } from 'yaml';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
-import type { CreateWorkloadFormValues } from './types';
+import type {
+  CreateWorkloadFormValues,
+  WorkloadSchedulingCustomRule,
+} from './types';
 
 const DEFAULT_APP_LABEL_KEY = 'app';
 
@@ -50,6 +53,7 @@ const getInitialCreateWorkloadValues = (
   enablePodMetadata: false,
   podAnnotations: [],
   podSchedulingRule: 'default',
+  podSchedulingCustomRules: [],
   imagePullPolicy: 'IfNotPresent',
   protocol: 'TCP',
   storageType: 'none',
@@ -78,26 +82,49 @@ const buildPodAffinityTerm = (appLabels: Record<string, string>) => ({
   topologyKey: 'kubernetes.io/hostname',
 });
 
-const buildPodAffinityRule = (
-  labels: Record<string, string>,
-  strategy?: CreateWorkloadFormValues['podSchedulingCustomStrategy'],
-) => {
-  const podAffinityTerm = buildPodAffinityTerm(labels);
+const getCustomSchedulingTargetLabels = (rule: WorkloadSchedulingCustomRule) =>
+  rule.targetLabels && Object.keys(rule.targetLabels).length > 0
+    ? rule.targetLabels
+    : {
+        [DEFAULT_APP_LABEL_KEY]: normalizeName(rule.targetName || rule.target),
+      };
 
-  if (strategy === 'required') {
-    return {
-      requiredDuringSchedulingIgnoredDuringExecution: [podAffinityTerm],
-    };
+const appendCustomSchedulingRule = (
+  podSpec: Record<string, unknown>,
+  rule: WorkloadSchedulingCustomRule,
+) => {
+  if (!rule.type || !rule.strategy || !rule.target) {
+    return;
   }
 
-  return {
-    preferredDuringSchedulingIgnoredDuringExecution: [
+  const affinity = (podSpec.affinity || {}) as Record<string, unknown>;
+  const affinityKey =
+    rule.type === 'affinity' ? 'podAffinity' : 'podAntiAffinity';
+  const affinityRule = (affinity[affinityKey] || {}) as Record<
+    string,
+    unknown[]
+  >;
+  const podAffinityTerm = buildPodAffinityTerm(
+    getCustomSchedulingTargetLabels(rule),
+  );
+
+  if (rule.strategy === 'required') {
+    affinityRule.requiredDuringSchedulingIgnoredDuringExecution = [
+      ...(affinityRule.requiredDuringSchedulingIgnoredDuringExecution || []),
+      podAffinityTerm,
+    ];
+  } else {
+    affinityRule.preferredDuringSchedulingIgnoredDuringExecution = [
+      ...(affinityRule.preferredDuringSchedulingIgnoredDuringExecution || []),
       {
         weight: 100,
         podAffinityTerm,
       },
-    ],
-  };
+    ];
+  }
+
+  affinity[affinityKey] = affinityRule;
+  podSpec.affinity = affinity;
 };
 
 const getWorkloadStepFields = (
@@ -117,6 +144,7 @@ const getWorkloadStepFields = (
       'podSchedulingCustomType',
       'podSchedulingCustomStrategy',
       'podSchedulingCustomTarget',
+      'podSchedulingCustomRules',
       'enablePodGracefulTermination',
       'terminationGracePeriodSeconds',
       'enablePodMetadata',
@@ -261,35 +289,24 @@ const buildCreateWorkloadManifest = (
       },
     };
   }
-  if (
-    values.podSchedulingRule === 'custom' &&
-    values.podSchedulingCustomType &&
-    values.podSchedulingCustomStrategy &&
-    values.podSchedulingCustomTarget
-  ) {
-    const targetLabels =
-      values.podSchedulingCustomTargetLabels &&
-      Object.keys(values.podSchedulingCustomTargetLabels).length > 0
-        ? values.podSchedulingCustomTargetLabels
-        : {
-            [DEFAULT_APP_LABEL_KEY]: normalizeName(
-              values.podSchedulingCustomTargetName ||
-                values.podSchedulingCustomTarget,
-            ),
-          };
-    const affinityRule = buildPodAffinityRule(
-      targetLabels,
-      values.podSchedulingCustomStrategy,
-    );
+  if (values.podSchedulingRule === 'custom') {
+    const customRules =
+      values.podSchedulingCustomRules &&
+      values.podSchedulingCustomRules.length > 0
+        ? values.podSchedulingCustomRules
+        : [
+            {
+              type: values.podSchedulingCustomType,
+              strategy: values.podSchedulingCustomStrategy,
+              target: values.podSchedulingCustomTarget,
+              targetName: values.podSchedulingCustomTargetName,
+              targetLabels: values.podSchedulingCustomTargetLabels,
+            },
+          ];
 
-    podSpec.affinity =
-      values.podSchedulingCustomType === 'affinity'
-        ? {
-            podAffinity: affinityRule,
-          }
-        : {
-            podAntiAffinity: affinityRule,
-          };
+    customRules.forEach((rule) => {
+      appendCustomSchedulingRule(podSpec, rule);
+    });
   }
   const spec: Record<string, unknown> = {
     selector: {
