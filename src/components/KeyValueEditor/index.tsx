@@ -1,50 +1,53 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Input } from 'antd';
 import { createStyles } from 'antd-style';
+import type { CSSProperties } from 'react';
 
-const useStyles = createStyles(({ token }) => ({
-  editor: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.marginSM,
-  },
-  row: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 40px',
-    alignItems: 'center',
-    gap: token.marginSM,
-    padding: `${token.paddingXS}px ${token.paddingMD}px`,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: 24,
-    backgroundColor: token.colorFillQuaternary,
+const useStyles = createStyles(
+  ({ token }, props: { footerJustify: CSSProperties['justifyContent'] }) => ({
+    editor: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: token.marginSM,
+    },
+    row: {
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 40px',
+      alignItems: 'center',
+      gap: token.marginSM,
+      padding: `${token.paddingXS}px ${token.paddingMD}px`,
+      border: `1px solid ${token.colorBorderSecondary}`,
+      borderRadius: 24,
+      backgroundColor: token.colorFillQuaternary,
 
-    '@media (max-width: 576px)': {
-      gridTemplateColumns: 'minmax(0, 1fr) 40px',
+      '@media (max-width: 576px)': {
+        gridTemplateColumns: 'minmax(0, 1fr) 40px',
+      },
     },
-  },
-  input: {
-    minWidth: 0,
+    input: {
+      minWidth: 0,
 
-    '&.ant-input': {
-      backgroundColor: token.colorBgContainer,
+      '&.ant-input': {
+        backgroundColor: token.colorBgContainer,
+      },
     },
-  },
-  valueInput: {
-    '@media (max-width: 576px)': {
-      gridColumn: '1 / -1',
-      gridRow: 2,
+    valueInput: {
+      '@media (max-width: 576px)': {
+        gridColumn: '1 / -1',
+        gridRow: 2,
+      },
     },
-  },
-  deleteButton: {
-    justifySelf: 'center',
-    color: token.colorTextTertiary,
-  },
-  footer: {
-    display: 'flex',
-    justifyContent: 'flex-start',
-    marginTop: token.marginMD,
-  },
-}));
+    deleteButton: {
+      justifySelf: 'center',
+      color: token.colorTextTertiary,
+    },
+    footer: {
+      display: 'flex',
+      justifyContent: props.footerJustify,
+      marginTop: `12px`,
+    },
+  }),
+);
 
 type KeyValueEditorItem = {
   id: string;
@@ -53,8 +56,10 @@ type KeyValueEditorItem = {
 };
 
 type KeyValueEditorProps = {
+  addIcon?: boolean;
   addText?: string;
   deleteAriaLabel?: string;
+  footerJustify?: CSSProperties['justifyContent'];
   keyPlaceholder?: string;
   value?: KeyValueEditorItem[];
   valuePlaceholder?: string;
@@ -64,8 +69,10 @@ type KeyValueEditorProps = {
 };
 
 const KeyValueEditor = ({
+  addIcon = true,
   addText = '添加',
   deleteAriaLabel = '删除',
+  footerJustify = 'flex-start',
   keyPlaceholder = '键',
   value = [],
   valuePlaceholder = '值',
@@ -73,7 +80,7 @@ const KeyValueEditor = ({
   onChange,
   onCreateItem,
 }: KeyValueEditorProps) => {
-  const { styles } = useStyles();
+  const { styles } = useStyles({ footerJustify });
 
   const updateItem = (
     id: string,
@@ -133,7 +140,7 @@ const KeyValueEditor = ({
       </div>
       <div className={styles.footer}>
         <Button onClick={addItem}>
-          <PlusOutlined />
+          {addIcon && <PlusOutlined />}
           {addText}
         </Button>
       </div>

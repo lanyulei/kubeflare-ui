@@ -45,6 +45,10 @@ const getInitialCreateWorkloadValues = (
   maxSurge: '25%',
   enablePodSecurityContext: false,
   runAsNonRoot: false,
+  enablePodGracefulTermination: false,
+  terminationGracePeriodSeconds: 30,
+  enablePodMetadata: false,
+  podAnnotations: [],
   podSchedulingRule: 'default',
   imagePullPolicy: 'IfNotPresent',
   protocol: 'TCP',
@@ -113,6 +117,10 @@ const getWorkloadStepFields = (
       'podSchedulingCustomType',
       'podSchedulingCustomStrategy',
       'podSchedulingCustomTarget',
+      'enablePodGracefulTermination',
+      'terminationGracePeriodSeconds',
+      'enablePodMetadata',
+      'podAnnotations',
     ];
 
     return type === 'DaemonSet'
@@ -143,6 +151,9 @@ const buildCreateWorkloadManifest = (
   const annotations = {
     ...toRecord(values.annotations),
   };
+  const podAnnotations = values.enablePodMetadata
+    ? toRecord(values.podAnnotations)
+    : {};
   const podMetadata: Record<string, unknown> = {
     labels: appLabels,
   };
@@ -219,6 +230,13 @@ const buildCreateWorkloadManifest = (
       podSpec.securityContext = securityContext;
     }
   }
+  if (values.enablePodGracefulTermination) {
+    setIfDefined(
+      podSpec,
+      'terminationGracePeriodSeconds',
+      values.terminationGracePeriodSeconds,
+    );
+  }
   if (values.podSchedulingRule === 'spread') {
     podSpec.affinity = {
       podAntiAffinity: {
@@ -286,6 +304,13 @@ const buildCreateWorkloadManifest = (
   if (Object.keys(annotations).length > 0) {
     metadata.annotations = annotations;
     podMetadata.annotations = annotations;
+  }
+  if (Object.keys(podAnnotations).length > 0) {
+    podMetadata.annotations = {
+      ...((podMetadata.annotations as Record<string, string> | undefined) ||
+        {}),
+      ...podAnnotations,
+    };
   }
   if (type !== 'DaemonSet') {
     spec.replicas = values.replicas ?? 1;

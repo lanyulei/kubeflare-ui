@@ -3,6 +3,8 @@ import type { FormInstance } from 'antd';
 import { Button, Col, Form, Input, InputNumber, Row, Select } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useState } from 'react';
+import PodGracefulTerminationFields from './PodGracefulTerminationFields';
+import PodMetadataFields from './PodMetadataFields';
 import PodSchedulingRuleSelector from './PodSchedulingRuleSelector';
 import PodSecurityContextFields from './PodSecurityContextFields';
 import type { CreateWorkloadFormValues } from './types';
@@ -263,6 +265,12 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       </div>
       <PodSecurityContextFields />
       <PodSchedulingRuleSelector />
+      <div style={{ marginTop: `16px` }}>
+        <PodGracefulTerminationFields />
+      </div>
+      <div style={{ marginTop: `16px` }}>
+        <PodMetadataFields />
+      </div>
     </>
   );
 };

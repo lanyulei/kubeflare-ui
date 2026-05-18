@@ -25,6 +25,10 @@ type CreateWorkloadFormValues = {
   seLinuxRole?: string;
   seLinuxType?: string;
   seLinuxUser?: string;
+  enablePodGracefulTermination?: boolean;
+  terminationGracePeriodSeconds?: number;
+  enablePodMetadata?: boolean;
+  podAnnotations?: KeyValueEditorItem[];
   podSchedulingRule?: WorkloadSchedulingRuleType;
   podSchedulingCustomType?: WorkloadSchedulingCustomType;
   podSchedulingCustomStrategy?: WorkloadSchedulingCustomStrategy;
