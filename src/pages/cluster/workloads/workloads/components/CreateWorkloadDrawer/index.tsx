@@ -11,7 +11,6 @@ import {
   Drawer,
   Form,
   Input,
-  InputNumber,
   message,
   Row,
   Select,
@@ -24,6 +23,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { parse } from 'yaml';
 import { KeyValueEditor, YamlEditor } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+import ContainerSettings from './ContainerSettings';
 import {
   buildCreateWorkloadManifest,
   buildCreateWorkloadYaml,
@@ -61,7 +61,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   steps: {
     padding: `15px 20px`,
-    borderBottom: `2px solid ${token.colorBorderSecondary}`,
+    borderBottom: `1px solid ${token.colorBorderSecondary}`,
     // background: token.colorFillQuaternary,
     background: '#ffffff',
 
@@ -225,6 +225,13 @@ const CreateWorkloadDrawer = ({
   };
 
   const handleNext = async () => {
+    if (
+      current === 1 &&
+      (!form.getFieldValue('containerName') || !form.getFieldValue('image'))
+    ) {
+      message.warning('请先添加容器并填写容器名称和镜像');
+      return;
+    }
     await form.validateFields(getWorkloadStepFields(current, type));
     setCurrent((step) => Math.min(step + 1, steps.length - 1));
   };
@@ -297,7 +304,7 @@ const CreateWorkloadDrawer = ({
             },
           ]}
         >
-          <Input placeholder='请输入名称' autoFocus />
+          <Input placeholder="请输入名称" autoFocus />
         </Form.Item>
       </Col>
       <Col span={12}>
@@ -318,70 +325,7 @@ const CreateWorkloadDrawer = ({
   );
 
   const renderContainerSettings = () => (
-    <Row gutter={24}>
-      <Col span={12}>
-        <Form.Item
-          label="容器名称"
-          name="containerName"
-          rules={[
-            { required: true, message: '请输入容器名称' },
-            { max: 63, message: '容器名称最长 63 个字符' },
-            {
-              pattern: NAME_PATTERN,
-              message:
-                '容器名称只能包含小写字母、数字和连字符（-），且不能以连字符开头或结尾',
-            },
-          ]}
-        >
-          <Input placeholder="例如 nginx" />
-        </Form.Item>
-        <Form.Item
-          label="镜像"
-          name="image"
-          rules={[{ required: true, message: '请输入容器镜像' }]}
-        >
-          <Input placeholder="例如 nginx:1.27" />
-        </Form.Item>
-        <Form.Item label="镜像拉取策略" name="imagePullPolicy">
-          <Select
-            options={[
-              { label: 'IfNotPresent', value: 'IfNotPresent' },
-              { label: 'Always', value: 'Always' },
-              { label: 'Never', value: 'Never' },
-            ]}
-          />
-        </Form.Item>
-      </Col>
-      <Col span={12}>
-        {type !== 'DaemonSet' && (
-          <Form.Item
-            label="副本数"
-            name="replicas"
-            rules={[{ required: true, message: '请输入副本数' }]}
-          >
-            <InputNumber min={0} precision={0} style={{ width: '100%' }} />
-          </Form.Item>
-        )}
-        <Form.Item label="容器端口" name="containerPort">
-          <InputNumber
-            min={1}
-            max={65535}
-            precision={0}
-            style={{ width: '100%' }}
-            placeholder="可选"
-          />
-        </Form.Item>
-        <Form.Item label="协议" name="protocol">
-          <Select
-            options={[
-              { label: 'TCP', value: 'TCP' },
-              { label: 'UDP', value: 'UDP' },
-              { label: 'SCTP', value: 'SCTP' },
-            ]}
-          />
-        </Form.Item>
-      </Col>
-    </Row>
+    <ContainerSettings form={form} type={type} />
   );
 
   const renderStorageSettings = () => (
@@ -534,6 +478,14 @@ const CreateWorkloadDrawer = ({
                 return;
               }
               if (nextStep > current + 1) {
+                return;
+              }
+              if (
+                current === 1 &&
+                (!form.getFieldValue('containerName') ||
+                  !form.getFieldValue('image'))
+              ) {
+                message.warning('请先添加容器并填写容器名称和镜像');
                 return;
               }
               await form.validateFields(getWorkloadStepFields(current, type));

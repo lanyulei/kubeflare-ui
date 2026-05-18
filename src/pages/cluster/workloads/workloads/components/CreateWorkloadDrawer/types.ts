@@ -1,11 +1,15 @@
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 
 type WorkloadStorageType = 'none' | 'emptyDir' | 'persistentVolumeClaim';
+type WorkloadUpdateStrategyType = 'RollingUpdate' | 'Recreate';
 
 type CreateWorkloadFormValues = {
   name?: string;
   namespace?: string;
   replicas?: number;
+  updateStrategyType?: WorkloadUpdateStrategyType;
+  maxUnavailable?: string;
+  maxSurge?: string;
   containerName?: string;
   image?: string;
   imagePullPolicy?: string;
@@ -20,4 +24,8 @@ type CreateWorkloadFormValues = {
   annotations?: KeyValueEditorItem[];
 };
 
-export type { CreateWorkloadFormValues, WorkloadStorageType };
+export type {
+  CreateWorkloadFormValues,
+  WorkloadStorageType,
+  WorkloadUpdateStrategyType,
+};

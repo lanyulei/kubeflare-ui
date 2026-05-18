@@ -40,6 +40,9 @@ const getInitialCreateWorkloadValues = (
 ): CreateWorkloadFormValues => ({
   namespace,
   replicas: type === 'DaemonSet' ? undefined : 1,
+  updateStrategyType: 'RollingUpdate',
+  maxUnavailable: '25%',
+  maxSurge: '25%',
   imagePullPolicy: 'IfNotPresent',
   protocol: 'TCP',
   storageType: 'none',
@@ -58,9 +61,14 @@ const getWorkloadStepFields = (
     return ['name', 'namespace'];
   }
   if (step === 1) {
+    const strategyFields: (keyof CreateWorkloadFormValues)[] =
+      type === 'Deployment'
+        ? ['updateStrategyType', 'maxUnavailable', 'maxSurge']
+        : ['updateStrategyType'];
+
     return type === 'DaemonSet'
-      ? ['containerName', 'image']
-      : ['containerName', 'image', 'replicas'];
+      ? ['containerName', 'image', ...strategyFields]
+      : ['containerName', 'image', 'replicas', ...strategyFields];
   }
   if (step === 2) {
     return ['storageType', 'volumeName', 'mountPath', 'claimName'];
@@ -152,6 +160,31 @@ const buildCreateWorkloadManifest = (
   }
   if (type === 'StatefulSet') {
     spec.serviceName = name;
+  }
+  if (type === 'Deployment') {
+    spec.strategy =
+      values.updateStrategyType === 'Recreate'
+        ? {
+            type: 'Recreate',
+          }
+        : {
+            type: 'RollingUpdate',
+            rollingUpdate: {
+              maxUnavailable: normalizeName(values.maxUnavailable) || '25%',
+              maxSurge: normalizeName(values.maxSurge) || '25%',
+            },
+          };
+  } else if (type === 'DaemonSet') {
+    spec.updateStrategy = {
+      type: 'RollingUpdate',
+      rollingUpdate: {
+        maxUnavailable: normalizeName(values.maxUnavailable) || '25%',
+      },
+    };
+  } else {
+    spec.updateStrategy = {
+      type: 'RollingUpdate',
+    };
   }
 
   return {
