@@ -2,6 +2,13 @@ import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 
 type WorkloadStorageType = 'none' | 'emptyDir' | 'persistentVolumeClaim';
 type WorkloadUpdateStrategyType = 'RollingUpdate' | 'Recreate';
+type WorkloadSchedulingRuleType =
+  | 'default'
+  | 'spread'
+  | 'centralized'
+  | 'custom';
+type WorkloadSchedulingCustomType = 'affinity' | 'antiAffinity';
+type WorkloadSchedulingCustomStrategy = 'preferred' | 'required';
 
 type CreateWorkloadFormValues = {
   name?: string;
@@ -10,6 +17,20 @@ type CreateWorkloadFormValues = {
   updateStrategyType?: WorkloadUpdateStrategyType;
   maxUnavailable?: string;
   maxSurge?: string;
+  enablePodSecurityContext?: boolean;
+  runAsNonRoot?: boolean;
+  runAsUser?: number;
+  runAsGroup?: number;
+  seLinuxLevel?: string;
+  seLinuxRole?: string;
+  seLinuxType?: string;
+  seLinuxUser?: string;
+  podSchedulingRule?: WorkloadSchedulingRuleType;
+  podSchedulingCustomType?: WorkloadSchedulingCustomType;
+  podSchedulingCustomStrategy?: WorkloadSchedulingCustomStrategy;
+  podSchedulingCustomTarget?: string;
+  podSchedulingCustomTargetName?: string;
+  podSchedulingCustomTargetLabels?: Record<string, string>;
   containerName?: string;
   image?: string;
   imagePullPolicy?: string;
@@ -26,6 +47,9 @@ type CreateWorkloadFormValues = {
 
 export type {
   CreateWorkloadFormValues,
+  WorkloadSchedulingCustomStrategy,
+  WorkloadSchedulingCustomType,
+  WorkloadSchedulingRuleType,
   WorkloadStorageType,
   WorkloadUpdateStrategyType,
 };

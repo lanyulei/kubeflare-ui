@@ -1,15 +1,12 @@
-import {
-  DockerOutlined,
-  DownOutlined,
-  MinusOutlined,
-  PlusOutlined,
-  UpOutlined,
-} from '@ant-design/icons';
+import { DockerOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import { Button, Col, Form, Input, InputNumber, Row, Select } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useState } from 'react';
+import PodSchedulingRuleSelector from './PodSchedulingRuleSelector';
+import PodSecurityContextFields from './PodSecurityContextFields';
 import type { CreateWorkloadFormValues } from './types';
+import WorkloadUpdateStrategySelector from './WorkloadUpdateStrategySelector';
 
 const NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 
@@ -20,7 +17,7 @@ const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     alignItems: 'center',
     gap: token.marginSM,
-    marginBottom: token.marginLG,
+    marginBottom: `16px`,
     padding: `${token.paddingSM}px ${token.paddingLG}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusSM,
@@ -53,90 +50,8 @@ const useStyles = createStyles(({ token }) => ({
       textAlign: 'center',
     },
   },
-  updateStrategy: {
-    marginBottom: token.marginLG,
-  },
-  updateStrategyLabel: {
-    marginBottom: token.marginXS,
-    color: token.colorText,
-    fontSize: token.fontSizeSM,
-    lineHeight: token.lineHeight,
-  },
-  strategySelect: {
-    overflow: 'hidden',
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: token.borderRadiusSM,
-    background: token.colorBgContainer,
-  },
-  strategyOption: {
-    display: 'grid',
-    width: '100%',
-    gridTemplateColumns: 'minmax(0, 1fr) 24px',
-    alignItems: 'center',
-    gap: token.marginSM,
-    padding: `12px 16px`,
-    border: 0,
-    background: 'transparent',
-    color: 'inherit',
-    cursor: 'pointer',
-    textAlign: 'left',
-
-    '& + &': {
-      borderTop: `1px solid ${token.colorBorderSecondary}`,
-    },
-
-    '&:hover': {
-      background: token.colorFillQuaternary,
-    },
-  },
-  strategyTitle: {
-    display: 'block',
-    color: token.colorText,
-    fontSize: token.fontSizeSM,
-    fontWeight: 600,
-    lineHeight: token.lineHeight,
-  },
-  strategyDescription: {
-    display: 'block',
-    marginTop: token.marginXXS,
-    color: token.colorTextTertiary,
-    fontSize: token.fontSizeSM,
-    lineHeight: token.lineHeight,
-  },
-  strategyArrow: {
-    justifySelf: 'end',
-    color: token.colorTextSecondary,
-    fontSize: token.fontSizeSM,
-  },
-  rollingSettings: {
-    marginTop: token.marginSM,
-    padding: `15px`,
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: token.borderRadiusSM,
-    background: token.colorBgContainer,
-  },
-  rollingSettingsTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: token.marginSM,
-    marginBottom: `10px`,
-    color: token.colorText,
-    fontSize: token.fontSizeSM,
-    fontWeight: 600,
-  },
-  rollingSettingsBody: {
-    padding: `12px`,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    background: token.colorFillQuaternary,
-  },
-  fieldHelp: {
-    marginTop: token.marginXS,
-    color: token.colorTextTertiary,
-    fontSize: token.fontSizeSM,
-    lineHeight: token.lineHeight,
-  },
   containerTitle: {
-    marginBottom: token.marginSM,
+    marginBottom: `8px`,
     color: token.colorText,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeight,
@@ -205,42 +120,10 @@ const normalizeName = (value?: string) => value?.trim() || '';
 const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   const { styles } = useStyles();
   const [showContainerForm, setShowContainerForm] = useState(false);
-  const [strategyOpen, setStrategyOpen] = useState(false);
   const containerName = Form.useWatch('containerName', form);
   const image = Form.useWatch('image', form);
   const replicas = Form.useWatch('replicas', form) ?? 1;
-  const updateStrategyType =
-    Form.useWatch('updateStrategyType', form) || 'RollingUpdate';
   const hasContainer = Boolean(containerName || image || showContainerForm);
-  const rollingStrategy = {
-    title: '滚动更新（推荐）',
-    value: 'RollingUpdate',
-    description:
-      '用新容器组副本逐步替换旧容器组副本。升级过程中业务流量会负载均衡到新旧容器组副本上，业务不会中断。',
-  } as const;
-  const recreateStrategy = {
-    title: '同时更新',
-    value: 'Recreate',
-    description:
-      '删除全部旧容器组副本再创建新容器组副本。升级过程中业务会中断。',
-  } as const;
-  const strategyOptions =
-    type === 'Deployment'
-      ? [rollingStrategy, recreateStrategy]
-      : [rollingStrategy];
-  const selectedStrategy =
-    strategyOptions.find((option) => option.value === updateStrategyType) ||
-    strategyOptions[0];
-
-  useEffect(() => {
-    if (
-      type !== 'Deployment' &&
-      form.getFieldValue('updateStrategyType') === 'Recreate'
-    ) {
-      form.setFieldValue('updateStrategyType', 'RollingUpdate');
-      setStrategyOpen(false);
-    }
-  }, [form, type]);
 
   useEffect(() => {
     if (containerName || image) {
@@ -259,39 +142,6 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
     }
     setShowContainerForm(true);
   };
-
-  const selectStrategy = (
-    value: CreateWorkloadFormValues['updateStrategyType'],
-  ) => {
-    form.setFieldValue('updateStrategyType', value);
-    setStrategyOpen(false);
-  };
-
-  const renderStrategyOption = (
-    option: (typeof strategyOptions)[number],
-    showArrow: boolean,
-  ) => (
-    <button
-      className={styles.strategyOption}
-      key={option.value}
-      type="button"
-      onClick={() =>
-        showArrow && strategyOptions.length > 1
-          ? setStrategyOpen((open) => !open)
-          : selectStrategy(option.value)
-      }
-    >
-      <span>
-        <span className={styles.strategyTitle}>{option.title}</span>
-        <span className={styles.strategyDescription}>{option.description}</span>
-      </span>
-      {showArrow && strategyOptions.length > 1 && (
-        <span className={styles.strategyArrow}>
-          {strategyOpen ? <UpOutlined /> : <DownOutlined />}
-        </span>
-      )}
-    </button>
-  );
 
   return (
     <>
@@ -328,64 +178,6 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
           </div>
         </div>
       )}
-
-      <div className={styles.updateStrategy}>
-        <div className={styles.updateStrategyLabel}>更新策略</div>
-        <Form.Item name="updateStrategyType" hidden>
-          <Input />
-        </Form.Item>
-        <div className={styles.strategySelect}>
-          {renderStrategyOption(selectedStrategy, true)}
-          {strategyOpen &&
-            strategyOptions
-              .filter((option) => option.value !== selectedStrategy.value)
-              .map((option) => renderStrategyOption(option, false))}
-        </div>
-
-        {updateStrategyType === 'RollingUpdate' && type !== 'StatefulSet' && (
-          <div className={styles.rollingSettings}>
-            <div className={styles.rollingSettingsTitle}>
-              <span>滚动更新设置</span>
-            </div>
-            <div className={styles.rollingSettingsBody}>
-              <Row gutter={16}>
-                <Col span={type === 'Deployment' ? 12 : 24}>
-                  <Form.Item
-                    label="最大不可用容器组数量"
-                    name="maxUnavailable"
-                    rules={[
-                      {
-                        required: true,
-                        message: '请输入最大不可用容器组数量',
-                      },
-                    ]}
-                    tooltip="更新过程中允许的不可用容器组副本的最大数量或百分比"
-                  >
-                    <Input placeholder="25%" />
-                  </Form.Item>
-                </Col>
-                {type === 'Deployment' && (
-                  <Col span={12}>
-                    <Form.Item
-                      tooltip="更新过程中允许的多余容器组副本的最大数量或百分比"
-                      label="最大多余容器组数量"
-                      name="maxSurge"
-                      rules={[
-                        {
-                          required: true,
-                          message: '请输入最大多余容器组数量',
-                        },
-                      ]}
-                    >
-                      <Input placeholder="25%" />
-                    </Form.Item>
-                  </Col>
-                )}
-              </Row>
-            </div>
-          </div>
-        )}
-      </div>
 
       <div className={styles.containerTitle}>容器</div>
       {hasContainer ? (
@@ -465,6 +257,12 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
           </span>
         </button>
       )}
+
+      <div style={{ marginTop: `16px` }}>
+        <WorkloadUpdateStrategySelector form={form} type={type} />
+      </div>
+      <PodSecurityContextFields />
+      <PodSchedulingRuleSelector />
     </>
   );
 };
