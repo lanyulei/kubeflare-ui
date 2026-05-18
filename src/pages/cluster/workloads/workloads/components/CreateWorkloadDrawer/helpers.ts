@@ -48,9 +48,7 @@ const getInitialCreateWorkloadValues = (
   maxSurge: '25%',
   enablePodSecurityContext: false,
   runAsNonRoot: false,
-  enablePodGracefulTermination: false,
   terminationGracePeriodSeconds: 30,
-  enablePodMetadata: false,
   podAnnotations: [],
   podSchedulingRule: 'default',
   podSchedulingCustomRules: [],
@@ -145,9 +143,7 @@ const getWorkloadStepFields = (
       'podSchedulingCustomStrategy',
       'podSchedulingCustomTarget',
       'podSchedulingCustomRules',
-      'enablePodGracefulTermination',
       'terminationGracePeriodSeconds',
-      'enablePodMetadata',
       'podAnnotations',
     ];
 
@@ -179,9 +175,7 @@ const buildCreateWorkloadManifest = (
   const annotations = {
     ...toRecord(values.annotations),
   };
-  const podAnnotations = values.enablePodMetadata
-    ? toRecord(values.podAnnotations)
-    : {};
+  const podAnnotations = toRecord(values.podAnnotations);
   const podMetadata: Record<string, unknown> = {
     labels: appLabels,
   };
@@ -258,13 +252,11 @@ const buildCreateWorkloadManifest = (
       podSpec.securityContext = securityContext;
     }
   }
-  if (values.enablePodGracefulTermination) {
-    setIfDefined(
-      podSpec,
-      'terminationGracePeriodSeconds',
-      values.terminationGracePeriodSeconds,
-    );
-  }
+  setIfDefined(
+    podSpec,
+    'terminationGracePeriodSeconds',
+    values.terminationGracePeriodSeconds,
+  );
   if (values.podSchedulingRule === 'spread') {
     podSpec.affinity = {
       podAntiAffinity: {

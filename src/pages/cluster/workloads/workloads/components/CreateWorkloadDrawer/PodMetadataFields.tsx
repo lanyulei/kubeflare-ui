@@ -1,10 +1,22 @@
-import { Checkbox, Form, message } from 'antd';
+import { Form, message } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect } from 'react';
 import { KeyValueEditor } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 
 const useStyles = createStyles(({ token }) => ({
+  metadataWrapper: {
+    marginTop: `16px`,
+  },
+  metadataLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginXS,
+    marginBottom: `8px`,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
   metadata: {
     padding: `14px 16px`,
     border: `1px solid ${token.colorBorder}`,
@@ -15,23 +27,7 @@ const useStyles = createStyles(({ token }) => ({
       marginBottom: 0,
     },
   },
-  header: {
-    display: 'grid',
-    gridTemplateColumns: '18px minmax(0, 1fr)',
-    gap: token.marginSM,
-    alignItems: 'start',
-  },
-  checkbox: {
-    marginTop: 3,
-  },
-  title: {
-    color: token.colorText,
-    fontSize: token.fontSizeSM,
-    fontWeight: 600,
-    lineHeight: token.lineHeight,
-  },
   description: {
-    marginTop: token.marginXXS,
     color: token.colorTextTertiary,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeight,
@@ -62,31 +58,22 @@ const createKeyValueItem = (keyName = '', value = ''): KeyValueEditorItem => ({
 const PodMetadataFields = () => {
   const { styles } = useStyles();
   const form = Form.useFormInstance();
-  const enabled = Form.useWatch('enablePodMetadata', form);
   const annotations = Form.useWatch('podAnnotations', form);
+  const metadataTip = '为容器组副本添加元数据。';
 
   useEffect(() => {
-    if (enabled && (!annotations || annotations.length === 0)) {
+    if (!annotations || annotations.length === 0) {
       form.setFieldValue('podAnnotations', [createKeyValueItem()]);
     }
-  }, [annotations, enabled, form]);
+  }, [annotations, form]);
 
   return (
-    <div className={styles.metadata}>
-      <div className={styles.header}>
-        <Form.Item
-          className={styles.checkbox}
-          name="enablePodMetadata"
-          valuePropName="checked"
-        >
-          <Checkbox aria-label="启用容器组元数据" />
-        </Form.Item>
-        <span>
-          <div className={styles.title}>添加元数据</div>
-          <div className={styles.description}>为容器组副本添加元数据。</div>
-        </span>
+    <div className={styles.metadataWrapper}>
+      <div className={styles.metadataLabel}>
+        <span>元数据</span>
       </div>
-      {enabled && (
+      <div className={styles.metadata}>
+        <div className={styles.description}>{metadataTip}</div>
         <div className={styles.content}>
           <Form.Item label="注解" name="podAnnotations">
             <KeyValueEditor
@@ -99,7 +86,7 @@ const PodMetadataFields = () => {
             />
           </Form.Item>
         </div>
-      )}
+      </div>
     </div>
   );
 };

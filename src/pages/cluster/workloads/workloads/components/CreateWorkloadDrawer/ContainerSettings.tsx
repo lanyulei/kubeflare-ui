@@ -265,10 +265,8 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       </div>
       <PodSecurityContextFields />
       <PodSchedulingRuleSelector />
-      <div style={{ marginTop: `16px` }}>
-        <PodGracefulTerminationFields />
-      </div>
-      <div style={{ marginTop: `16px`, marginBottom: `16px` }}>
+      <PodGracefulTerminationFields />
+      <div style={{ marginBottom: `16px` }}>
         <PodMetadataFields />
       </div>
     </>
