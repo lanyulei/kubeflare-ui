@@ -37,7 +37,7 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   content: {
-    marginTop: `16px`,
+    marginTop: `10px`,
 
     '.ant-form-item-label': {
       paddingBottom: `10px`,
