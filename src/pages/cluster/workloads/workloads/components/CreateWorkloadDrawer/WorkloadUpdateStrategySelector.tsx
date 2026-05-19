@@ -18,10 +18,23 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   strategySelect: {
+    position: 'relative',
+    overflow: 'visible',
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+  },
+  strategyOptions: {
+    position: 'absolute',
+    top: 'calc(100% + 4px)',
+    right: 0,
+    left: 0,
+    zIndex: 10,
     overflow: 'hidden',
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
+    boxShadow: token.boxShadowSecondary,
   },
   strategyOption: {
     display: 'grid',
@@ -178,10 +191,13 @@ const WorkloadUpdateStrategySelector = ({
       </Form.Item>
       <div className={styles.strategySelect}>
         {renderStrategyOption(selectedStrategy, true)}
-        {strategyOpen &&
-          strategyOptions
-            .filter((option) => option.value !== selectedStrategy.value)
-            .map((option) => renderStrategyOption(option, false))}
+        {strategyOpen && (
+          <div className={styles.strategyOptions}>
+            {strategyOptions
+              .filter((option) => option.value !== selectedStrategy.value)
+              .map((option) => renderStrategyOption(option, false))}
+          </div>
+        )}
       </div>
 
       {updateStrategyType === 'RollingUpdate' && type !== 'StatefulSet' && (

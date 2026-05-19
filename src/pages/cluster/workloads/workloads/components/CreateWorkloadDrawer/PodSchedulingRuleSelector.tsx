@@ -55,10 +55,23 @@ const useStyles = createStyles(({ token }) => ({
     fontSize: `14px`,
   },
   ruleSelect: {
+    position: 'relative',
+    overflow: 'visible',
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+  },
+  ruleOptions: {
+    position: 'absolute',
+    top: 'calc(100% + 4px)',
+    right: 0,
+    left: 0,
+    zIndex: 10,
     overflow: 'hidden',
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
+    boxShadow: token.boxShadowSecondary,
   },
   ruleOption: {
     display: 'grid',
@@ -378,10 +391,13 @@ const PodSchedulingRuleSelector = ({
       </Form.Item>
       <div className={styles.ruleSelect}>
         {renderRuleOption(selectedRule, true)}
-        {open &&
-          schedulingRuleOptions
-            .filter((option) => option.value !== selectedRule.value)
-            .map((option) => renderRuleOption(option, false))}
+        {open && (
+          <div className={styles.ruleOptions}>
+            {schedulingRuleOptions
+              .filter((option) => option.value !== selectedRule.value)
+              .map((option) => renderRuleOption(option, false))}
+          </div>
+        )}
       </div>
       {schedulingRule === 'custom' && (
         <div className={styles.customRule}>

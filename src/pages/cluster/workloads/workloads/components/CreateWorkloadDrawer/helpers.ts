@@ -52,7 +52,19 @@ const getInitialCreateWorkloadValues = (
   podAnnotations: [],
   podSchedulingRule: 'default',
   podSchedulingCustomRules: [],
+  containerType: 'worker',
   imagePullPolicy: 'IfNotPresent',
+  containerPorts: [{ protocol: 'HTTP', name: 'http-0' }],
+  enableHealthCheck: false,
+  enableLifecycle: false,
+  enableStartupCommand: false,
+  enableContainerEnv: false,
+  containerEnv: [],
+  enableContainerSecurityContext: false,
+  containerRunAsNonRoot: false,
+  containerReadOnlyRootFilesystem: false,
+  allowPrivilegeEscalation: true,
+  syncHostTimezone: false,
   protocol: 'TCP',
   storageType: 'none',
   volumeName: 'data',
@@ -61,6 +73,19 @@ const getInitialCreateWorkloadValues = (
 });
 
 const normalizeName = (value?: string) => value?.trim() || '';
+
+const normalizeOptionalText = (value?: string) => {
+  const nextValue = value?.trim();
+  return nextValue || undefined;
+};
+
+const toResourceValue = (value?: number, unit?: string) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  return unit ? `${value}${unit}` : `${value}`;
+};
 
 const setIfDefined = (
   target: Record<string, unknown>,
@@ -71,6 +96,180 @@ const setIfDefined = (
     return;
   }
   target[key] = value;
+};
+
+const splitCommandText = (value?: string) =>
+  (value || '')
+    .split(/\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const normalizeContainerPortProtocol = (protocol?: string) => {
+  if (protocol === 'UDP' || protocol === 'SCTP') {
+    return protocol;
+  }
+
+  return 'TCP';
+};
+
+const getContainerPorts = (values: CreateWorkloadFormValues) => {
+  const ports = (values.containerPorts || [])
+    .filter((port) => port.containerPort)
+    .map((port) => {
+      const portConfig: Record<string, unknown> = {
+        containerPort: port.containerPort,
+        protocol: normalizeContainerPortProtocol(port.protocol),
+      };
+      const portName = normalizeOptionalText(port.name);
+
+      if (portName) {
+        portConfig.name = portName;
+      }
+
+      return portConfig;
+    });
+
+  if (ports.length > 0) {
+    return ports;
+  }
+
+  return values.containerPort
+    ? [
+        {
+          containerPort: values.containerPort,
+          protocol: normalizeContainerPortProtocol(values.protocol),
+        },
+      ]
+    : undefined;
+};
+
+const getContainerResources = (values: CreateWorkloadFormValues) => {
+  const requests: Record<string, string> = {};
+  const limits: Record<string, string> = {};
+  const cpuRequest = toResourceValue(values.cpuRequest);
+  const cpuLimit = toResourceValue(values.cpuLimit);
+  const memoryRequest = toResourceValue(values.memoryRequest, 'Mi');
+  const memoryLimit = toResourceValue(values.memoryLimit, 'Mi');
+
+  if (cpuRequest) {
+    requests.cpu = cpuRequest;
+  }
+  if (memoryRequest) {
+    requests.memory = memoryRequest;
+  }
+  if (cpuLimit) {
+    limits.cpu = cpuLimit;
+  }
+  if (memoryLimit) {
+    limits.memory = memoryLimit;
+  }
+
+  if (Object.keys(requests).length === 0 && Object.keys(limits).length === 0) {
+    return undefined;
+  }
+
+  return {
+    ...(Object.keys(requests).length > 0 ? { requests } : {}),
+    ...(Object.keys(limits).length > 0 ? { limits } : {}),
+  };
+};
+
+const getContainerEnv = (values: CreateWorkloadFormValues) => {
+  if (!values.enableContainerEnv) {
+    return undefined;
+  }
+
+  const env = (values.containerEnv || []).flatMap((item) => {
+    const name = normalizeOptionalText(item.keyName);
+    if (!name) {
+      return [];
+    }
+
+    return [
+      {
+        name,
+        value: item.value,
+      },
+    ];
+  });
+
+  return env.length > 0 ? env : undefined;
+};
+
+const getExecAction = (commandText?: string) => {
+  const command = splitCommandText(commandText);
+
+  return command.length > 0
+    ? {
+        exec: {
+          command,
+        },
+      }
+    : undefined;
+};
+
+const getContainerLifecycle = (values: CreateWorkloadFormValues) => {
+  if (!values.enableLifecycle) {
+    return undefined;
+  }
+
+  const postStart = getExecAction(values.postStartCommand);
+  const preStop = getExecAction(values.preStopCommand);
+
+  if (!postStart && !preStop) {
+    return undefined;
+  }
+
+  return {
+    ...(postStart ? { postStart } : {}),
+    ...(preStop ? { preStop } : {}),
+  };
+};
+
+const getContainerSecurityContext = (values: CreateWorkloadFormValues) => {
+  if (!values.enableContainerSecurityContext) {
+    return undefined;
+  }
+
+  const securityContext: Record<string, unknown> = {};
+
+  setIfDefined(
+    securityContext,
+    'runAsNonRoot',
+    values.containerRunAsNonRoot || undefined,
+  );
+  setIfDefined(securityContext, 'runAsUser', values.containerRunAsUser);
+  setIfDefined(
+    securityContext,
+    'readOnlyRootFilesystem',
+    values.containerReadOnlyRootFilesystem || undefined,
+  );
+  setIfDefined(
+    securityContext,
+    'allowPrivilegeEscalation',
+    values.allowPrivilegeEscalation,
+  );
+
+  return Object.keys(securityContext).length > 0 ? securityContext : undefined;
+};
+
+const getContainerProbe = (values: CreateWorkloadFormValues) => {
+  if (
+    !values.enableHealthCheck ||
+    !values.healthCheckPort ||
+    !normalizeOptionalText(values.healthCheckPath)
+  ) {
+    return undefined;
+  }
+
+  return {
+    httpGet: {
+      path: normalizeOptionalText(values.healthCheckPath),
+      port: values.healthCheckPort,
+    },
+    initialDelaySeconds: 10,
+    periodSeconds: 10,
+  };
 };
 
 const buildPodAffinityTerm = (appLabels: Record<string, string>) => ({
@@ -184,50 +383,73 @@ const buildCreateWorkloadManifest = (
     namespace: normalizeName(values.namespace),
     labels: appLabels,
   };
-  const ports = values.containerPort
-    ? [
-        {
-          containerPort: values.containerPort,
-          protocol: values.protocol || 'TCP',
-        },
-      ]
-    : undefined;
-  const volumeMounts =
-    values.storageType && values.storageType !== 'none' && values.mountPath
-      ? [
-          {
-            name: normalizeName(values.volumeName) || 'data',
-            mountPath: normalizeName(values.mountPath),
-            readOnly: values.readOnly || undefined,
-          },
-        ]
-      : undefined;
-  const volumes =
-    values.storageType && values.storageType !== 'none'
-      ? [
-          {
-            name: normalizeName(values.volumeName) || 'data',
-            ...(values.storageType === 'persistentVolumeClaim'
-              ? {
-                  persistentVolumeClaim: {
-                    claimName: normalizeName(values.claimName),
-                    readOnly: values.readOnly || undefined,
-                  },
-                }
-              : { emptyDir: {} }),
-          },
-        ]
-      : undefined;
+  const ports = getContainerPorts(values);
+  const resources = getContainerResources(values);
+  const env = getContainerEnv(values);
+  const lifecycle = getContainerLifecycle(values);
+  const healthProbe = getContainerProbe(values);
+  const command = values.enableStartupCommand
+    ? splitCommandText(values.startupCommand)
+    : [];
+  const args = values.enableStartupCommand
+    ? splitCommandText(values.startupArgs)
+    : [];
+  const securityContext = getContainerSecurityContext(values);
+  const volumeMounts: Record<string, unknown>[] = [];
+  const volumes: Record<string, unknown>[] = [];
+
+  if (values.storageType && values.storageType !== 'none' && values.mountPath) {
+    volumeMounts.push({
+      name: normalizeName(values.volumeName) || 'data',
+      mountPath: normalizeName(values.mountPath),
+      readOnly: values.readOnly || undefined,
+    });
+  }
+  if (values.storageType && values.storageType !== 'none') {
+    volumes.push({
+      name: normalizeName(values.volumeName) || 'data',
+      ...(values.storageType === 'persistentVolumeClaim'
+        ? {
+            persistentVolumeClaim: {
+              claimName: normalizeName(values.claimName),
+              readOnly: values.readOnly || undefined,
+            },
+          }
+        : { emptyDir: {} }),
+    });
+  }
+  if (values.syncHostTimezone) {
+    volumeMounts.push({
+      name: 'host-timezone',
+      mountPath: '/etc/localtime',
+      readOnly: true,
+    });
+    volumes.push({
+      name: 'host-timezone',
+      hostPath: {
+        path: '/etc/localtime',
+        type: 'File',
+      },
+    });
+  }
   const container = {
     name: normalizeName(values.containerName),
     image: normalizeName(values.image),
     imagePullPolicy: values.imagePullPolicy || 'IfNotPresent',
     ports,
-    volumeMounts,
+    resources,
+    command: command.length > 0 ? command : undefined,
+    args: args.length > 0 ? args : undefined,
+    env,
+    lifecycle,
+    readinessProbe: healthProbe,
+    livenessProbe: healthProbe,
+    securityContext,
+    volumeMounts: volumeMounts.length > 0 ? volumeMounts : undefined,
   };
   const podSpec: Record<string, unknown> = {
     containers: [container],
-    volumes,
+    volumes: volumes.length > 0 ? volumes : undefined,
   };
   if (values.enablePodSecurityContext) {
     const securityContext: Record<string, unknown> = {};

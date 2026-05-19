@@ -18,6 +18,14 @@ type WorkloadSchedulingCustomRule = {
   targetLabels?: Record<string, string>;
 };
 
+type ContainerType = 'worker' | 'init';
+
+type ContainerPortItem = {
+  protocol?: string;
+  name?: string;
+  containerPort?: number;
+};
+
 type CreateWorkloadFormValues = {
   name?: string;
   namespace?: string;
@@ -43,10 +51,33 @@ type CreateWorkloadFormValues = {
   podSchedulingCustomTargetLabels?: Record<string, string>;
   podSchedulingCustomRules?: WorkloadSchedulingCustomRule[];
   containerName?: string;
+  containerType?: ContainerType;
   image?: string;
   imagePullPolicy?: string;
+  cpuRequest?: number;
+  cpuLimit?: number;
+  memoryRequest?: number;
+  memoryLimit?: number;
+  containerPorts?: ContainerPortItem[];
   containerPort?: number;
   protocol?: string;
+  enableHealthCheck?: boolean;
+  healthCheckPath?: string;
+  healthCheckPort?: number;
+  enableLifecycle?: boolean;
+  postStartCommand?: string;
+  preStopCommand?: string;
+  enableStartupCommand?: boolean;
+  startupCommand?: string;
+  startupArgs?: string;
+  enableContainerEnv?: boolean;
+  containerEnv?: KeyValueEditorItem[];
+  enableContainerSecurityContext?: boolean;
+  containerRunAsNonRoot?: boolean;
+  containerRunAsUser?: number;
+  containerReadOnlyRootFilesystem?: boolean;
+  allowPrivilegeEscalation?: boolean;
+  syncHostTimezone?: boolean;
   storageType?: WorkloadStorageType;
   volumeName?: string;
   mountPath?: string;
@@ -57,6 +88,8 @@ type CreateWorkloadFormValues = {
 };
 
 export type {
+  ContainerPortItem,
+  ContainerType,
   CreateWorkloadFormValues,
   WorkloadSchedulingCustomRule,
   WorkloadSchedulingCustomStrategy,

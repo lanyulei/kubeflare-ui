@@ -5,32 +5,60 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import {
-  Button,
-  Col,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Row,
-  Select,
-} from 'antd';
+import { Button, Form, InputNumber } from 'antd';
+import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
 import { useEffect, useRef, useState } from 'react';
+import ContainerConfigModal from './ContainerConfigModal';
 import PodGracefulTerminationFields from './PodGracefulTerminationFields';
 import PodMetadataFields from './PodMetadataFields';
 import PodSchedulingRuleSelector from './PodSchedulingRuleSelector';
 import PodSecurityContextFields from './PodSecurityContextFields';
-import type { CreateWorkloadFormValues } from './types';
+import type { ContainerPortItem, CreateWorkloadFormValues } from './types';
 import WorkloadUpdateStrategySelector from './WorkloadUpdateStrategySelector';
 
-const NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 const CONTAINER_FIELD_NAMES: (keyof CreateWorkloadFormValues)[] = [
   'containerName',
+  'containerType',
   'image',
   'imagePullPolicy',
+  'cpuRequest',
+  'cpuLimit',
+  'memoryRequest',
+  'memoryLimit',
+  'containerPorts',
   'containerPort',
   'protocol',
+  'enableHealthCheck',
+  'healthCheckPath',
+  'healthCheckPort',
+  'enableLifecycle',
+  'postStartCommand',
+  'preStopCommand',
+  'enableStartupCommand',
+  'startupCommand',
+  'startupArgs',
+  'enableContainerEnv',
+  'containerEnv',
+  'enableContainerSecurityContext',
+  'containerRunAsNonRoot',
+  'containerRunAsUser',
+  'containerReadOnlyRootFilesystem',
+  'allowPrivilegeEscalation',
+  'syncHostTimezone',
+];
+const CONTAINER_VALIDATE_FIELD_NAMES: NamePath[] = [
+  'containerName',
+  'image',
+  'containerPorts',
+  'cpuRequest',
+  'cpuLimit',
+  'memoryRequest',
+  'memoryLimit',
+  'healthCheckPath',
+  'healthCheckPort',
+  'containerEnv',
+  'containerRunAsUser',
 ];
 
 const useStyles = createStyles(({ token }) => ({
@@ -148,7 +176,50 @@ type ContainerSettingsProps = {
   type: API.ClusterWorkloadType;
 };
 
-const normalizeName = (value?: string) => value?.trim() || '';
+const createRandomContainerName = () => {
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const suffix = Array.from({ length: 8 }, () =>
+    chars.charAt(Math.floor(Math.random() * chars.length)),
+  ).join('');
+
+  return `container-${suffix}`;
+};
+
+const getPrimaryPort = (ports?: ContainerPortItem[]) =>
+  (ports || []).find((port) => port.containerPort);
+
+const formatPort = (
+  containerPorts?: ContainerPortItem[],
+  containerPort?: number,
+  protocol?: string,
+) => {
+  const primaryPort = getPrimaryPort(containerPorts);
+
+  if (primaryPort?.containerPort) {
+    return `${primaryPort.containerPort}/${primaryPort.protocol || 'HTTP'}`;
+  }
+
+  return containerPort ? `${containerPort}/${protocol || 'TCP'}` : '未设置';
+};
+
+const formatResources = (
+  cpuRequest?: number,
+  cpuLimit?: number,
+  memoryRequest?: number,
+  memoryLimit?: number,
+) => {
+  const cpu =
+    cpuRequest || cpuLimit ? `${cpuRequest || '-'} / ${cpuLimit || '-'}` : '';
+  const memory =
+    memoryRequest || memoryLimit
+      ? `${memoryRequest || '-'}Mi / ${memoryLimit || '-'}Mi`
+      : '';
+
+  return [cpu ? `CPU ${cpu}` : '', memory ? `内存 ${memory}` : '']
+    .filter(Boolean)
+    .join('，');
+};
 
 const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   const { styles } = useStyles();
@@ -158,10 +229,21 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   const containerName = Form.useWatch('containerName', form);
   const image = Form.useWatch('image', form);
   const imagePullPolicy = Form.useWatch('imagePullPolicy', form);
+  const containerPorts = Form.useWatch('containerPorts', form);
   const containerPort = Form.useWatch('containerPort', form);
   const protocol = Form.useWatch('protocol', form);
+  const cpuRequest = Form.useWatch('cpuRequest', form);
+  const cpuLimit = Form.useWatch('cpuLimit', form);
+  const memoryRequest = Form.useWatch('memoryRequest', form);
+  const memoryLimit = Form.useWatch('memoryLimit', form);
   const replicas = Form.useWatch('replicas', form) ?? 1;
   const hasContainer = Boolean(containerName || image || showContainerForm);
+  const resourceSummary = formatResources(
+    cpuRequest,
+    cpuLimit,
+    memoryRequest,
+    memoryLimit,
+  );
 
   useEffect(() => {
     if (containerName || image) {
@@ -184,13 +266,8 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
 
   const openContainerModal = (shouldPrefillName = false) => {
     containerSnapshotRef.current = getContainerSnapshot();
-    const workloadName = normalizeName(form.getFieldValue('name'));
-    if (
-      shouldPrefillName &&
-      !form.getFieldValue('containerName') &&
-      workloadName
-    ) {
-      form.setFieldValue('containerName', workloadName);
+    if (shouldPrefillName && !form.getFieldValue('containerName')) {
+      form.setFieldValue('containerName', createRandomContainerName());
     }
     setShowContainerForm(true);
     setContainerModalOpen(true);
@@ -208,7 +285,7 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   };
 
   const saveContainerModal = async () => {
-    await form.validateFields(CONTAINER_FIELD_NAMES);
+    await form.validateFields(CONTAINER_VALIDATE_FIELD_NAMES);
     setShowContainerForm(true);
     setContainerModalOpen(false);
   };
@@ -279,9 +356,13 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
             <span>
               端口：
               <span className={styles.containerValue}>
-                {containerPort
-                  ? `${containerPort}/${protocol || 'TCP'}`
-                  : '未设置'}
+                {formatPort(containerPorts, containerPort, protocol)}
+              </span>
+            </span>
+            <span>
+              资源：
+              <span className={styles.containerValue}>
+                {resourceSummary || '未设置'}
               </span>
             </span>
           </div>
@@ -310,71 +391,11 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
         <PodMetadataFields />
       </div>
 
-      <Modal
-        destroyOnHidden
-        maskClosable={false}
+      <ContainerConfigModal
         open={containerModalOpen}
-        title="编辑容器配置"
-        width={760}
         onCancel={cancelContainerModal}
         onOk={saveContainerModal}
-      >
-        <Row gutter={24}>
-          <Col span={12}>
-            <Form.Item
-              label="容器名称"
-              name="containerName"
-              rules={[
-                { required: true, message: '请输入容器名称' },
-                { max: 63, message: '容器名称最长 63 个字符' },
-                {
-                  pattern: NAME_PATTERN,
-                  message:
-                    '容器名称只能包含小写字母、数字和连字符（-），且不能以连字符开头或结尾',
-                },
-              ]}
-            >
-              <Input placeholder="例如 nginx" />
-            </Form.Item>
-            <Form.Item
-              label="镜像"
-              name="image"
-              rules={[{ required: true, message: '请输入容器镜像' }]}
-            >
-              <Input placeholder="例如 nginx:1.27" />
-            </Form.Item>
-            <Form.Item label="镜像拉取策略" name="imagePullPolicy">
-              <Select
-                options={[
-                  { label: 'IfNotPresent', value: 'IfNotPresent' },
-                  { label: 'Always', value: 'Always' },
-                  { label: 'Never', value: 'Never' },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label="容器端口" name="containerPort">
-              <InputNumber
-                min={1}
-                max={65535}
-                precision={0}
-                style={{ width: '100%' }}
-                placeholder="可选"
-              />
-            </Form.Item>
-            <Form.Item label="协议" name="protocol">
-              <Select
-                options={[
-                  { label: 'TCP', value: 'TCP' },
-                  { label: 'UDP', value: 'UDP' },
-                  { label: 'SCTP', value: 'SCTP' },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Modal>
+      />
     </>
   );
 };
