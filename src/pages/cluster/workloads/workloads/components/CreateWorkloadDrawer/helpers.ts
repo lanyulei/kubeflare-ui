@@ -1,6 +1,9 @@
 import { stringify } from 'yaml';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 import type {
+  ContainerActionFormValue,
+  ContainerProbeFormValue,
+  ContainerProbeKind,
   CreateWorkloadFormValues,
   WorkloadSchedulingCustomRule,
 } from './types';
@@ -56,14 +59,19 @@ const getInitialCreateWorkloadValues = (
   imagePullPolicy: 'IfNotPresent',
   containerPorts: [{ protocol: 'HTTP', name: 'http-0' }],
   enableHealthCheck: false,
+  healthChecks: {},
   enableLifecycle: false,
+  lifecycleActions: {},
   enableStartupCommand: false,
   enableContainerEnv: false,
   containerEnv: [],
   enableContainerSecurityContext: false,
+  containerPrivileged: false,
   containerRunAsNonRoot: false,
   containerReadOnlyRootFilesystem: false,
-  allowPrivilegeEscalation: true,
+  allowPrivilegeEscalation: false,
+  containerCapabilitiesAdd: [''],
+  containerCapabilitiesDrop: [''],
   syncHostTimezone: false,
   protocol: 'TCP',
   storageType: 'none',
@@ -103,6 +111,9 @@ const splitCommandText = (value?: string) =>
     .split(/\n|,/)
     .map((item) => item.trim())
     .filter(Boolean);
+
+const normalizeStringList = (value?: string[]) =>
+  (value || []).map((item) => item.trim()).filter(Boolean);
 
 const normalizeContainerPortProtocol = (protocol?: string) => {
   if (protocol === 'UDP' || protocol === 'SCTP') {
@@ -174,24 +185,71 @@ const getContainerResources = (values: CreateWorkloadFormValues) => {
   };
 };
 
+type ContainerEnvManifestItem = {
+  name: string;
+  value?: string;
+  valueFrom?: {
+    configMapKeyRef?: {
+      name: string;
+      key: string;
+    };
+    secretKeyRef?: {
+      name: string;
+      key: string;
+    };
+  };
+};
+
 const getContainerEnv = (values: CreateWorkloadFormValues) => {
   if (!values.enableContainerEnv) {
     return undefined;
   }
 
-  const env = (values.containerEnv || []).flatMap((item) => {
-    const name = normalizeOptionalText(item.keyName);
-    if (!name) {
-      return [];
-    }
+  const env = (values.containerEnv || []).flatMap<ContainerEnvManifestItem>(
+    (item) => {
+      const name = normalizeOptionalText(item.keyName);
+      if (!name) {
+        return [];
+      }
 
-    return [
-      {
-        name,
-        value: item.value,
-      },
-    ];
-  });
+      const sourceType = item.sourceType || 'custom';
+      if (sourceType === 'configMap' || sourceType === 'secret') {
+        const resourceName = normalizeOptionalText(item.resourceName);
+        const resourceKey = normalizeOptionalText(item.resourceKey);
+
+        if (!resourceName || !resourceKey) {
+          return [];
+        }
+
+        return [
+          {
+            name,
+            valueFrom:
+              sourceType === 'configMap'
+                ? {
+                    configMapKeyRef: {
+                      name: resourceName,
+                      key: resourceKey,
+                    },
+                  }
+                : {
+                    secretKeyRef: {
+                      name: resourceName,
+                      key: resourceKey,
+                    },
+                  },
+          },
+        ];
+      }
+
+      return [
+        {
+          name,
+          value: item.value ?? '',
+        },
+      ];
+    },
+  );
 
   return env.length > 0 ? env : undefined;
 };
@@ -208,13 +266,55 @@ const getExecAction = (commandText?: string) => {
     : undefined;
 };
 
+const getLifecycleAction = (
+  action?: ContainerActionFormValue,
+  legacyCommand?: string,
+) => {
+  if (!action?.enabled) {
+    return getExecAction(legacyCommand);
+  }
+
+  if (action.handlerType === 'exec') {
+    return getExecAction(action.command);
+  }
+
+  if (action.handlerType === 'tcpSocket') {
+    return action.port
+      ? {
+          tcpSocket: {
+            port: action.port,
+          },
+        }
+      : undefined;
+  }
+
+  const path = normalizeOptionalText(action.path);
+
+  return path && action.port
+    ? {
+        httpGet: {
+          scheme: action.scheme || 'HTTP',
+          path,
+          port: action.port,
+        },
+      }
+    : undefined;
+};
+
 const getContainerLifecycle = (values: CreateWorkloadFormValues) => {
   if (!values.enableLifecycle) {
     return undefined;
   }
 
-  const postStart = getExecAction(values.postStartCommand);
-  const preStop = getExecAction(values.preStopCommand);
+  const lifecycleActions = values.lifecycleActions;
+  const postStart = getLifecycleAction(
+    lifecycleActions?.postStart,
+    lifecycleActions ? undefined : values.postStartCommand,
+  );
+  const preStop = getLifecycleAction(
+    lifecycleActions?.preStop,
+    lifecycleActions ? undefined : values.preStopCommand,
+  );
 
   if (!postStart && !preStop) {
     return undefined;
@@ -232,13 +332,24 @@ const getContainerSecurityContext = (values: CreateWorkloadFormValues) => {
   }
 
   const securityContext: Record<string, unknown> = {};
+  const seLinuxOptions: Record<string, unknown> = {};
+  const capabilitiesAdd = normalizeStringList(values.containerCapabilitiesAdd);
+  const capabilitiesDrop = normalizeStringList(
+    values.containerCapabilitiesDrop,
+  );
 
+  setIfDefined(
+    securityContext,
+    'privileged',
+    values.containerPrivileged || undefined,
+  );
   setIfDefined(
     securityContext,
     'runAsNonRoot',
     values.containerRunAsNonRoot || undefined,
   );
   setIfDefined(securityContext, 'runAsUser', values.containerRunAsUser);
+  setIfDefined(securityContext, 'runAsGroup', values.containerRunAsGroup);
   setIfDefined(
     securityContext,
     'readOnlyRootFilesystem',
@@ -247,29 +358,111 @@ const getContainerSecurityContext = (values: CreateWorkloadFormValues) => {
   setIfDefined(
     securityContext,
     'allowPrivilegeEscalation',
-    values.allowPrivilegeEscalation,
+    values.containerPrivileged ? true : values.allowPrivilegeEscalation,
   );
+  setIfDefined(
+    seLinuxOptions,
+    'level',
+    normalizeName(values.containerSeLinuxLevel),
+  );
+  setIfDefined(
+    seLinuxOptions,
+    'role',
+    normalizeName(values.containerSeLinuxRole),
+  );
+  setIfDefined(
+    seLinuxOptions,
+    'type',
+    normalizeName(values.containerSeLinuxType),
+  );
+  setIfDefined(
+    seLinuxOptions,
+    'user',
+    normalizeName(values.containerSeLinuxUser),
+  );
+
+  if (Object.keys(seLinuxOptions).length > 0) {
+    securityContext.seLinuxOptions = seLinuxOptions;
+  }
+  if (capabilitiesAdd.length > 0 || capabilitiesDrop.length > 0) {
+    securityContext.capabilities = {
+      ...(capabilitiesAdd.length > 0 ? { add: capabilitiesAdd } : {}),
+      ...(capabilitiesDrop.length > 0 ? { drop: capabilitiesDrop } : {}),
+    };
+  }
 
   return Object.keys(securityContext).length > 0 ? securityContext : undefined;
 };
 
-const getContainerProbe = (values: CreateWorkloadFormValues) => {
-  if (
-    !values.enableHealthCheck ||
-    !values.healthCheckPort ||
-    !normalizeOptionalText(values.healthCheckPath)
-  ) {
+const normalizeProbeNumber = (value: number | undefined, fallback: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const getProbeBaseConfig = (
+  probe: ContainerProbeFormValue,
+  probeName: ContainerProbeKind,
+) => ({
+  initialDelaySeconds: normalizeProbeNumber(probe.initialDelaySeconds, 0),
+  timeoutSeconds: normalizeProbeNumber(probe.timeoutSeconds, 1),
+  periodSeconds: normalizeProbeNumber(probe.periodSeconds, 10),
+  successThreshold:
+    probeName === 'readiness'
+      ? normalizeProbeNumber(probe.successThreshold, 1)
+      : 1,
+  failureThreshold: normalizeProbeNumber(probe.failureThreshold, 3),
+});
+
+const getContainerProbe = (
+  values: CreateWorkloadFormValues,
+  probeName: ContainerProbeKind,
+) => {
+  if (!values.enableHealthCheck) {
     return undefined;
   }
 
-  return {
-    httpGet: {
-      path: normalizeOptionalText(values.healthCheckPath),
-      port: values.healthCheckPort,
-    },
-    initialDelaySeconds: 10,
-    periodSeconds: 10,
-  };
+  const probe = values.healthChecks?.[probeName];
+
+  if (!probe?.enabled) {
+    return undefined;
+  }
+
+  const baseConfig = getProbeBaseConfig(probe, probeName);
+
+  if (probe.handlerType === 'exec') {
+    const command = splitCommandText(probe.command);
+
+    return command.length > 0
+      ? {
+          exec: {
+            command,
+          },
+          ...baseConfig,
+        }
+      : undefined;
+  }
+
+  if (probe.handlerType === 'tcpSocket') {
+    return probe.port
+      ? {
+          tcpSocket: {
+            port: probe.port,
+          },
+          ...baseConfig,
+        }
+      : undefined;
+  }
+
+  const path = normalizeOptionalText(probe.path);
+
+  return path && probe.port
+    ? {
+        httpGet: {
+          scheme: probe.scheme || 'HTTP',
+          path,
+          port: probe.port,
+        },
+        ...baseConfig,
+      }
+    : undefined;
 };
 
 const buildPodAffinityTerm = (appLabels: Record<string, string>) => ({
@@ -387,7 +580,9 @@ const buildCreateWorkloadManifest = (
   const resources = getContainerResources(values);
   const env = getContainerEnv(values);
   const lifecycle = getContainerLifecycle(values);
-  const healthProbe = getContainerProbe(values);
+  const livenessProbe = getContainerProbe(values, 'liveness');
+  const readinessProbe = getContainerProbe(values, 'readiness');
+  const startupProbe = getContainerProbe(values, 'startup');
   const command = values.enableStartupCommand
     ? splitCommandText(values.startupCommand)
     : [];
@@ -442,8 +637,9 @@ const buildCreateWorkloadManifest = (
     args: args.length > 0 ? args : undefined,
     env,
     lifecycle,
-    readinessProbe: healthProbe,
-    livenessProbe: healthProbe,
+    readinessProbe,
+    livenessProbe,
+    startupProbe,
     securityContext,
     volumeMounts: volumeMounts.length > 0 ? volumeMounts : undefined,
   };

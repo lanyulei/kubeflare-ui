@@ -551,6 +551,28 @@ declare namespace API {
     continue?: string
   }
 
+  type ClusterConfigResourceItem = {
+    id?: string
+    name: string
+    namespace?: string
+    type?: string
+    keys: string[]
+    create_time?: string
+  }
+
+  type ClusterConfigResourceListData = {
+    items: ClusterConfigResourceItem[]
+    continue?: string
+    remainingItemCount?: number
+  }
+
+  type ClusterConfigResourceListParams = {
+    namespace?: string
+    keyword?: string
+    limit?: number
+    continue?: string
+  }
+
   type CreateUserParams = {
     username: string
     nickname: string

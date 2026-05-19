@@ -3,22 +3,15 @@ import {
   DownOutlined,
   UpOutlined,
 } from '@ant-design/icons';
-import {
-  Checkbox,
-  Col,
-  Form,
-  Input,
-  InputNumber,
-  message,
-  Row,
-  Switch,
-} from 'antd';
+import { Checkbox, Form, Input } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
-import { KeyValueEditor } from '@/components';
-import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+import { useState } from 'react';
+import ContainerEnvFields from './ContainerEnvFields';
+import ContainerHealthCheckFields from './ContainerHealthCheckFields';
+import ContainerLifecycleFields from './ContainerLifecycleFields';
+import ContainerSecurityContextFields from './ContainerSecurityContextFields';
 
 const useStyles = createStyles(({ token }) => ({
   stack: {
@@ -125,13 +118,21 @@ const useStyles = createStyles(({ token }) => ({
   textarea: {
     resize: 'vertical',
   },
-  switchRow: {
+  fieldStack: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: token.margin,
-    padding: `${token.paddingXS}px 0`,
-    color: token.colorText,
+    flexDirection: 'column',
+    gap: token.marginSM,
+  },
+  fieldBlock: {
+    '.ant-form-item': {
+      marginBottom: 0,
+    },
+  },
+  fieldHelp: {
+    marginTop: token.marginXXS,
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
   },
 }));
 
@@ -166,12 +167,6 @@ const imagePullPolicyOptions: {
     description: '仅使用本地镜像。如果本地不存在所需的镜像，则会导致容器异常。',
   },
 ];
-
-const createKeyValueItem = (keyName = '', value = ''): KeyValueEditorItem => ({
-  id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  keyName,
-  value,
-});
 
 const ToggleOptionCard = ({
   name,
@@ -215,15 +210,9 @@ const ContainerAdvancedOptions = () => {
     form,
   );
   const syncHostTimezone = Form.useWatch('syncHostTimezone', form);
-  const containerEnv = Form.useWatch('containerEnv', form);
   const imagePullPolicy =
     (Form.useWatch('imagePullPolicy', form) as ImagePullPolicyType) ||
     'IfNotPresent';
-  useEffect(() => {
-    if (enableContainerEnv && (!containerEnv || containerEnv.length === 0)) {
-      form.setFieldValue('containerEnv', [createKeyValueItem()]);
-    }
-  }, [containerEnv, enableContainerEnv, form]);
 
   const selectImagePullPolicy = (value: ImagePullPolicyType) => {
     form.setFieldValue('imagePullPolicy', value);
@@ -283,23 +272,7 @@ const ContainerAdvancedOptions = () => {
         name="enableHealthCheck"
         title="健康检查"
       >
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item label="HTTP 路径" name="healthCheckPath">
-              <Input placeholder="例如 /healthz" />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label="检查端口" name="healthCheckPort">
-              <InputNumber
-                min={1}
-                max={65535}
-                precision={0}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+        <ContainerHealthCheckFields />
       </ToggleOptionCard>
 
       <ToggleOptionCard
@@ -308,26 +281,7 @@ const ContainerAdvancedOptions = () => {
         name="enableLifecycle"
         title="生命周期管理"
       >
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item label="启动后命令" name="postStartCommand">
-              <Input.TextArea
-                className={styles.textarea}
-                placeholder="每行一个命令片段"
-                rows={3}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label="终止前命令" name="preStopCommand">
-              <Input.TextArea
-                className={styles.textarea}
-                placeholder="每行一个命令片段"
-                rows={3}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+        <ContainerLifecycleFields />
       </ToggleOptionCard>
 
       <ToggleOptionCard
@@ -336,26 +290,22 @@ const ContainerAdvancedOptions = () => {
         name="enableStartupCommand"
         title="启动命令"
       >
-        <Row gutter={16}>
-          <Col span={12}>
+        <div className={styles.fieldStack}>
+          <div className={styles.fieldBlock}>
             <Form.Item label="命令" name="startupCommand">
-              <Input.TextArea
-                className={styles.textarea}
-                placeholder="每行一个命令片段"
-                rows={3}
-              />
+              <Input.TextArea className={styles.textarea} rows={2} />
             </Form.Item>
-          </Col>
-          <Col span={12}>
+            <div className={styles.fieldHelp}>容器的启动命令。</div>
+          </div>
+          <div className={styles.fieldBlock}>
             <Form.Item label="参数" name="startupArgs">
-              <Input.TextArea
-                className={styles.textarea}
-                placeholder="每行一个参数"
-                rows={3}
-              />
+              <Input.TextArea className={styles.textarea} rows={2} />
             </Form.Item>
-          </Col>
-        </Row>
+            <div className={styles.fieldHelp}>
+              容器启动命令的参数。如有多个参数请使用半角逗号（,）分隔。
+            </div>
+          </div>
+        </div>
       </ToggleOptionCard>
 
       <ToggleOptionCard
@@ -364,18 +314,7 @@ const ContainerAdvancedOptions = () => {
         name="enableContainerEnv"
         title="环境变量"
       >
-        <Form.Item name="containerEnv">
-          <KeyValueEditor
-            addIcon={false}
-            addText="添加"
-            deleteAriaLabel="删除环境变量"
-            footerJustify="flex-end"
-            keyPlaceholder="变量名"
-            valuePlaceholder="变量值"
-            onAddBlocked={() => message.warning('请先填写已有环境变量名称。')}
-            onCreateItem={() => createKeyValueItem()}
-          />
-        </Form.Item>
+        <ContainerEnvFields />
       </ToggleOptionCard>
 
       <ToggleOptionCard
@@ -384,44 +323,7 @@ const ContainerAdvancedOptions = () => {
         name="enableContainerSecurityContext"
         title="容器安全上下文"
       >
-        <Row gutter={16}>
-          <Col span={12}>
-            <div className={styles.switchRow}>
-              <span>仅允许非 root 用户运行</span>
-              <Form.Item name="containerRunAsNonRoot" valuePropName="checked">
-                <Switch size="small" />
-              </Form.Item>
-            </div>
-            <div className={styles.switchRow}>
-              <span>只读根文件系统</span>
-              <Form.Item
-                name="containerReadOnlyRootFilesystem"
-                valuePropName="checked"
-              >
-                <Switch size="small" />
-              </Form.Item>
-            </div>
-          </Col>
-          <Col span={12}>
-            <Form.Item label="用户" name="containerRunAsUser">
-              <InputNumber
-                min={0}
-                precision={0}
-                placeholder="请输入用户 ID"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <div className={styles.switchRow}>
-              <span>允许权限提升</span>
-              <Form.Item
-                name="allowPrivilegeEscalation"
-                valuePropName="checked"
-              >
-                <Switch size="small" />
-              </Form.Item>
-            </div>
-          </Col>
-        </Row>
+        <ContainerSecurityContextFields />
       </ToggleOptionCard>
 
       <ToggleOptionCard

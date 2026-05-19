@@ -139,22 +139,17 @@ const ContainerConfigModal = ({
             <Input
               className={styles.imageInput}
               placeholder="镜像名称或路径，例如 nginx:latest"
-              prefix="Docker Hub"
               suffix={<CodeSandboxOutlined className={styles.imageSuffix} />}
             />
           </Form.Item>
-          <div className={styles.imagePreview}>
-            <DockerOutlined className={styles.imagePreviewIcon} />
-            <span>为容器设置镜像。</span>
-          </div>
 
-          <Button
+          {/* <Button
             className={styles.advancedToggle}
             type="link"
             onClick={() => setAdvancedOpen((current) => !current)}
           >
             高级设置 {advancedOpen ? <UpOutlined /> : <DownOutlined />}
-          </Button>
+          </Button> */}
 
           {advancedOpen && (
             <>

@@ -19,6 +19,45 @@ type WorkloadSchedulingCustomRule = {
 };
 
 type ContainerType = 'worker' | 'init';
+type ContainerHandlerType = 'httpGet' | 'exec' | 'tcpSocket';
+type ContainerLifecycleActionName = 'postStart' | 'preStop';
+type ContainerProbeKind = 'liveness' | 'readiness' | 'startup';
+type ContainerProbeHandlerType = ContainerHandlerType;
+type ContainerEnvSourceType = 'custom' | 'configMap' | 'secret';
+
+type ContainerEnvItem = {
+  id: string;
+  sourceType?: ContainerEnvSourceType;
+  keyName?: string;
+  value?: string;
+  resourceName?: string;
+  resourceKey?: string;
+};
+
+type ContainerActionFormValue = {
+  enabled?: boolean;
+  handlerType?: ContainerHandlerType;
+  scheme?: 'HTTP' | 'HTTPS';
+  path?: string;
+  port?: number;
+  command?: string;
+};
+
+type ContainerLifecycleActionsValue = Partial<
+  Record<ContainerLifecycleActionName, ContainerActionFormValue>
+>;
+
+type ContainerProbeFormValue = ContainerActionFormValue & {
+  initialDelaySeconds?: number;
+  timeoutSeconds?: number;
+  periodSeconds?: number;
+  successThreshold?: number;
+  failureThreshold?: number;
+};
+
+type ContainerHealthChecksValue = Partial<
+  Record<ContainerProbeKind, ContainerProbeFormValue>
+>;
 
 type ContainerPortItem = {
   protocol?: string;
@@ -62,21 +101,29 @@ type CreateWorkloadFormValues = {
   containerPort?: number;
   protocol?: string;
   enableHealthCheck?: boolean;
-  healthCheckPath?: string;
-  healthCheckPort?: number;
+  healthChecks?: ContainerHealthChecksValue;
   enableLifecycle?: boolean;
+  lifecycleActions?: ContainerLifecycleActionsValue;
   postStartCommand?: string;
   preStopCommand?: string;
   enableStartupCommand?: boolean;
   startupCommand?: string;
   startupArgs?: string;
   enableContainerEnv?: boolean;
-  containerEnv?: KeyValueEditorItem[];
+  containerEnv?: ContainerEnvItem[];
   enableContainerSecurityContext?: boolean;
+  containerPrivileged?: boolean;
   containerRunAsNonRoot?: boolean;
   containerRunAsUser?: number;
+  containerRunAsGroup?: number;
   containerReadOnlyRootFilesystem?: boolean;
   allowPrivilegeEscalation?: boolean;
+  containerSeLinuxLevel?: string;
+  containerSeLinuxRole?: string;
+  containerSeLinuxType?: string;
+  containerSeLinuxUser?: string;
+  containerCapabilitiesAdd?: string[];
+  containerCapabilitiesDrop?: string[];
   syncHostTimezone?: boolean;
   storageType?: WorkloadStorageType;
   volumeName?: string;
@@ -88,7 +135,17 @@ type CreateWorkloadFormValues = {
 };
 
 export type {
+  ContainerActionFormValue,
+  ContainerEnvItem,
+  ContainerEnvSourceType,
+  ContainerHandlerType,
+  ContainerHealthChecksValue,
+  ContainerLifecycleActionName,
+  ContainerLifecycleActionsValue,
   ContainerPortItem,
+  ContainerProbeFormValue,
+  ContainerProbeHandlerType,
+  ContainerProbeKind,
   ContainerType,
   CreateWorkloadFormValues,
   WorkloadSchedulingCustomRule,

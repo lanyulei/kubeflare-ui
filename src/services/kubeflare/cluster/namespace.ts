@@ -206,6 +206,45 @@ type KubernetesStorageClassList = {
   items?: KubernetesStorageClass[]
 }
 
+type KubernetesConfigMap = {
+  metadata?: {
+    uid?: string
+    name?: string
+    namespace?: string
+    creationTimestamp?: string
+  }
+  data?: Record<string, string>
+  binaryData?: Record<string, string>
+}
+
+type KubernetesConfigMapList = {
+  metadata?: {
+    continue?: string
+    remainingItemCount?: number
+  }
+  items?: KubernetesConfigMap[]
+}
+
+type KubernetesSecret = {
+  metadata?: {
+    uid?: string
+    name?: string
+    namespace?: string
+    creationTimestamp?: string
+  }
+  type?: string
+  data?: Record<string, string>
+  stringData?: Record<string, string>
+}
+
+type KubernetesSecretList = {
+  metadata?: {
+    continue?: string
+    remainingItemCount?: number
+  }
+  items?: KubernetesSecret[]
+}
+
 type KubernetesLimitRange = {
   apiVersion?: string
   kind?: string
@@ -733,6 +772,34 @@ const toClusterStorageClassItem = (
   provisioner: storageClass.provisioner,
 })
 
+const getConfigResourceKeys = (
+  ...dataList: (Record<string, string> | undefined)[]
+) =>
+  Array.from(
+    new Set(dataList.flatMap((data) => (data ? Object.keys(data) : []))),
+  ).sort((first, second) => first.localeCompare(second))
+
+const toClusterConfigMapItem = (
+  configMap: KubernetesConfigMap,
+): API.ClusterConfigResourceItem => ({
+  id: configMap.metadata?.uid || configMap.metadata?.name,
+  name: configMap.metadata?.name || '-',
+  namespace: configMap.metadata?.namespace,
+  keys: getConfigResourceKeys(configMap.data, configMap.binaryData),
+  create_time: configMap.metadata?.creationTimestamp,
+})
+
+const toClusterSecretItem = (
+  secret: KubernetesSecret,
+): API.ClusterConfigResourceItem => ({
+  id: secret.metadata?.uid || secret.metadata?.name,
+  name: secret.metadata?.name || '-',
+  namespace: secret.metadata?.namespace,
+  type: secret.type,
+  keys: getConfigResourceKeys(secret.data, secret.stringData),
+  create_time: secret.metadata?.creationTimestamp,
+})
+
 const getResourceCount = async (
   namespace: string,
   path: string,
@@ -1147,6 +1214,108 @@ export async function getClusterStorageClassList(
       remainingItemCount: res.data?.metadata?.remainingItemCount,
     },
   } as API.ApiResponse<API.ClusterStorageClassListData>
+}
+
+/** 获取配置字典列表 GET /kapi/v1/namespaces/:namespace/configmaps */
+export async function getClusterConfigMapList(
+  params?: API.ClusterConfigResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, keyword, ...restParams } = params || {}
+
+  if (!clusterId || !namespace) {
+    return {
+      code: 20000,
+      message: '',
+      data: {
+        items: [],
+        continue: '',
+        remainingItemCount: 0,
+      },
+    } as API.ApiResponse<API.ClusterConfigResourceListData>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesConfigMapList>>(
+    `/kapi/v1/namespaces/${encodeURIComponent(namespace)}/configmaps`,
+    {
+      method: 'GET',
+      params: { ...restParams },
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  const normalizedKeyword = keyword?.trim().toLowerCase()
+  const items = (res.data?.items || [])
+    .map(toClusterConfigMapItem)
+    .filter(
+      (item) =>
+        !normalizedKeyword || item.name.toLowerCase().includes(normalizedKeyword),
+    )
+
+  return {
+    ...res,
+    data: {
+      items,
+      continue: res.data?.metadata?.continue || '',
+      remainingItemCount: res.data?.metadata?.remainingItemCount,
+    },
+  } as API.ApiResponse<API.ClusterConfigResourceListData>
+}
+
+/** 获取保密字典列表 GET /kapi/v1/namespaces/:namespace/secrets */
+export async function getClusterSecretList(
+  params?: API.ClusterConfigResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, keyword, ...restParams } = params || {}
+
+  if (!clusterId || !namespace) {
+    return {
+      code: 20000,
+      message: '',
+      data: {
+        items: [],
+        continue: '',
+        remainingItemCount: 0,
+      },
+    } as API.ApiResponse<API.ClusterConfigResourceListData>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesSecretList>>(
+    `/kapi/v1/namespaces/${encodeURIComponent(namespace)}/secrets`,
+    {
+      method: 'GET',
+      params: { ...restParams },
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  const normalizedKeyword = keyword?.trim().toLowerCase()
+  const items = (res.data?.items || [])
+    .map(toClusterSecretItem)
+    .filter(
+      (item) =>
+        !normalizedKeyword || item.name.toLowerCase().includes(normalizedKeyword),
+    )
+
+  return {
+    ...res,
+    data: {
+      items,
+      continue: res.data?.metadata?.continue || '',
+      remainingItemCount: res.data?.metadata?.remainingItemCount,
+    },
+  } as API.ApiResponse<API.ClusterConfigResourceListData>
 }
 
 /** 获取命名空间容器组列表 GET /kapi/v1/namespaces/:name/pods */

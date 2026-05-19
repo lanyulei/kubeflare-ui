@@ -135,10 +135,6 @@ const ContainerResourceFields = () => {
 
   return (
     <>
-      <div className={styles.notice}>
-        <ThunderboltOutlined />{' '}
-        设置容器的资源上限与资源预留，以将容器调度到合适的节点上。
-      </div>
       <div className={styles.panel}>
         {resourceFields.map((group) => (
           <div className={styles.group} key={group.fields[0].name}>
