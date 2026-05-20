@@ -142,7 +142,7 @@ const getStepStatusText = (
   if (index === 0 && values.name && values.namespace) {
     return '已设置';
   }
-  if (index === 1 && values.containerName && values.image) {
+  if (index === 1 && values.containers && values.containers.length > 0) {
     return '已设置';
   }
   if (index === 2 && values.storageType && values.storageType !== 'none') {
@@ -225,10 +225,7 @@ const CreateWorkloadDrawer = ({
   };
 
   const handleNext = async () => {
-    if (
-      current === 1 &&
-      (!form.getFieldValue('containerName') || !form.getFieldValue('image'))
-    ) {
+    if (current === 1 && !form.getFieldValue('containers')?.length) {
       message.warning('请先添加容器并填写容器名称和镜像');
       return;
     }
@@ -481,11 +478,7 @@ const CreateWorkloadDrawer = ({
               if (nextStep > current + 1) {
                 return;
               }
-              if (
-                current === 1 &&
-                (!form.getFieldValue('containerName') ||
-                  !form.getFieldValue('image'))
-              ) {
+              if (current === 1 && !form.getFieldValue('containers')?.length) {
                 message.warning('请先添加容器并填写容器名称和镜像');
                 return;
               }

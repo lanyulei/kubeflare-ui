@@ -137,9 +137,9 @@ const useStyles = createStyles(({ token }) => ({
   add: {
     display: 'flex',
     width: '100%',
-    minHeight: 104,
+    minHeight: 82,
     alignItems: 'center',
-    padding: `${token.paddingLG}px 64px`,
+    padding: `${token.paddingMD}px 64px`,
     border: `1px dashed ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -160,23 +160,29 @@ const useStyles = createStyles(({ token }) => ({
     },
 
     '@media (max-width: 576px)': {
-      justifyContent: 'center',
-      padding: token.paddingLG,
+      padding: token.paddingMD,
     },
   },
   addContent: {
     display: 'inline-flex',
-    flexDirection: 'column',
+    minWidth: 0,
     alignItems: 'center',
-    gap: token.marginXXS,
+    gap: token.marginMD,
   },
   addIcon: {
+    flex: '0 0 auto',
     color: token.colorText,
-    fontSize: 30,
+    fontSize: 40,
     lineHeight: 1,
   },
+  addText: {
+    display: 'inline-flex',
+    minWidth: 0,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: token.marginXXS,
+  },
   addTitle: {
-    marginTop: token.marginXS,
     color: token.colorText,
     fontSize: token.fontSizeSM,
     fontWeight: 600,
@@ -226,7 +232,7 @@ const formatMemoryRange = (request?: number, limit?: number) => {
 };
 
 const ContainerSummaryList = ({
-  addDescription = '自定义容器的设置以创建容器。',
+  addDescription = '自定义容器的设置以创建容器',
   items,
   onAdd,
   onEdit,
@@ -290,8 +296,10 @@ const ContainerSummaryList = ({
         <button className={styles.add} type="button" onClick={onAdd}>
           <span className={styles.addContent}>
             <DockerOutlined className={styles.addIcon} />
-            <span className={styles.addTitle}>添加容器</span>
-            <span className={styles.addDescription}>{addDescription}</span>
+            <span className={styles.addText}>
+              <span className={styles.addTitle}>添加容器</span>
+              <span className={styles.addDescription}>{addDescription}</span>
+            </span>
           </span>
         </button>
       ) : null}

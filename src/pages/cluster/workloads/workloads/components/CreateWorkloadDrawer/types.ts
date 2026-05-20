@@ -69,30 +69,8 @@ type ContainerPortItem = {
   containerPort?: number;
 };
 
-type CreateWorkloadFormValues = {
-  name?: string;
-  namespace?: string;
-  replicas?: number;
-  updateStrategyType?: WorkloadUpdateStrategyType;
-  maxUnavailable?: string;
-  maxSurge?: string;
-  enablePodSecurityContext?: boolean;
-  runAsNonRoot?: boolean;
-  runAsUser?: number;
-  runAsGroup?: number;
-  seLinuxLevel?: string;
-  seLinuxRole?: string;
-  seLinuxType?: string;
-  seLinuxUser?: string;
-  terminationGracePeriodSeconds?: number;
-  podAnnotations?: KeyValueEditorItem[];
-  podSchedulingRule?: WorkloadSchedulingRuleType;
-  podSchedulingCustomType?: WorkloadSchedulingCustomType;
-  podSchedulingCustomStrategy?: WorkloadSchedulingCustomStrategy;
-  podSchedulingCustomTarget?: string;
-  podSchedulingCustomTargetName?: string;
-  podSchedulingCustomTargetLabels?: Record<string, string>;
-  podSchedulingCustomRules?: WorkloadSchedulingCustomRule[];
+type CreateWorkloadContainerValues = {
+  id?: string;
   containerName?: string;
   containerType?: ContainerType;
   image?: string;
@@ -131,6 +109,33 @@ type CreateWorkloadFormValues = {
   containerSeccompProfileType?: ContainerSeccompProfileType;
   containerSeccompProfileLocalhost?: string;
   syncHostTimezone?: boolean;
+};
+
+type CreateWorkloadFormValues = CreateWorkloadContainerValues & {
+  name?: string;
+  namespace?: string;
+  replicas?: number;
+  updateStrategyType?: WorkloadUpdateStrategyType;
+  maxUnavailable?: string;
+  maxSurge?: string;
+  enablePodSecurityContext?: boolean;
+  runAsNonRoot?: boolean;
+  runAsUser?: number;
+  runAsGroup?: number;
+  seLinuxLevel?: string;
+  seLinuxRole?: string;
+  seLinuxType?: string;
+  seLinuxUser?: string;
+  terminationGracePeriodSeconds?: number;
+  podAnnotations?: KeyValueEditorItem[];
+  podSchedulingRule?: WorkloadSchedulingRuleType;
+  podSchedulingCustomType?: WorkloadSchedulingCustomType;
+  podSchedulingCustomStrategy?: WorkloadSchedulingCustomStrategy;
+  podSchedulingCustomTarget?: string;
+  podSchedulingCustomTargetName?: string;
+  podSchedulingCustomTargetLabels?: Record<string, string>;
+  podSchedulingCustomRules?: WorkloadSchedulingCustomRule[];
+  containers?: CreateWorkloadContainerValues[];
   storageType?: WorkloadStorageType;
   volumeName?: string;
   mountPath?: string;
@@ -154,6 +159,7 @@ export type {
   ContainerProbeKind,
   ContainerSeccompProfileType,
   ContainerType,
+  CreateWorkloadContainerValues,
   CreateWorkloadFormValues,
   WorkloadSchedulingCustomRule,
   WorkloadSchedulingCustomStrategy,

@@ -36,7 +36,7 @@ const QuotaOverview = ({ loading, quotaSummary }: QuotaOverviewProps) => {
       request: quotaSummary.defaultContainer.memoryRequest,
       requestLabel: '内存预留',
       limit: quotaSummary.defaultContainer.memoryLimit,
-      limitLabel: '内存上限',
+      limitLabel: '内存限制',
     },
   ];
   const projectQuotaItems = [
@@ -50,7 +50,7 @@ const QuotaOverview = ({ loading, quotaSummary }: QuotaOverviewProps) => {
     {
       key: 'memoryLimit',
       icon: <HddOutlined />,
-      title: '内存上限',
+      title: '内存限制',
       quota: quotaSummary.project.memoryLimit,
       parser: parseMemoryQuantity,
     },

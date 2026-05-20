@@ -3,7 +3,7 @@ import type { FormInstance } from 'antd';
 import { Button, Form, InputNumber } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import ContainerConfigModal from './ContainerConfigModal';
 import type { ContainerSummaryItem } from './ContainerSummaryList';
 import ContainerSummaryList from './ContainerSummaryList';
@@ -11,10 +11,14 @@ import PodGracefulTerminationFields from './PodGracefulTerminationFields';
 import PodMetadataFields from './PodMetadataFields';
 import PodSchedulingRuleSelector from './PodSchedulingRuleSelector';
 import PodSecurityContextFields from './PodSecurityContextFields';
-import type { CreateWorkloadFormValues } from './types';
+import type {
+  CreateWorkloadContainerValues,
+  CreateWorkloadFormValues,
+} from './types';
 import WorkloadUpdateStrategySelector from './WorkloadUpdateStrategySelector';
 
 const CONTAINER_FIELD_NAMES: (keyof CreateWorkloadFormValues)[] = [
+  'id',
   'containerName',
   'containerType',
   'image',
@@ -161,47 +165,69 @@ const createRandomContainerName = () => {
   return `container-${suffix}`;
 };
 
+const createContainerId = () =>
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const getInitialContainerValues = (): CreateWorkloadContainerValues => ({
+  id: createContainerId(),
+  containerType: 'worker',
+  imagePullPolicy: 'IfNotPresent',
+  containerPorts: [{ protocol: 'HTTP', name: 'http-0' }],
+  enableHealthCheck: false,
+  healthChecks: {},
+  enableLifecycle: false,
+  lifecycleActions: {},
+  enableStartupCommand: false,
+  enableContainerEnv: false,
+  containerEnv: [],
+  enableContainerSecurityContext: false,
+  containerPrivileged: false,
+  containerRunAsNonRoot: false,
+  containerReadOnlyRootFilesystem: false,
+  allowPrivilegeEscalation: false,
+  containerCapabilitiesAdd: [''],
+  containerCapabilitiesDrop: [''],
+  containerSeccompProfileType: undefined,
+  containerSeccompProfileLocalhost: '',
+  syncHostTimezone: false,
+  protocol: 'TCP',
+});
+
+const clearContainerFields = (form: FormInstance<CreateWorkloadFormValues>) => {
+  form.setFields(
+    CONTAINER_FIELD_NAMES.map((fieldName) => ({
+      errors: [],
+      name: fieldName,
+      value: undefined,
+      warnings: [],
+    })),
+  );
+};
+
 const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   const { styles } = useStyles();
-  const [showContainerForm, setShowContainerForm] = useState(false);
   const [containerModalOpen, setContainerModalOpen] = useState(false);
+  const [editingContainerIndex, setEditingContainerIndex] = useState<
+    number | null
+  >(null);
   const containerSnapshotRef = useRef<Partial<CreateWorkloadFormValues>>({});
-  const containerName = Form.useWatch('containerName', {
-    form,
-    preserve: true,
-  });
-  const image = Form.useWatch('image', { form, preserve: true });
-  const cpuRequest = Form.useWatch('cpuRequest', { form, preserve: true });
-  const cpuLimit = Form.useWatch('cpuLimit', { form, preserve: true });
-  const memoryRequest = Form.useWatch('memoryRequest', {
-    form,
-    preserve: true,
-  });
-  const memoryLimit = Form.useWatch('memoryLimit', {
-    form,
-    preserve: true,
-  });
+  const containers =
+    (Form.useWatch('containers', {
+      form,
+      preserve: true,
+    }) as CreateWorkloadContainerValues[]) || [];
   const replicas = Form.useWatch('replicas', form) ?? 1;
-  const hasContainer = Boolean(containerName || image || showContainerForm);
-  const containerItems: ContainerSummaryItem[] = hasContainer
-    ? [
-        {
-          cpuLimit,
-          cpuRequest,
-          image,
-          key: containerName || image || 'draft-container',
-          memoryLimit,
-          memoryRequest,
-          name: containerName,
-        },
-      ]
-    : [];
-
-  useEffect(() => {
-    if (containerName || image) {
-      setShowContainerForm(true);
-    }
-  }, [containerName, image]);
+  const containerItems: ContainerSummaryItem[] = containers.map(
+    (container, index) => ({
+      cpuLimit: container.cpuLimit,
+      cpuRequest: container.cpuRequest,
+      image: container.image,
+      key: container.id || container.containerName || `container-${index}`,
+      memoryLimit: container.memoryLimit,
+      memoryRequest: container.memoryRequest,
+      name: container.containerName,
+    }),
+  );
 
   const updateReplicas = (offset: number) => {
     form.setFieldValue('replicas', Math.max(0, replicas + offset));
@@ -216,29 +242,49 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       {},
     );
 
-  const openContainerModal = (shouldPrefillName = false) => {
+  const openContainerModal = (
+    shouldPrefillName = false,
+    index: number | null = null,
+  ) => {
     containerSnapshotRef.current = getContainerSnapshot();
-    if (shouldPrefillName && !form.getFieldValue('containerName')) {
-      form.setFieldValue('containerName', createRandomContainerName());
-    }
-    setShowContainerForm(true);
+    setEditingContainerIndex(index);
+    clearContainerFields(form);
+    form.setFieldsValue(
+      index === null
+        ? {
+            ...getInitialContainerValues(),
+            containerName: shouldPrefillName
+              ? createRandomContainerName()
+              : undefined,
+          }
+        : containers[index],
+    );
     setContainerModalOpen(true);
   };
 
   const cancelContainerModal = () => {
     form.setFieldsValue(containerSnapshotRef.current);
-    if (
-      !containerSnapshotRef.current.containerName &&
-      !containerSnapshotRef.current.image
-    ) {
-      setShowContainerForm(false);
-    }
+    setEditingContainerIndex(null);
     setContainerModalOpen(false);
   };
 
   const saveContainerModal = async () => {
     await form.validateFields(CONTAINER_VALIDATE_FIELD_NAMES);
-    setShowContainerForm(true);
+    const containerValues = {
+      ...getContainerSnapshot(),
+      id:
+        form.getFieldValue('id') ||
+        containers[editingContainerIndex ?? -1]?.id ||
+        createContainerId(),
+    } as CreateWorkloadContainerValues;
+    const nextContainers = [...containers];
+    if (editingContainerIndex === null) {
+      nextContainers.push(containerValues);
+    } else {
+      nextContainers[editingContainerIndex] = containerValues;
+    }
+    form.setFieldValue('containers', nextContainers);
+    setEditingContainerIndex(null);
     setContainerModalOpen(false);
   };
 
@@ -281,9 +327,8 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       <div className={styles.containerTitle}>容器</div>
       <ContainerSummaryList
         items={containerItems}
-        showAdd={!hasContainer}
         onAdd={() => openContainerModal(true)}
-        onEdit={() => openContainerModal(false)}
+        onEdit={(_, index) => openContainerModal(false, index)}
       />
 
       <div style={{ marginTop: `16px` }}>

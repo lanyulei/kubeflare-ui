@@ -4,6 +4,7 @@ import type {
   ContainerActionFormValue,
   ContainerProbeFormValue,
   ContainerProbeKind,
+  CreateWorkloadContainerValues,
   CreateWorkloadFormValues,
   WorkloadSchedulingCustomRule,
 } from './types';
@@ -75,6 +76,7 @@ const getInitialCreateWorkloadValues = (
   containerSeccompProfileType: undefined,
   containerSeccompProfileLocalhost: '',
   syncHostTimezone: false,
+  containers: [],
   protocol: 'TCP',
   storageType: 'none',
   volumeName: 'data',
@@ -125,7 +127,7 @@ const normalizeContainerPortProtocol = (protocol?: string) => {
   return 'TCP';
 };
 
-const getContainerPorts = (values: CreateWorkloadFormValues) => {
+const getContainerPorts = (values: CreateWorkloadContainerValues) => {
   const ports = (values.containerPorts || [])
     .filter((port) => port.containerPort)
     .map((port) => {
@@ -156,7 +158,7 @@ const getContainerPorts = (values: CreateWorkloadFormValues) => {
     : undefined;
 };
 
-const getContainerResources = (values: CreateWorkloadFormValues) => {
+const getContainerResources = (values: CreateWorkloadContainerValues) => {
   const requests: Record<string, string> = {};
   const limits: Record<string, string> = {};
   const cpuRequest = toResourceValue(values.cpuRequest);
@@ -202,7 +204,7 @@ type ContainerEnvManifestItem = {
   };
 };
 
-const getContainerEnv = (values: CreateWorkloadFormValues) => {
+const getContainerEnv = (values: CreateWorkloadContainerValues) => {
   if (!values.enableContainerEnv) {
     return undefined;
   }
@@ -304,7 +306,7 @@ const getLifecycleAction = (
     : undefined;
 };
 
-const getContainerLifecycle = (values: CreateWorkloadFormValues) => {
+const getContainerLifecycle = (values: CreateWorkloadContainerValues) => {
   if (!values.enableLifecycle) {
     return undefined;
   }
@@ -329,7 +331,7 @@ const getContainerLifecycle = (values: CreateWorkloadFormValues) => {
   };
 };
 
-const getContainerSecurityContext = (values: CreateWorkloadFormValues) => {
+const getContainerSecurityContext = (values: CreateWorkloadContainerValues) => {
   if (!values.enableContainerSecurityContext) {
     return undefined;
   }
@@ -427,7 +429,7 @@ const getProbeBaseConfig = (
 });
 
 const getContainerProbe = (
-  values: CreateWorkloadFormValues,
+  values: CreateWorkloadContainerValues,
   probeName: ContainerProbeKind,
 ) => {
   if (!values.enableHealthCheck) {
@@ -555,19 +557,105 @@ const getWorkloadStepFields = (
     ];
 
     return type === 'DaemonSet'
-      ? ['containerName', 'image', ...strategyFields, ...schedulingRuleFields]
-      : [
-          'containerName',
-          'image',
-          'replicas',
-          ...strategyFields,
-          ...schedulingRuleFields,
-        ];
+      ? [...strategyFields, ...schedulingRuleFields]
+      : ['replicas', ...strategyFields, ...schedulingRuleFields];
   }
   if (step === 2) {
     return ['storageType', 'volumeName', 'mountPath', 'claimName'];
   }
   return ['labels', 'annotations'];
+};
+
+const getStorageVolumeMounts = (values: CreateWorkloadFormValues) => {
+  const volumeMounts: Record<string, unknown>[] = [];
+
+  if (values.storageType && values.storageType !== 'none' && values.mountPath) {
+    volumeMounts.push({
+      name: normalizeName(values.volumeName) || 'data',
+      mountPath: normalizeName(values.mountPath),
+      readOnly: values.readOnly || undefined,
+    });
+  }
+
+  return volumeMounts;
+};
+
+const getPodVolumes = (
+  values: CreateWorkloadFormValues,
+  containers: CreateWorkloadContainerValues[],
+) => {
+  const volumes: Record<string, unknown>[] = [];
+
+  if (values.storageType && values.storageType !== 'none') {
+    volumes.push({
+      name: normalizeName(values.volumeName) || 'data',
+      ...(values.storageType === 'persistentVolumeClaim'
+        ? {
+            persistentVolumeClaim: {
+              claimName: normalizeName(values.claimName),
+              readOnly: values.readOnly || undefined,
+            },
+          }
+        : { emptyDir: {} }),
+    });
+  }
+  if (containers.some((container) => container.syncHostTimezone)) {
+    volumes.push({
+      name: 'host-timezone',
+      hostPath: {
+        path: '/etc/localtime',
+        type: 'File',
+      },
+    });
+  }
+
+  return volumes;
+};
+
+const getContainerManifest = (
+  values: CreateWorkloadContainerValues,
+  storageVolumeMounts: Record<string, unknown>[],
+) => {
+  const ports = getContainerPorts(values);
+  const resources = getContainerResources(values);
+  const env = getContainerEnv(values);
+  const lifecycle = getContainerLifecycle(values);
+  const livenessProbe = getContainerProbe(values, 'liveness');
+  const readinessProbe = getContainerProbe(values, 'readiness');
+  const startupProbe = getContainerProbe(values, 'startup');
+  const command = values.enableStartupCommand
+    ? splitCommandText(values.startupCommand)
+    : [];
+  const args = values.enableStartupCommand
+    ? splitCommandText(values.startupArgs)
+    : [];
+  const securityContext = getContainerSecurityContext(values);
+  const volumeMounts = [...storageVolumeMounts];
+
+  if (values.syncHostTimezone) {
+    volumeMounts.push({
+      name: 'host-timezone',
+      mountPath: '/etc/localtime',
+      readOnly: true,
+    });
+  }
+
+  return {
+    name: normalizeName(values.containerName),
+    image: normalizeName(values.image),
+    imagePullPolicy: values.imagePullPolicy || 'IfNotPresent',
+    ports,
+    resources,
+    command: command.length > 0 ? command : undefined,
+    args: args.length > 0 ? args : undefined,
+    env,
+    lifecycle,
+    readinessProbe,
+    livenessProbe,
+    startupProbe,
+    securityContext,
+    volumeMounts: volumeMounts.length > 0 ? volumeMounts : undefined,
+  };
 };
 
 const buildCreateWorkloadManifest = (
@@ -591,75 +679,17 @@ const buildCreateWorkloadManifest = (
     namespace: normalizeName(values.namespace),
     labels: appLabels,
   };
-  const ports = getContainerPorts(values);
-  const resources = getContainerResources(values);
-  const env = getContainerEnv(values);
-  const lifecycle = getContainerLifecycle(values);
-  const livenessProbe = getContainerProbe(values, 'liveness');
-  const readinessProbe = getContainerProbe(values, 'readiness');
-  const startupProbe = getContainerProbe(values, 'startup');
-  const command = values.enableStartupCommand
-    ? splitCommandText(values.startupCommand)
-    : [];
-  const args = values.enableStartupCommand
-    ? splitCommandText(values.startupArgs)
-    : [];
-  const securityContext = getContainerSecurityContext(values);
-  const volumeMounts: Record<string, unknown>[] = [];
-  const volumes: Record<string, unknown>[] = [];
-
-  if (values.storageType && values.storageType !== 'none' && values.mountPath) {
-    volumeMounts.push({
-      name: normalizeName(values.volumeName) || 'data',
-      mountPath: normalizeName(values.mountPath),
-      readOnly: values.readOnly || undefined,
-    });
-  }
-  if (values.storageType && values.storageType !== 'none') {
-    volumes.push({
-      name: normalizeName(values.volumeName) || 'data',
-      ...(values.storageType === 'persistentVolumeClaim'
-        ? {
-            persistentVolumeClaim: {
-              claimName: normalizeName(values.claimName),
-              readOnly: values.readOnly || undefined,
-            },
-          }
-        : { emptyDir: {} }),
-    });
-  }
-  if (values.syncHostTimezone) {
-    volumeMounts.push({
-      name: 'host-timezone',
-      mountPath: '/etc/localtime',
-      readOnly: true,
-    });
-    volumes.push({
-      name: 'host-timezone',
-      hostPath: {
-        path: '/etc/localtime',
-        type: 'File',
-      },
-    });
-  }
-  const container = {
-    name: normalizeName(values.containerName),
-    image: normalizeName(values.image),
-    imagePullPolicy: values.imagePullPolicy || 'IfNotPresent',
-    ports,
-    resources,
-    command: command.length > 0 ? command : undefined,
-    args: args.length > 0 ? args : undefined,
-    env,
-    lifecycle,
-    readinessProbe,
-    livenessProbe,
-    startupProbe,
-    securityContext,
-    volumeMounts: volumeMounts.length > 0 ? volumeMounts : undefined,
-  };
+  const configuredContainers =
+    values.containers && values.containers.length > 0
+      ? values.containers
+      : [values];
+  const storageVolumeMounts = getStorageVolumeMounts(values);
+  const containers = configuredContainers.map((container) =>
+    getContainerManifest(container, storageVolumeMounts),
+  );
+  const volumes = getPodVolumes(values, configuredContainers);
   const podSpec: Record<string, unknown> = {
-    containers: [container],
+    containers,
     volumes: volumes.length > 0 ? volumes : undefined,
   };
   if (values.enablePodSecurityContext) {

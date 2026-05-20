@@ -58,7 +58,7 @@ const DefaultContainerQuotaModal = ({
               placeholder: '无预留',
             },
             {
-              label: '内存上限',
+              label: '内存限制',
               name: 'memoryLimit',
               placeholder: '无上限',
             },
