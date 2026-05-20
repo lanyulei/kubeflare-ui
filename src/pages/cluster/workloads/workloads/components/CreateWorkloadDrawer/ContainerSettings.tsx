@@ -3,7 +3,7 @@ import type { FormInstance } from 'antd';
 import { Button, Form, InputNumber } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import ContainerConfigModal from './ContainerConfigModal';
 import type { ContainerSummaryItem } from './ContainerSummaryList';
 import ContainerSummaryList from './ContainerSummaryList';
@@ -17,47 +17,6 @@ import type {
 } from './types';
 import WorkloadUpdateStrategySelector from './WorkloadUpdateStrategySelector';
 
-const CONTAINER_FIELD_NAMES: (keyof CreateWorkloadFormValues)[] = [
-  'id',
-  'containerName',
-  'containerType',
-  'image',
-  'imagePullPolicy',
-  'cpuRequest',
-  'cpuLimit',
-  'memoryRequest',
-  'memoryLimit',
-  'containerPorts',
-  'containerPort',
-  'protocol',
-  'enableHealthCheck',
-  'healthChecks',
-  'enableLifecycle',
-  'lifecycleActions',
-  'postStartCommand',
-  'preStopCommand',
-  'enableStartupCommand',
-  'startupCommand',
-  'startupArgs',
-  'enableContainerEnv',
-  'containerEnv',
-  'enableContainerSecurityContext',
-  'containerPrivileged',
-  'containerRunAsNonRoot',
-  'containerRunAsUser',
-  'containerRunAsGroup',
-  'containerReadOnlyRootFilesystem',
-  'allowPrivilegeEscalation',
-  'containerSeLinuxLevel',
-  'containerSeLinuxRole',
-  'containerSeLinuxType',
-  'containerSeLinuxUser',
-  'containerCapabilitiesAdd',
-  'containerCapabilitiesDrop',
-  'containerSeccompProfileType',
-  'containerSeccompProfileLocalhost',
-  'syncHostTimezone',
-];
 const CONTAINER_VALIDATE_FIELD_NAMES: NamePath[] = [
   'containerName',
   'image',
@@ -193,24 +152,13 @@ const getInitialContainerValues = (): CreateWorkloadContainerValues => ({
   protocol: 'TCP',
 });
 
-const clearContainerFields = (form: FormInstance<CreateWorkloadFormValues>) => {
-  form.setFields(
-    CONTAINER_FIELD_NAMES.map((fieldName) => ({
-      errors: [],
-      name: fieldName,
-      value: undefined,
-      warnings: [],
-    })),
-  );
-};
-
 const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   const { styles } = useStyles();
+  const [containerForm] = Form.useForm<CreateWorkloadContainerValues>();
   const [containerModalOpen, setContainerModalOpen] = useState(false);
   const [editingContainerIndex, setEditingContainerIndex] = useState<
     number | null
   >(null);
-  const containerSnapshotRef = useRef<Partial<CreateWorkloadFormValues>>({});
   const containers =
     (Form.useWatch('containers', {
       form,
@@ -233,23 +181,13 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
     form.setFieldValue('replicas', Math.max(0, replicas + offset));
   };
 
-  const getContainerSnapshot = () =>
-    CONTAINER_FIELD_NAMES.reduce<Partial<CreateWorkloadFormValues>>(
-      (snapshot, fieldName) => {
-        snapshot[fieldName] = form.getFieldValue(fieldName);
-        return snapshot;
-      },
-      {},
-    );
-
   const openContainerModal = (
     shouldPrefillName = false,
     index: number | null = null,
   ) => {
-    containerSnapshotRef.current = getContainerSnapshot();
     setEditingContainerIndex(index);
-    clearContainerFields(form);
-    form.setFieldsValue(
+    containerForm.resetFields();
+    containerForm.setFieldsValue(
       index === null
         ? {
             ...getInitialContainerValues(),
@@ -263,19 +201,16 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   };
 
   const cancelContainerModal = () => {
-    form.setFieldsValue(containerSnapshotRef.current);
+    containerForm.resetFields();
     setEditingContainerIndex(null);
     setContainerModalOpen(false);
   };
 
   const saveContainerModal = async () => {
-    await form.validateFields(CONTAINER_VALIDATE_FIELD_NAMES);
+    await containerForm.validateFields(CONTAINER_VALIDATE_FIELD_NAMES);
     const containerValues = {
-      ...getContainerSnapshot(),
-      id:
-        form.getFieldValue('id') ||
-        containers[editingContainerIndex ?? -1]?.id ||
-        createContainerId(),
+      ...containerForm.getFieldsValue(true),
+      id: containers[editingContainerIndex ?? -1]?.id || createContainerId(),
     } as CreateWorkloadContainerValues;
     const nextContainers = [...containers];
     if (editingContainerIndex === null) {
@@ -284,6 +219,7 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       nextContainers[editingContainerIndex] = containerValues;
     }
     form.setFieldValue('containers', nextContainers);
+    containerForm.resetFields();
     setEditingContainerIndex(null);
     setContainerModalOpen(false);
   };
@@ -342,6 +278,7 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       </div>
 
       <ContainerConfigModal
+        form={containerForm}
         open={containerModalOpen}
         onCancel={cancelContainerModal}
         onOk={saveContainerModal}
