@@ -147,6 +147,7 @@ const useStyles = createStyles(({ token }) => ({
     cursor: 'pointer',
     textAlign: 'left',
     transition: `border-color ${token.motionDurationMid}, background ${token.motionDurationMid}`,
+    justifyContent: 'space-evenly',
 
     '&:hover': {
       borderColor: token.colorPrimary,
