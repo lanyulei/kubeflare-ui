@@ -1,7 +1,26 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Input, InputNumber, Row, Switch } from 'antd';
+import {
+  Button,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Row,
+  Select,
+  Switch,
+} from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect } from 'react';
+import type { ContainerSeccompProfileType } from '../types';
+
+const seccompProfileOptions: {
+  label: string;
+  value: ContainerSeccompProfileType;
+}[] = [
+  { label: 'RuntimeDefault', value: 'RuntimeDefault' },
+  { label: 'Unconfined', value: 'Unconfined' },
+  { label: 'Localhost', value: 'Localhost' },
+];
 
 const useStyles = createStyles(({ token }) => ({
   securityStack: {
@@ -58,11 +77,11 @@ const useStyles = createStyles(({ token }) => ({
   },
   capabilityBlock: {
     '& + &': {
-      marginTop: token.marginLG,
+      marginTop: token.marginMD,
     },
   },
   capabilityLabel: {
-    marginBottom: token.marginXS,
+    marginBottom: token.marginSM,
     color: token.colorTextSecondary,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeight,
@@ -74,21 +93,25 @@ const useStyles = createStyles(({ token }) => ({
   },
   capabilityRow: {
     display: 'grid',
+    minHeight: 46,
     gridTemplateColumns: 'minmax(0, 1fr) 40px',
     alignItems: 'center',
     gap: token.marginSM,
     padding: `${token.paddingXS}px ${token.paddingMD}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: 999,
-    background: token.colorFillSecondary,
-
-    '@media (max-width: 576px)': {
-      borderRadius: token.borderRadiusSM,
-    },
+    borderRadius: 24,
+    background: token.colorFillQuaternary,
   },
   capabilityInput: {
+    width: '100%',
+    minWidth: 0,
+
     '&.ant-input': {
-      background: token.colorBgContainer,
+      height: 32,
+      borderColor: `${token.colorBorder} !important`,
+      borderRadius: `${token.borderRadiusSM}px !important`,
+      background: `${token.colorBgContainer} !important`,
+      boxShadow: 'none !important',
     },
   },
   capabilityDelete: {
@@ -102,7 +125,7 @@ const useStyles = createStyles(({ token }) => ({
   capabilityActions: {
     display: 'flex',
     justifyContent: 'flex-end',
-    marginTop: token.marginSM,
+    marginTop: 12,
   },
 }));
 
@@ -176,12 +199,7 @@ const CapabilityList = ({ label, name, placeholder }: CapabilityListProps) => {
               ))}
             </div>
             <div className={styles.capabilityActions}>
-              <Button
-                disabled={addDisabled}
-                shape="round"
-                size="small"
-                onClick={() => add('')}
-              >
+              <Button disabled={addDisabled} onClick={() => add('')}>
                 <PlusOutlined />
                 添加
               </Button>
@@ -199,6 +217,7 @@ const ContainerSecurityContextFields = () => {
   const privileged = Form.useWatch('containerPrivileged', form);
   const capabilitiesAdd = Form.useWatch('containerCapabilitiesAdd', form);
   const capabilitiesDrop = Form.useWatch('containerCapabilitiesDrop', form);
+  const seccompProfileType = Form.useWatch('containerSeccompProfileType', form);
 
   useEffect(() => {
     if (!capabilitiesAdd) {
@@ -214,6 +233,12 @@ const ContainerSecurityContextFields = () => {
       form.setFieldValue('allowPrivilegeEscalation', true);
     }
   }, [form, privileged]);
+
+  useEffect(() => {
+    if (seccompProfileType !== 'Localhost') {
+      form.setFieldValue('containerSeccompProfileLocalhost', undefined);
+    }
+  }, [form, seccompProfileType]);
 
   return (
     <div className={styles.securityStack}>
@@ -297,8 +322,9 @@ const ContainerSecurityContextFields = () => {
                 className={styles.seLinuxField}
                 label="等级"
                 name="containerSeLinuxLevel"
+                style={{ marginBottom: `16px` }}
               >
-                <Input />
+                <Input placeholder="请输入 SELinux 等级" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -306,8 +332,9 @@ const ContainerSecurityContextFields = () => {
                 className={styles.seLinuxField}
                 label="角色"
                 name="containerSeLinuxRole"
+                style={{ marginBottom: `16px` }}
               >
-                <Input />
+                <Input placeholder="请输入 SELinux 角色" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -316,7 +343,7 @@ const ContainerSecurityContextFields = () => {
                 label="类型"
                 name="containerSeLinuxType"
               >
-                <Input />
+                <Input placeholder="请输入 SELinux 类型" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -325,7 +352,7 @@ const ContainerSecurityContextFields = () => {
                 label="用户"
                 name="containerSeLinuxUser"
               >
-                <Input />
+                <Input placeholder="请输入 SELinux 用户" />
               </Form.Item>
             </Col>
           </Row>
@@ -345,6 +372,43 @@ const ContainerSecurityContextFields = () => {
             name="containerCapabilitiesDrop"
             placeholder="例如 ALL"
           />
+        </div>
+      </section>
+
+      <section>
+        <div className={styles.groupTitle}>Seccomp 配置</div>
+        <div className={styles.group}>
+          <Row gutter={18}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                className={styles.formItem}
+                label="配置类型"
+                name="containerSeccompProfileType"
+              >
+                <Select
+                  allowClear
+                  options={seccompProfileOptions}
+                  placeholder="请选择 Seccomp 类型"
+                />
+              </Form.Item>
+            </Col>
+            {seccompProfileType === 'Localhost' && (
+              <Col xs={24} md={12}>
+                <Form.Item
+                  className={styles.formItem}
+                  label="本地配置路径"
+                  name="containerSeccompProfileLocalhost"
+                  rules={[{ required: true, message: '请输入本地配置路径' }]}
+                >
+                  <Input placeholder="例如 profiles/audit.json" />
+                </Form.Item>
+              </Col>
+            )}
+          </Row>
+          <div className={styles.fieldHelp}>
+            RuntimeDefault 使用容器运行时默认配置；Localhost
+            需要填写节点上的配置文件路径。
+          </div>
         </div>
       </section>
     </div>

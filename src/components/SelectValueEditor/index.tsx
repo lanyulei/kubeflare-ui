@@ -39,11 +39,15 @@ const useStyles = createStyles(({ token }) => ({
   deleteButton: {
     justifySelf: 'center',
     color: token.colorTextTertiary,
+
+    '&:hover': {
+      color: token.colorError,
+    },
   },
   footer: {
     display: 'flex',
-    justifyContent: 'flex-start',
-    marginTop: 8,
+    justifyContent: 'flex-end',
+    marginTop: 12,
   },
 }));
 

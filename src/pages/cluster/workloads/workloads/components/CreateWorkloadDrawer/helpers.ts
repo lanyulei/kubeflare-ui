@@ -72,6 +72,8 @@ const getInitialCreateWorkloadValues = (
   allowPrivilegeEscalation: false,
   containerCapabilitiesAdd: [''],
   containerCapabilitiesDrop: [''],
+  containerSeccompProfileType: undefined,
+  containerSeccompProfileLocalhost: '',
   syncHostTimezone: false,
   protocol: 'TCP',
   storageType: 'none',
@@ -207,17 +209,13 @@ const getContainerEnv = (values: CreateWorkloadFormValues) => {
 
   const env = (values.containerEnv || []).flatMap<ContainerEnvManifestItem>(
     (item) => {
-      const name = normalizeOptionalText(item.keyName);
-      if (!name) {
-        return [];
-      }
-
       const sourceType = item.sourceType || 'custom';
       if (sourceType === 'configMap' || sourceType === 'secret') {
-        const resourceName = normalizeOptionalText(item.resourceName);
         const resourceKey = normalizeOptionalText(item.resourceKey);
+        const name = normalizeOptionalText(item.keyName) || resourceKey;
+        const resourceName = normalizeOptionalText(item.resourceName);
 
-        if (!resourceName || !resourceKey) {
+        if (!name || !resourceName || !resourceKey) {
           return [];
         }
 
@@ -240,6 +238,11 @@ const getContainerEnv = (values: CreateWorkloadFormValues) => {
                   },
           },
         ];
+      }
+
+      const name = normalizeOptionalText(item.keyName);
+      if (!name) {
+        return [];
       }
 
       return [
@@ -388,6 +391,18 @@ const getContainerSecurityContext = (values: CreateWorkloadFormValues) => {
     securityContext.capabilities = {
       ...(capabilitiesAdd.length > 0 ? { add: capabilitiesAdd } : {}),
       ...(capabilitiesDrop.length > 0 ? { drop: capabilitiesDrop } : {}),
+    };
+  }
+  if (values.containerSeccompProfileType) {
+    securityContext.seccompProfile = {
+      type: values.containerSeccompProfileType,
+      ...(values.containerSeccompProfileType === 'Localhost'
+        ? {
+            localhostProfile: normalizeName(
+              values.containerSeccompProfileLocalhost,
+            ),
+          }
+        : {}),
     };
   }
 

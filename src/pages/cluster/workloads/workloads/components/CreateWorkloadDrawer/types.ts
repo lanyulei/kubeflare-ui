@@ -24,6 +24,10 @@ type ContainerLifecycleActionName = 'postStart' | 'preStop';
 type ContainerProbeKind = 'liveness' | 'readiness' | 'startup';
 type ContainerProbeHandlerType = ContainerHandlerType;
 type ContainerEnvSourceType = 'custom' | 'configMap' | 'secret';
+type ContainerSeccompProfileType =
+  | 'RuntimeDefault'
+  | 'Localhost'
+  | 'Unconfined';
 
 type ContainerEnvItem = {
   id: string;
@@ -124,6 +128,8 @@ type CreateWorkloadFormValues = {
   containerSeLinuxUser?: string;
   containerCapabilitiesAdd?: string[];
   containerCapabilitiesDrop?: string[];
+  containerSeccompProfileType?: ContainerSeccompProfileType;
+  containerSeccompProfileLocalhost?: string;
   syncHostTimezone?: boolean;
   storageType?: WorkloadStorageType;
   volumeName?: string;
@@ -146,6 +152,7 @@ export type {
   ContainerProbeFormValue,
   ContainerProbeHandlerType,
   ContainerProbeKind,
+  ContainerSeccompProfileType,
   ContainerType,
   CreateWorkloadFormValues,
   WorkloadSchedulingCustomRule,

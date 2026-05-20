@@ -1,20 +1,17 @@
-import {
-  DockerOutlined,
-  EditOutlined,
-  MinusOutlined,
-  PlusOutlined,
-} from '@ant-design/icons';
+import { MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import { Button, Form, InputNumber } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
 import { useEffect, useRef, useState } from 'react';
 import ContainerConfigModal from './ContainerConfigModal';
+import type { ContainerSummaryItem } from './ContainerSummaryList';
+import ContainerSummaryList from './ContainerSummaryList';
 import PodGracefulTerminationFields from './PodGracefulTerminationFields';
 import PodMetadataFields from './PodMetadataFields';
 import PodSchedulingRuleSelector from './PodSchedulingRuleSelector';
 import PodSecurityContextFields from './PodSecurityContextFields';
-import type { ContainerPortItem, CreateWorkloadFormValues } from './types';
+import type { CreateWorkloadFormValues } from './types';
 import WorkloadUpdateStrategySelector from './WorkloadUpdateStrategySelector';
 
 const CONTAINER_FIELD_NAMES: (keyof CreateWorkloadFormValues)[] = [
@@ -53,6 +50,8 @@ const CONTAINER_FIELD_NAMES: (keyof CreateWorkloadFormValues)[] = [
   'containerSeLinuxUser',
   'containerCapabilitiesAdd',
   'containerCapabilitiesDrop',
+  'containerSeccompProfileType',
+  'containerSeccompProfileLocalhost',
   'syncHostTimezone',
 ];
 const CONTAINER_VALIDATE_FIELD_NAMES: NamePath[] = [
@@ -96,6 +95,7 @@ const CONTAINER_VALIDATE_FIELD_NAMES: NamePath[] = [
   'containerEnv',
   'containerRunAsUser',
   'containerRunAsGroup',
+  'containerSeccompProfileLocalhost',
 ];
 
 const useStyles = createStyles(({ token }) => ({
@@ -144,68 +144,6 @@ const useStyles = createStyles(({ token }) => ({
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeight,
   },
-  addContainer: {
-    display: 'flex',
-    width: '100%',
-    minHeight: 142,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: token.marginXXS,
-    border: `1px dashed ${token.colorBorder}`,
-    borderRadius: token.borderRadiusSM,
-    background: token.colorBgContainer,
-    cursor: 'pointer',
-    transition: `border-color ${token.motionDurationMid}, background ${token.motionDurationMid}`,
-
-    '&:hover': {
-      borderColor: token.colorPrimary,
-      background: token.colorFillQuaternary,
-    },
-  },
-  addIcon: {
-    color: token.colorText,
-    fontSize: 30,
-    lineHeight: 1,
-  },
-  addTitle: {
-    marginTop: token.marginXS,
-    color: token.colorText,
-    fontWeight: 500,
-  },
-  addDescription: {
-    color: token.colorTextTertiary,
-    fontSize: token.fontSizeSM,
-  },
-  containerForm: {
-    padding: token.paddingLG,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusSM,
-    background: token.colorBgContainer,
-  },
-  containerHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: token.marginMD,
-  },
-  containerName: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: token.marginXS,
-    color: token.colorText,
-    fontWeight: 500,
-  },
-  containerInfo: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: `${token.marginXS}px ${token.marginLG}px`,
-    color: token.colorTextSecondary,
-    fontSize: token.fontSizeSM,
-  },
-  containerValue: {
-    color: token.colorText,
-  },
 }));
 
 type ContainerSettingsProps = {
@@ -223,64 +161,41 @@ const createRandomContainerName = () => {
   return `container-${suffix}`;
 };
 
-const getPrimaryPort = (ports?: ContainerPortItem[]) =>
-  (ports || []).find((port) => port.containerPort);
-
-const formatPort = (
-  containerPorts?: ContainerPortItem[],
-  containerPort?: number,
-  protocol?: string,
-) => {
-  const primaryPort = getPrimaryPort(containerPorts);
-
-  if (primaryPort?.containerPort) {
-    return `${primaryPort.containerPort}/${primaryPort.protocol || 'HTTP'}`;
-  }
-
-  return containerPort ? `${containerPort}/${protocol || 'TCP'}` : '未设置';
-};
-
-const formatResources = (
-  cpuRequest?: number,
-  cpuLimit?: number,
-  memoryRequest?: number,
-  memoryLimit?: number,
-) => {
-  const cpu =
-    cpuRequest || cpuLimit ? `${cpuRequest || '-'} / ${cpuLimit || '-'}` : '';
-  const memory =
-    memoryRequest || memoryLimit
-      ? `${memoryRequest || '-'}Mi / ${memoryLimit || '-'}Mi`
-      : '';
-
-  return [cpu ? `CPU ${cpu}` : '', memory ? `内存 ${memory}` : '']
-    .filter(Boolean)
-    .join('，');
-};
-
 const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   const { styles } = useStyles();
   const [showContainerForm, setShowContainerForm] = useState(false);
   const [containerModalOpen, setContainerModalOpen] = useState(false);
   const containerSnapshotRef = useRef<Partial<CreateWorkloadFormValues>>({});
-  const containerName = Form.useWatch('containerName', form);
-  const image = Form.useWatch('image', form);
-  const imagePullPolicy = Form.useWatch('imagePullPolicy', form);
-  const containerPorts = Form.useWatch('containerPorts', form);
-  const containerPort = Form.useWatch('containerPort', form);
-  const protocol = Form.useWatch('protocol', form);
-  const cpuRequest = Form.useWatch('cpuRequest', form);
-  const cpuLimit = Form.useWatch('cpuLimit', form);
-  const memoryRequest = Form.useWatch('memoryRequest', form);
-  const memoryLimit = Form.useWatch('memoryLimit', form);
+  const containerName = Form.useWatch('containerName', {
+    form,
+    preserve: true,
+  });
+  const image = Form.useWatch('image', { form, preserve: true });
+  const cpuRequest = Form.useWatch('cpuRequest', { form, preserve: true });
+  const cpuLimit = Form.useWatch('cpuLimit', { form, preserve: true });
+  const memoryRequest = Form.useWatch('memoryRequest', {
+    form,
+    preserve: true,
+  });
+  const memoryLimit = Form.useWatch('memoryLimit', {
+    form,
+    preserve: true,
+  });
   const replicas = Form.useWatch('replicas', form) ?? 1;
   const hasContainer = Boolean(containerName || image || showContainerForm);
-  const resourceSummary = formatResources(
-    cpuRequest,
-    cpuLimit,
-    memoryRequest,
-    memoryLimit,
-  );
+  const containerItems: ContainerSummaryItem[] = hasContainer
+    ? [
+        {
+          cpuLimit,
+          cpuRequest,
+          image,
+          key: containerName || image || 'draft-container',
+          memoryLimit,
+          memoryRequest,
+          name: containerName,
+        },
+      ]
+    : [];
 
   useEffect(() => {
     if (containerName || image) {
@@ -364,59 +279,12 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       )}
 
       <div className={styles.containerTitle}>容器</div>
-      {hasContainer ? (
-        <div className={styles.containerForm}>
-          <div className={styles.containerHeader}>
-            <div className={styles.containerName}>
-              <DockerOutlined />
-              <span>{containerName || '新容器'}</span>
-            </div>
-            <Button
-              icon={<EditOutlined />}
-              type="link"
-              onClick={() => openContainerModal(false)}
-            >
-              编辑配置
-            </Button>
-          </div>
-          <div className={styles.containerInfo}>
-            <span>
-              镜像：
-              <span className={styles.containerValue}>{image || '未填写'}</span>
-            </span>
-            <span>
-              拉取策略：
-              <span className={styles.containerValue}>
-                {imagePullPolicy || 'IfNotPresent'}
-              </span>
-            </span>
-            <span>
-              端口：
-              <span className={styles.containerValue}>
-                {formatPort(containerPorts, containerPort, protocol)}
-              </span>
-            </span>
-            <span>
-              资源：
-              <span className={styles.containerValue}>
-                {resourceSummary || '未设置'}
-              </span>
-            </span>
-          </div>
-        </div>
-      ) : (
-        <button
-          className={styles.addContainer}
-          type="button"
-          onClick={() => openContainerModal(true)}
-        >
-          <DockerOutlined className={styles.addIcon} />
-          <span className={styles.addTitle}>添加容器</span>
-          <span className={styles.addDescription}>
-            自定义容器的设置以创建容器。
-          </span>
-        </button>
-      )}
+      <ContainerSummaryList
+        items={containerItems}
+        showAdd={!hasContainer}
+        onAdd={() => openContainerModal(true)}
+        onEdit={() => openContainerModal(false)}
+      />
 
       <div style={{ marginTop: `16px` }}>
         <WorkloadUpdateStrategySelector form={form} type={type} />

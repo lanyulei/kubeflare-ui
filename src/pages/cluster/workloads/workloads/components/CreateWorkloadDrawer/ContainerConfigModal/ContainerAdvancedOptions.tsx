@@ -115,6 +115,9 @@ const useStyles = createStyles(({ token }) => ({
     borderRadius: token.borderRadiusSM,
     background: token.colorFillQuaternary,
   },
+  plainBody: {
+    marginTop: token.marginMD,
+  },
   textarea: {
     resize: 'vertical',
   },
@@ -137,6 +140,7 @@ const useStyles = createStyles(({ token }) => ({
 }));
 
 type ToggleOptionCardProps = {
+  bodyClassName?: string;
   name: NamePath;
   title: string;
   description: string;
@@ -169,6 +173,7 @@ const imagePullPolicyOptions: {
 ];
 
 const ToggleOptionCard = ({
+  bodyClassName,
   name,
   title,
   description,
@@ -192,7 +197,9 @@ const ToggleOptionCard = ({
           <div className={styles.description}>{description}</div>
         </span>
       </div>
-      {enabled && children && <div className={styles.body}>{children}</div>}
+      {enabled && children && (
+        <div className={bodyClassName || styles.body}>{children}</div>
+      )}
     </div>
   );
 };
@@ -293,13 +300,21 @@ const ContainerAdvancedOptions = () => {
         <div className={styles.fieldStack}>
           <div className={styles.fieldBlock}>
             <Form.Item label="命令" name="startupCommand">
-              <Input.TextArea className={styles.textarea} rows={2} />
+              <Input.TextArea
+                placeholder="请输入命令"
+                className={styles.textarea}
+                rows={2}
+              />
             </Form.Item>
             <div className={styles.fieldHelp}>容器的启动命令。</div>
           </div>
           <div className={styles.fieldBlock}>
             <Form.Item label="参数" name="startupArgs">
-              <Input.TextArea className={styles.textarea} rows={2} />
+              <Input.TextArea
+                placeholder="请输入参数"
+                className={styles.textarea}
+                rows={2}
+              />
             </Form.Item>
             <div className={styles.fieldHelp}>
               容器启动命令的参数。如有多个参数请使用半角逗号（,）分隔。
@@ -309,6 +324,7 @@ const ContainerAdvancedOptions = () => {
       </ToggleOptionCard>
 
       <ToggleOptionCard
+        bodyClassName={styles.plainBody}
         description="为容器添加添加环境变量。"
         enabled={enableContainerEnv}
         name="enableContainerEnv"

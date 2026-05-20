@@ -1,13 +1,15 @@
-import { DeleteOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Input, InputNumber, Row, Select } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Col, Form, Input, InputNumber, Row } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
+import { useEffect, useRef } from 'react';
 import type {
   ContainerActionFormValue,
   ContainerHandlerType,
   ContainerLifecycleActionName,
   ContainerLifecycleActionsValue,
 } from '../types';
+import ContainerHttpTargetFields from './ContainerHttpTargetFields';
 
 const ACTION_OPTIONS: {
   name: ContainerLifecycleActionName;
@@ -35,11 +37,6 @@ const HANDLER_OPTIONS: {
   { label: 'TCP 端口', value: 'tcpSocket' },
 ];
 
-const SCHEME_OPTIONS = [
-  { label: 'HTTP', value: 'HTTP' },
-  { label: 'HTTPS', value: 'HTTPS' },
-];
-
 const useStyles = createStyles(({ token }) => ({
   actions: {
     display: 'flex',
@@ -54,21 +51,19 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   addAction: {
-    display: 'flex',
+    display: 'inline-flex',
     width: '100%',
-    minHeight: 64,
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    gap: token.marginXXS,
-    padding: `${token.paddingSM}px ${token.paddingMD}px`,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: token.marginXS,
+    padding: `0 ${token.paddingSM}px`,
     border: `1px dashed ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
     color: token.colorText,
     cursor: 'pointer',
     fontSize: token.fontSizeSM,
-    textAlign: 'left',
     transition: `border-color ${token.motionDurationMid}, background ${token.motionDurationMid}`,
 
     '&:hover': {
@@ -76,18 +71,15 @@ const useStyles = createStyles(({ token }) => ({
       background: token.colorFillQuaternary,
     },
   },
-  addTitle: {
-    color: token.colorText,
-    fontSize: token.fontSizeSM,
-    lineHeight: token.lineHeight,
-  },
-  addDescription: {
+  actionDescription: {
+    marginTop: token.marginXXS,
     color: token.colorTextTertiary,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeight,
   },
   actionEditor: {
-    padding: token.paddingSM,
+    overflow: 'hidden',
+    padding: `${token.paddingSM}px ${token.paddingSM}px 0`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -99,7 +91,7 @@ const useStyles = createStyles(({ token }) => ({
   editorHeader: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: token.marginSM,
     marginBottom: token.marginSM,
   },
@@ -112,6 +104,11 @@ const useStyles = createStyles(({ token }) => ({
     border: `1px solid ${token.colorBorder}`,
     borderRadius: 999,
     background: token.colorFillQuaternary,
+
+    '@media (max-width: 576px)': {
+      gridTemplateColumns: '1fr',
+      borderRadius: token.borderRadiusSM,
+    },
   },
   handlerTab: {
     height: 28,
@@ -123,63 +120,43 @@ const useStyles = createStyles(({ token }) => ({
     fontSize: token.fontSizeSM,
     lineHeight: '28px',
     textAlign: 'center',
+    whiteSpace: 'nowrap',
     transition: `background ${token.motionDurationMid}, color ${token.motionDurationMid}`,
 
     '&:hover': {
       background: token.colorFillSecondary,
     },
+
+    '@media (max-width: 576px)': {
+      fontSize: 12,
+      borderRadius: token.borderRadiusSM,
+    },
   },
   handlerTabActive: {
-    background: token.colorText,
-    color: token.colorBgContainer,
+    '&&': {
+      background: token.colorText,
+      color: token.colorBgContainer,
+    },
 
-    '&:hover': {
+    '&&:hover': {
       background: token.colorText,
     },
   },
-  removeButton: {
-    flexShrink: 0,
-    color: token.colorTextTertiary,
+  actionFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: token.marginXS,
+    margin: `${token.marginSM}px -${token.paddingSM}px 0`,
+    padding: `${token.paddingXXS}px ${token.paddingSM}px`,
+    borderRadius: `0 0 ${token.borderRadiusSM}px ${token.borderRadiusSM}px`,
+    background: token.colorText,
+  },
+  actionFooterButton: {
+    color: token.colorBgContainer,
 
     '&:hover': {
-      color: token.colorError,
-    },
-  },
-  httpTarget: {
-    display: 'grid',
-    minHeight: 40,
-    gridTemplateColumns:
-      'minmax(120px, 0.8fr) minmax(160px, 1fr) minmax(120px, 1fr)',
-    overflow: 'hidden',
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: 999,
-    background: token.colorBgContainer,
-
-    '.ant-select-selector, .ant-input, .ant-input-number': {
-      border: '0 !important',
-      borderRadius: '0 !important',
-      boxShadow: 'none !important',
-    },
-
-    '.ant-input-number': {
-      width: '100%',
-    },
-
-    '.ant-select, .ant-input, .ant-input-number': {
-      height: '100%',
-    },
-
-    '.ant-input-number-input': {
-      height: 38,
-    },
-
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
-      borderRadius: token.borderRadiusSM,
-
-      '.ant-select-selector, .ant-input, .ant-input-number': {
-        borderBottom: `1px solid ${token.colorBorderSecondary} !important`,
-      },
+      background: 'rgba(255, 255, 255, 0.12)',
+      color: token.colorBgContainer,
     },
   },
   textarea: {
@@ -239,35 +216,36 @@ const validateCommand = async (_: unknown, value?: string) => {
   }
 };
 
-const FieldErrors = ({ names }: { names: NamePath[] }) => {
-  const form = Form.useFormInstance();
-
-  return (
-    <Form.Item noStyle shouldUpdate>
-      {() => {
-        const errors = names.flatMap((name) => form.getFieldError(name));
-
-        return errors.length > 0 ? <Form.ErrorList errors={errors} /> : null;
-      }}
-    </Form.Item>
-  );
-};
-
 const ContainerLifecycleFields = () => {
   const { styles } = useStyles();
   const form = Form.useFormInstance();
+  const didSeedDefaultActionRef = useRef(false);
   const lifecycleActions =
-    (Form.useWatch(
-      'lifecycleActions',
+    (Form.useWatch('lifecycleActions', {
       form,
-    ) as ContainerLifecycleActionsValue) || {};
+      preserve: true,
+    }) as ContainerLifecycleActionsValue) || {};
+
+  useEffect(() => {
+    if (didSeedDefaultActionRef.current) {
+      return;
+    }
+
+    didSeedDefaultActionRef.current = true;
+    const hasEnabledAction = ACTION_OPTIONS.some(
+      (action) => lifecycleActions[action.name]?.enabled,
+    );
+
+    if (!hasEnabledAction) {
+      form.setFieldValue(
+        getActionName('postStart'),
+        createDefaultActionValue(),
+      );
+    }
+  }, [form, lifecycleActions]);
 
   const addAction = (actionName: ContainerLifecycleActionName) => {
     form.setFieldValue(getActionName(actionName), createDefaultActionValue());
-  };
-
-  const removeAction = (actionName: ContainerLifecycleActionName) => {
-    form.setFieldValue(getActionName(actionName), undefined);
   };
 
   const selectHandler = (
@@ -310,36 +288,12 @@ const ContainerLifecycleFields = () => {
     const portName = getActionFieldName(actionName, 'port');
 
     return (
-      <Form.Item label="路径" required>
-        <div className={styles.httpTarget}>
-          <Form.Item name={getActionFieldName(actionName, 'scheme')} noStyle>
-            <Select options={SCHEME_OPTIONS} />
-          </Form.Item>
-          <Form.Item
-            name={pathName}
-            noStyle
-            rules={[{ required: true, message: '请输入路径' }]}
-          >
-            <Input placeholder="/" />
-          </Form.Item>
-          <Form.Item
-            name={portName}
-            noStyle
-            rules={[
-              { required: true, message: '请输入端口' },
-              {
-                type: 'number',
-                min: 1,
-                max: 65535,
-                message: '端口范围为 1-65535',
-              },
-            ]}
-          >
-            <InputNumber min={1} max={65535} precision={0} />
-          </Form.Item>
-        </div>
-        <FieldErrors names={[pathName, portName]} />
-      </Form.Item>
+      <ContainerHttpTargetFields
+        compactRow
+        pathName={pathName}
+        portName={portName}
+        schemeName={getActionFieldName(actionName, 'scheme')}
+      />
     );
   };
 
@@ -392,13 +346,6 @@ const ContainerLifecycleFields = () => {
       <div className={styles.actionEditor}>
         <div className={styles.editorHeader}>
           {renderHandlerTabs(actionName, handlerType)}
-          <Button
-            aria-label="移除动作"
-            className={styles.removeButton}
-            icon={<DeleteOutlined />}
-            type="text"
-            onClick={() => removeAction(actionName)}
-          />
         </div>
         {handlerType === 'httpGet' && renderHttpFields(actionName)}
         {handlerType === 'exec' && renderCommandFields(actionName)}
@@ -424,12 +371,11 @@ const ContainerLifecycleFields = () => {
                 type="button"
                 onClick={() => addAction(action.name)}
               >
-                <span className={styles.addTitle}>添加动作</span>
-                <span className={styles.addDescription}>
-                  {action.description}
-                </span>
+                <PlusOutlined />
+                添加动作
               </button>
             )}
+            <div className={styles.actionDescription}>{action.description}</div>
           </div>
         );
       })}

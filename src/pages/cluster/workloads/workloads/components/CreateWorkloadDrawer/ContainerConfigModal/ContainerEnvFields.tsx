@@ -1,4 +1,4 @@
-import { DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Link } from '@umijs/max';
 import { App, Button, Form, Input, Select } from 'antd';
 import { createStyles } from 'antd-style';
@@ -24,42 +24,61 @@ const useStyles = createStyles(({ token }) => ({
   envs: {
     display: 'flex',
     flexDirection: 'column',
-    gap: token.marginSM,
+    // gap: token.marginSM,
   },
   row: {
     display: 'grid',
+    minHeight: 46,
     alignItems: 'center',
     gap: token.marginSM,
     padding: `${token.paddingXS}px ${token.paddingMD}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: 999,
-    background: token.colorFillSecondary,
+    borderRadius: 24,
+    background: token.colorFillQuaternary,
 
     '.ant-form-item': {
       marginBottom: 0,
     },
 
+    '.ant-select-single': {
+      height: 32,
+    },
+
+    '.ant-select-selector, .ant-input': {
+      borderColor: `${token.colorBorder} !important`,
+      borderRadius: `${token.borderRadiusSM}px !important`,
+      background: `${token.colorBgContainer} !important`,
+      boxShadow: 'none !important',
+    },
+
+    '.ant-input': {
+      height: 32,
+    },
+
     '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
-      borderRadius: token.borderRadiusSM,
-      padding: token.paddingSM,
+      gridTemplateColumns: 'minmax(0, 1fr) 40px',
+
+      '.ant-form-item': {
+        gridColumn: '1 / -1',
+      },
+
+      '.ant-form-item:first-of-type': {
+        gridColumn: 1,
+        gridRow: 1,
+      },
     },
   },
   customRow: {
     gridTemplateColumns:
-      'minmax(128px, 0.6fr) minmax(180px, 1fr) minmax(220px, 1fr) 32px',
+      'minmax(132px, 0.7fr) minmax(180px, 1fr) minmax(180px, 1fr) 40px',
   },
   referenceRow: {
     gridTemplateColumns:
-      'minmax(128px, 0.6fr) minmax(160px, 0.9fr) minmax(180px, 1fr) minmax(180px, 1fr) 32px',
+      'minmax(132px, 0.7fr) minmax(160px, 0.9fr) minmax(180px, 1fr) minmax(180px, 1fr) 40px',
   },
   control: {
     minWidth: 0,
     width: '100%',
-
-    '.ant-select-selector, &.ant-input': {
-      background: token.colorBgContainer,
-    },
   },
   deleteButton: {
     justifySelf: 'center',
@@ -70,7 +89,8 @@ const useStyles = createStyles(({ token }) => ({
     },
 
     '@media (max-width: 768px)': {
-      justifySelf: 'end',
+      gridColumn: 2,
+      gridRow: 1,
     },
   },
   footer: {
@@ -89,6 +109,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     justifyContent: 'flex-end',
     marginLeft: 'auto',
+    marginTop: 12,
   },
 }));
 
@@ -209,6 +230,17 @@ const ContainerEnvFields = () => {
     );
   };
 
+  const handleResourceKeyChange = (index: number, resourceKey: string) => {
+    const currentItems = (form.getFieldValue('containerEnv') ||
+      []) as ContainerEnvItem[];
+    const currentItem = currentItems[index];
+
+    updateEnvItem(index, {
+      resourceKey,
+      keyName: currentItem?.keyName?.trim() ? currentItem.keyName : resourceKey,
+    });
+  };
+
   const addEnvItem = (add: (defaultValue?: ContainerEnvItem) => void) => {
     if (addDisabled) {
       return;
@@ -264,6 +296,9 @@ const ContainerEnvFields = () => {
             placeholder="资源中的键"
             showSearch
             optionFilterProp="label"
+            onChange={(resourceKey) =>
+              handleResourceKeyChange(fieldName, resourceKey)
+            }
           />
         </Form.Item>
       </>
@@ -275,67 +310,69 @@ const ContainerEnvFields = () => {
       <Form.List name="containerEnv">
         {(fields, { add, remove }) => (
           <>
-            {fields.map((field) => {
-              const item = envItems[field.name] || {};
-              const sourceType = item.sourceType || 'custom';
+            <div style={{ display: 'flex', flexDirection: 'column', gap: `12px` }}>
+              {fields.map((field) => {
+                const item = envItems[field.name] || {};
+                const sourceType = item.sourceType || 'custom';
 
-              return (
-                <div
-                  className={[
-                    styles.row,
-                    isResourceSource(sourceType)
-                      ? styles.referenceRow
-                      : styles.customRow,
-                  ].join(' ')}
-                  key={field.key}
-                >
-                  <Form.Item
-                    initialValue="custom"
-                    name={[field.name, 'sourceType']}
+                return (
+                  <div
+                    className={[
+                      styles.row,
+                      isResourceSource(sourceType)
+                        ? styles.referenceRow
+                        : styles.customRow,
+                    ].join(' ')}
+                    key={field.key}
                   >
-                    <Select
-                      className={styles.control}
-                      options={envSourceOptions}
-                      onChange={(nextSourceType) =>
-                        updateEnvItem(field.name, {
-                          sourceType: nextSourceType,
-                          value: '',
-                          resourceName: undefined,
-                          resourceKey: undefined,
-                        })
-                      }
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    name={[field.name, 'keyName']}
-                    rules={[
-                      { required: true, message: '请输入键' },
-                      {
-                        pattern: ENV_NAME_PATTERN,
-                        message:
-                          '键只能包含字母、数字和下划线，且不能以数字开头',
-                      },
-                    ]}
-                  >
-                    <Input className={styles.control} placeholder="键" />
-                  </Form.Item>
-                  {isResourceSource(sourceType) ? (
-                    renderReferenceFields(field.name, item, sourceType)
-                  ) : (
-                    <Form.Item name={[field.name, 'value']}>
-                      <Input className={styles.control} placeholder="值" />
+                    <Form.Item
+                      initialValue="custom"
+                      name={[field.name, 'sourceType']}
+                    >
+                      <Select
+                        className={styles.control}
+                        options={envSourceOptions}
+                        onChange={(nextSourceType) =>
+                          updateEnvItem(field.name, {
+                            sourceType: nextSourceType,
+                            value: '',
+                            resourceName: undefined,
+                            resourceKey: undefined,
+                          })
+                        }
+                      />
                     </Form.Item>
-                  )}
-                  <Button
-                    aria-label="删除环境变量"
-                    className={styles.deleteButton}
-                    icon={<DeleteOutlined />}
-                    type="text"
-                    onClick={() => remove(field.name)}
-                  />
-                </div>
-              );
-            })}
+                    <Form.Item
+                      name={[field.name, 'keyName']}
+                      rules={[
+                        { required: true, message: '请输入键' },
+                        {
+                          pattern: ENV_NAME_PATTERN,
+                          message:
+                            '键只能包含字母、数字和下划线，且不能以数字开头',
+                        },
+                      ]}
+                    >
+                      <Input className={styles.control} placeholder="键" />
+                    </Form.Item>
+                    {isResourceSource(sourceType) ? (
+                      renderReferenceFields(field.name, item, sourceType)
+                    ) : (
+                      <Form.Item name={[field.name, 'value']}>
+                        <Input className={styles.control} placeholder="值" />
+                      </Form.Item>
+                    )}
+                    <Button
+                      aria-label="删除环境变量"
+                      className={styles.deleteButton}
+                      icon={<DeleteOutlined />}
+                      type="text"
+                      onClick={() => remove(field.name)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
             <div className={styles.footer}>
               <div className={styles.helper}>
                 如果没有配置字典或保密字典满足要求，您可以{' '}
@@ -344,6 +381,7 @@ const ContainerEnvFields = () => {
               </div>
               <div className={styles.actions}>
                 <Button disabled={addDisabled} onClick={() => addEnvItem(add)}>
+                  <PlusOutlined />
                   添加环境变量
                 </Button>
               </div>
