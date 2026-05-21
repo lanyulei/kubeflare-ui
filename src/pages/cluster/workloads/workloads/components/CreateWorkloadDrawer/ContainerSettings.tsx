@@ -274,9 +274,7 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
         onEdit={(_, index) => openContainerModal(false, index)}
       />
 
-      <div style={{ marginTop: `16px` }}>
-        <WorkloadUpdateStrategySelector form={form} type={type} />
-      </div>
+      <WorkloadUpdateStrategySelector form={form} type={type} />
       <PodSecurityContextFields />
       <PodSchedulingRuleSelector />
       <PodGracefulTerminationFields />

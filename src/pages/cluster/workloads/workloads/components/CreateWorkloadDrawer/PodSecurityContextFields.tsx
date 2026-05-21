@@ -13,10 +13,11 @@ import { createStyles } from 'antd-style';
 
 const useStyles = createStyles(({ token }) => ({
   securityContext: {
-    padding: `14px 16px`,
+    padding: `12px 16px`,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
+    marginTop: `16px`,
 
     '.ant-form-item': {
       marginBottom: 0,
@@ -57,7 +58,7 @@ const useStyles = createStyles(({ token }) => ({
     gridTemplateColumns: '24px minmax(0, 1fr)',
     gap: token.marginSM,
     marginBottom: token.marginMD,
-    padding: `14px 16px`,
+    padding: `12px 16px`,
     borderRadius: token.borderRadiusSM,
     background: token.colorInfoBg,
     color: token.colorInfoText,

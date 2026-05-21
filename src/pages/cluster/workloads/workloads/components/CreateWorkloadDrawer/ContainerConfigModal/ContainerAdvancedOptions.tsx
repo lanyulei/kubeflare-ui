@@ -21,7 +21,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   option: {
     position: 'relative',
-    padding: `14px 16px`,
+    padding: `12px 16px`,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -109,7 +109,7 @@ const useStyles = createStyles(({ token }) => ({
     fontSize: token.fontSizeSM,
   },
   body: {
-    marginTop: token.marginMD,
+    marginTop: `14px`,
     padding: token.paddingSM,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusSM,

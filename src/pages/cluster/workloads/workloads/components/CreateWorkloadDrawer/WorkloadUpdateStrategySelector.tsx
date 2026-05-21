@@ -1,6 +1,10 @@
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import {
+  DownOutlined,
+  QuestionCircleOutlined,
+  UpOutlined,
+} from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import { Col, Form, Input, InputNumber, Row } from 'antd';
+import { Col, Form, Input, InputNumber, Row, Tooltip } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
@@ -14,13 +18,21 @@ type StrategyOption = {
 
 const useStyles = createStyles(({ token }) => ({
   updateStrategy: {
-    marginBottom: 16,
+    marginTop: `16px`,
   },
   updateStrategyLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginXS,
     marginBottom: `8px`,
     color: token.colorText,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeight,
+  },
+  updateStrategyHelpIcon: {
+    color: token.colorTextTertiary,
+    cursor: 'help',
+    fontSize: `14px`,
   },
   strategySelect: {
     position: 'relative',
@@ -31,7 +43,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   strategyOptions: {
     position: 'absolute',
-    top: 0,
+    top: 'calc(100% + 4px)',
     right: 0,
     left: 0,
     zIndex: 10,
@@ -39,12 +51,13 @@ const useStyles = createStyles(({ token }) => ({
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
+    boxShadow: token.boxShadowSecondary,
   },
   strategyOption: {
     display: 'grid',
     width: '100%',
-    gridTemplateColumns: '32px minmax(0, 1fr) 24px',
-    alignItems: 'start',
+    gridTemplateColumns: 'minmax(0, 1fr) 24px',
+    alignItems: 'center',
     gap: token.marginSM,
     padding: `12px 16px`,
     border: 0,
@@ -59,36 +72,6 @@ const useStyles = createStyles(({ token }) => ({
 
     '&:hover': {
       background: token.colorFillQuaternary,
-    },
-  },
-  strategyIcon: {
-    position: 'relative',
-    width: 28,
-    height: 28,
-    marginTop: 4,
-    color: '#36435C',
-
-    '&::before': {
-      position: 'absolute',
-      top: 0,
-      left: 2,
-      width: 0,
-      height: 0,
-      borderRight: '12px solid transparent',
-      borderBottom: `14px solid currentColor`,
-      borderLeft: '12px solid transparent',
-      content: '""',
-    },
-
-    '&::after': {
-      position: 'absolute',
-      top: 14,
-      left: 9,
-      width: 10,
-      height: 6,
-      background: 'currentColor',
-      boxShadow: `0 4px 0 ${token.colorBgContainer}, 0 8px 0 currentColor, 0 12px 0 ${token.colorBgContainer}, 0 16px 0 currentColor`,
-      content: '""',
     },
   },
   strategyTitle: {
@@ -112,7 +95,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   rollingSettings: {
     marginTop: token.marginSM,
-    padding: `14px 20px 20px`,
+    padding: `12px 16px`,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -121,17 +104,13 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     alignItems: 'center',
     gap: token.marginSM,
-    marginBottom: token.marginLG,
+    marginBottom: `12px`,
     color: token.colorText,
     fontSize: token.fontSizeSM,
     fontWeight: 600,
   },
-  rollingSettingsIcon: {
-    color: '#36435C',
-    fontSize: token.fontSizeSM,
-  },
   rollingSettingsBody: {
-    padding: `${token.paddingMD}px ${token.paddingLG}px`,
+    padding: `12px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     background: token.colorFillQuaternary,
 
@@ -229,7 +208,6 @@ const WorkloadUpdateStrategySelector = ({
           : selectStrategy(option.value)
       }
     >
-      <span className={styles.strategyIcon} />
       <span>
         <span className={styles.strategyTitle}>{option.title}</span>
         <span className={styles.strategyDescription}>{option.description}</span>
@@ -244,7 +222,12 @@ const WorkloadUpdateStrategySelector = ({
 
   return (
     <div className={styles.updateStrategy}>
-      <div className={styles.updateStrategyLabel}>{label}</div>
+      <div className={styles.updateStrategyLabel}>
+        <span>{label}</span>
+        <Tooltip title="配置工作负载更新容器组副本时采用的策略">
+          <QuestionCircleOutlined className={styles.updateStrategyHelpIcon} />
+        </Tooltip>
+      </div>
       <Form.Item name={strategyName} hidden>
         <Input />
       </Form.Item>
@@ -252,9 +235,9 @@ const WorkloadUpdateStrategySelector = ({
         {renderStrategyOption(selectedStrategy, true)}
         {strategyOpen && (
           <div className={styles.strategyOptions}>
-            {strategyOptions.map((option) =>
-              renderStrategyOption(option, false),
-            )}
+            {strategyOptions
+              .filter((option) => option.value !== selectedStrategy.value)
+              .map((option) => renderStrategyOption(option, false))}
           </div>
         )}
       </div>
@@ -262,7 +245,6 @@ const WorkloadUpdateStrategySelector = ({
       {updateStrategyType === 'RollingUpdate' && type !== 'StatefulSet' && (
         <div className={styles.rollingSettings}>
           <div className={styles.rollingSettingsTitle}>
-            <UpOutlined className={styles.rollingSettingsIcon} />
             <span>滚动更新设置</span>
           </div>
           <div className={styles.rollingSettingsBody}>
@@ -330,7 +312,6 @@ const WorkloadUpdateStrategySelector = ({
       {updateStrategyType === 'RollingUpdate' && type === 'StatefulSet' && (
         <div className={styles.rollingSettings}>
           <div className={styles.rollingSettingsTitle}>
-            <UpOutlined className={styles.rollingSettingsIcon} />
             <span>滚动更新设置</span>
           </div>
           <div className={styles.rollingSettingsBody}>
