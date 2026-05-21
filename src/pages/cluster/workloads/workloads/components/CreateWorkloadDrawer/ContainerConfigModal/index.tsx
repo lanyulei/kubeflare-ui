@@ -93,6 +93,7 @@ const useStyles = createStyles(({ token }) => ({
 type ContainerConfigModalProps = {
   form: FormInstance<CreateWorkloadContainerValues>;
   open: boolean;
+  type: API.ClusterWorkloadType;
   onCancel: () => void;
   onOk: () => Promise<void>;
 };
@@ -100,6 +101,7 @@ type ContainerConfigModalProps = {
 const ContainerConfigModal = ({
   form,
   open,
+  type,
   onCancel,
   onOk,
 }: ContainerConfigModalProps) => {
@@ -192,7 +194,7 @@ const ContainerConfigModal = ({
             description="设置用于访问容器的端口。"
             title="端口设置"
           >
-            <ContainerPortFields />
+            <ContainerPortFields type={type} />
           </ContainerFormSection>
 
           <ContainerAdvancedOptions />

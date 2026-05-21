@@ -210,15 +210,28 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
     await containerForm.validateFields(CONTAINER_VALIDATE_FIELD_NAMES);
     const containerPorts = containerForm.getFieldValue('containerPorts') || [];
     await containerForm.validateFields(
-      containerPorts.flatMap((_: unknown, index: number) => [
-        ['containerPorts', index, 'containerPort'],
-        ['containerPorts', index, 'servicePort'],
-      ]),
+      containerPorts.flatMap((_: unknown, index: number) =>
+        type === 'StatefulSet'
+          ? [
+              ['containerPorts', index, 'containerPort'],
+              ['containerPorts', index, 'servicePort'],
+            ]
+          : [['containerPorts', index, 'containerPort']],
+      ),
     );
-    const containerValues = {
+    const rawContainerValues = {
       ...containerForm.getFieldsValue(true),
       id: containers[editingContainerIndex ?? -1]?.id || createContainerId(),
     } as CreateWorkloadContainerValues;
+    const containerValues =
+      type === 'StatefulSet'
+        ? rawContainerValues
+        : {
+            ...rawContainerValues,
+            containerPorts: rawContainerValues.containerPorts?.map(
+              ({ servicePort: _servicePort, ...port }) => port,
+            ),
+          };
     const nextContainers = [...containers];
     if (editingContainerIndex === null) {
       nextContainers.push(containerValues);
@@ -285,6 +298,7 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       <ContainerConfigModal
         form={containerForm}
         open={containerModalOpen}
+        type={type}
         onCancel={cancelContainerModal}
         onOk={saveContainerModal}
       />
