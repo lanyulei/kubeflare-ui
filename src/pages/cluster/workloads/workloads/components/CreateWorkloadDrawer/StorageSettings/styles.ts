@@ -75,7 +75,7 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginSM,
   },
   storageCard: {
-    padding: `${token.paddingSM}px ${token.paddingLG}px`,
+    padding: `12px 16px 16px`,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -162,7 +162,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: token.marginXS,
-    marginTop: token.marginSM,
+    marginTop: `8px`,
   },
   cardMountRow: {
     display: 'grid',
@@ -173,6 +173,7 @@ const useStyles = createStyles(({ token }) => ({
     padding: `${token.paddingXXS}px ${token.paddingSM}px`,
     borderRadius: token.borderRadiusSM,
     background: token.colorFillQuaternary,
+    border: `1px solid ${token.colorBorderSecondary}`,
 
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
