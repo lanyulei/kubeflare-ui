@@ -82,13 +82,13 @@ const useStyles = createStyles(({ token }) => ({
     },
   },
   body: {
-    height: 'calc(100vh - 166px)',
+    height: 'calc(100vh - 205px)',
     overflow: 'auto',
     padding: `${token.paddingLG}px`,
     background: token.colorBgContainer,
   },
   yamlBody: {
-    height: 'calc(100vh - 166px)',
+    height: 'calc(100vh - 131px)',
     padding: token.paddingLG,
     background: token.colorBgContainer,
   },
@@ -455,7 +455,7 @@ const CreateWorkloadDrawer = ({
       {yamlMode ? (
         <div className={styles.yamlBody}>
           <YamlEditor
-            height="calc(100vh - 214px)"
+            height="calc(100vh - 179px)"
             value={yamlValue}
             onChange={setYamlValue}
           />
