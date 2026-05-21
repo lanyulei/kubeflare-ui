@@ -4,8 +4,10 @@ const useStyles = createStyles(({ token }) => ({
   entryGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: token.marginLG,
-    padding: `${token.paddingMD}px`,
+    gap: `16px`,
+    padding: `14px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusSM,
     background: token.colorFillQuaternary,
 
     '@media (max-width: 768px)': {

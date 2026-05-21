@@ -402,7 +402,7 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
         <span className={styles.entryContent}>
           <span className={styles.entryTitle}>挂载卷</span>
           <span className={styles.entryDescription}>
-            为容器挂载持久卷、临时卷或 HostPath 卷。
+            为容器挂载持久卷、临时卷或 HostPath 卷
           </span>
         </span>
       </button>
@@ -415,7 +415,7 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
         <span className={styles.entryContent}>
           <span className={styles.entryTitle}>挂载配置字典或保密字典</span>
           <span className={styles.entryDescription}>
-            为容器挂载配置字典或保密字典。
+            为容器挂载配置字典或保密字典
           </span>
         </span>
       </button>
@@ -426,7 +426,7 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
     <Form.Item
       className={styles.resourceItem}
       name="claimName"
-      rules={[{ required: true, message: '请选择持久卷声明。' }]}
+      rules={[{ required: true, message: '请选择持久卷声明' }]}
     >
       <Select
         className={styles.resourceSelect}
@@ -438,7 +438,7 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
         options={pvcOptions}
         placeholder={
           <ResourcePlaceholder
-            description="将根据持久卷声明创建的持久卷挂载到容器。"
+            description="将根据持久卷声明创建的持久卷挂载到容器"
             icon={<HddOutlined />}
             title={pvcs.length > 0 ? '选择持久卷声明' : '未发现可用资源'}
           />
