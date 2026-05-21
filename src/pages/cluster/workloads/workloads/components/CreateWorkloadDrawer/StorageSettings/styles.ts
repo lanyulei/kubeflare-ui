@@ -349,12 +349,12 @@ const useStyles = createStyles(({ token }) => ({
   },
   capacityRow: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 100px auto',
+    gridTemplateColumns: 'minmax(0, 1fr) 132px',
     alignItems: 'center',
-    gap: `20px`,
+    gap: `15px`,
 
     '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr 92px auto',
+      gridTemplateColumns: '1fr 124px',
     },
   },
   capacitySlider: {
@@ -365,10 +365,6 @@ const useStyles = createStyles(({ token }) => ({
   },
   capacityInput: {
     width: '100%',
-  },
-  capacityUnit: {
-    color: token.colorText,
-    fontSize: token.fontSizeSM,
   },
   resourceSelector: {
     marginBottom: token.marginSM,

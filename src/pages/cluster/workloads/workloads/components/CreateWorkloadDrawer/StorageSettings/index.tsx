@@ -933,10 +933,10 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
               controls={false}
               max={2048}
               min={1}
+              suffix="Gi"
               value={pvcSizeGi ?? 10}
               onChange={(value) => form.setFieldValue('pvcSizeGi', value || 1)}
             />
-            <span className={styles.capacityUnit}>Gi</span>
           </div>
         </Form.Item>
       </div>
