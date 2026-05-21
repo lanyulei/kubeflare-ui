@@ -551,6 +551,30 @@ declare namespace API {
     continue?: string
   }
 
+  type ClusterPersistentVolumeClaimItem = {
+    id?: string
+    name: string
+    namespace?: string
+    storageClassName?: string
+    capacity?: string
+    accessModes?: string[]
+    status?: string
+    create_time?: string
+  }
+
+  type ClusterPersistentVolumeClaimListData = {
+    items: ClusterPersistentVolumeClaimItem[]
+    continue?: string
+    remainingItemCount?: number
+  }
+
+  type ClusterPersistentVolumeClaimListParams = {
+    namespace?: string
+    keyword?: string
+    limit?: number
+    continue?: string
+  }
+
   type ClusterConfigResourceItem = {
     id?: string
     name: string

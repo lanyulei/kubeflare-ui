@@ -206,6 +206,35 @@ type KubernetesStorageClassList = {
   items?: KubernetesStorageClass[]
 }
 
+type KubernetesPersistentVolumeClaim = {
+  metadata?: {
+    uid?: string
+    name?: string
+    namespace?: string
+    creationTimestamp?: string
+  }
+  spec?: {
+    accessModes?: string[]
+    storageClassName?: string
+    resources?: {
+      requests?: Record<string, string>
+    }
+  }
+  status?: {
+    phase?: string
+    accessModes?: string[]
+    capacity?: Record<string, string>
+  }
+}
+
+type KubernetesPersistentVolumeClaimList = {
+  metadata?: {
+    continue?: string
+    remainingItemCount?: number
+  }
+  items?: KubernetesPersistentVolumeClaim[]
+}
+
 type KubernetesConfigMap = {
   metadata?: {
     uid?: string
@@ -772,6 +801,19 @@ const toClusterStorageClassItem = (
   provisioner: storageClass.provisioner,
 })
 
+const toClusterPersistentVolumeClaimItem = (
+  pvc: KubernetesPersistentVolumeClaim,
+): API.ClusterPersistentVolumeClaimItem => ({
+  id: pvc.metadata?.uid || pvc.metadata?.name,
+  name: pvc.metadata?.name || '-',
+  namespace: pvc.metadata?.namespace,
+  storageClassName: pvc.spec?.storageClassName,
+  capacity: pvc.status?.capacity?.storage || pvc.spec?.resources?.requests?.storage,
+  accessModes: pvc.status?.accessModes || pvc.spec?.accessModes || [],
+  status: pvc.status?.phase,
+  create_time: pvc.metadata?.creationTimestamp,
+})
+
 const getConfigResourceKeys = (
   ...dataList: (Record<string, string> | undefined)[]
 ) =>
@@ -1214,6 +1256,61 @@ export async function getClusterStorageClassList(
       remainingItemCount: res.data?.metadata?.remainingItemCount,
     },
   } as API.ApiResponse<API.ClusterStorageClassListData>
+}
+
+/** 获取持久卷声明列表 GET /kapi/v1/namespaces/:namespace/persistentvolumeclaims */
+export async function getClusterPersistentVolumeClaimList(
+  params?: API.ClusterPersistentVolumeClaimListParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, keyword, ...restParams } = params || {}
+
+  if (!clusterId || !namespace) {
+    return {
+      code: 20000,
+      message: '',
+      data: {
+        items: [],
+        continue: '',
+        remainingItemCount: 0,
+      },
+    } as API.ApiResponse<API.ClusterPersistentVolumeClaimListData>
+  }
+
+  const res = await request<
+    API.ApiResponse<KubernetesPersistentVolumeClaimList>
+  >(
+    `/kapi/v1/namespaces/${encodeURIComponent(
+      namespace,
+    )}/persistentvolumeclaims`,
+    {
+      method: 'GET',
+      params: { ...restParams },
+      ...(options || {}),
+      headers: {
+        'X-Cluster-ID': clusterId,
+        ...options?.headers,
+      },
+    },
+  )
+
+  const normalizedKeyword = keyword?.trim().toLowerCase()
+  const items = (res.data?.items || [])
+    .map(toClusterPersistentVolumeClaimItem)
+    .filter(
+      (item) =>
+        !normalizedKeyword || item.name.toLowerCase().includes(normalizedKeyword),
+    )
+
+  return {
+    ...res,
+    data: {
+      items,
+      continue: res.data?.metadata?.continue || '',
+      remainingItemCount: res.data?.metadata?.remainingItemCount,
+    },
+  } as API.ApiResponse<API.ClusterPersistentVolumeClaimListData>
 }
 
 /** 获取配置字典列表 GET /kapi/v1/namespaces/:namespace/configmaps */

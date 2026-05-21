@@ -210,10 +210,9 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
     await containerForm.validateFields(CONTAINER_VALIDATE_FIELD_NAMES);
     const containerPorts = containerForm.getFieldValue('containerPorts') || [];
     await containerForm.validateFields(
-      containerPorts.map((_: unknown, index: number) => [
-        'containerPorts',
-        index,
-        'containerPort',
+      containerPorts.flatMap((_: unknown, index: number) => [
+        ['containerPorts', index, 'containerPort'],
+        ['containerPorts', index, 'servicePort'],
       ]),
     );
     const containerValues = {

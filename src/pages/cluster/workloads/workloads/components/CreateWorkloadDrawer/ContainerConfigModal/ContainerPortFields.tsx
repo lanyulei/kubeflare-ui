@@ -5,8 +5,18 @@ import {
 } from '@ant-design/icons';
 import { Button, Form, Input, InputNumber, Select, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
+import type { ReactNode } from 'react';
+import type { ContainerPortItem } from '../types';
 
 const PORT_NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
+const PORT_NUMBER_RULES = [
+  {
+    type: 'number' as const,
+    min: 1,
+    max: 65535,
+    message: '端口范围为 1-65535',
+  },
+];
 
 const protocolOptions = [
   { label: 'HTTP', value: 'HTTP' },
@@ -26,7 +36,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'grid',
     minHeight: 46,
     gridTemplateColumns:
-      'minmax(140px, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) 40px',
+      'minmax(192px, 0.9fr) minmax(148px, 1fr) minmax(148px, 0.9fr) minmax(148px, 0.9fr) 40px',
     alignItems: 'center',
     gap: token.marginSM,
     padding: `${token.paddingXS}px ${token.paddingMD}px`,
@@ -80,6 +90,7 @@ const useStyles = createStyles(({ token }) => ({
       height: 32,
       border: 0,
       boxShadow: 'none',
+      background: token.colorBgContainer,
     },
 
     '.ant-input-number': {
@@ -97,6 +108,10 @@ const useStyles = createStyles(({ token }) => ({
     '.ant-input-number-input': {
       height: 32,
       paddingInlineStart: token.paddingSM,
+    },
+
+    '.ant-form-item-control-input': {
+      minHeight: 32,
     },
   },
   addon: {
@@ -135,9 +150,34 @@ const getDefaultPort = (index: number) => ({
   name: `http-${index}`,
 });
 
+const isPortItemIncomplete = (item?: ContainerPortItem) =>
+  !item?.containerPort || !item.servicePort;
+
+type CompactFieldProps = {
+  label: ReactNode;
+  children: ReactNode;
+};
+
+const CompactField = ({ label, children }: CompactFieldProps) => {
+  const { styles } = useStyles();
+
+  return (
+    <div className={styles.compactField}>
+      <span className={styles.addon}>{label}</span>
+      {children}
+    </div>
+  );
+};
+
 const ContainerPortFields = () => {
   const { styles } = useStyles();
   const form = Form.useFormInstance();
+  const containerPorts =
+    (Form.useWatch('containerPorts', {
+      form,
+      preserve: true,
+    }) as ContainerPortItem[]) || [];
+  const addDisabled = containerPorts.some(isPortItemIncomplete);
 
   return (
     <div className={styles.ports}>
@@ -150,8 +190,8 @@ const ContainerPortFields = () => {
               {fields.map((field) => (
                 <div className={styles.portRow} key={field.key}>
                   <div className={styles.formItem}>
-                    <div className={styles.compactField}>
-                      <span className={styles.addon}>
+                    <CompactField
+                      label={
                         <span className={styles.inputPrefix}>
                           协议
                           <Tooltip title="HTTP/HTTPS 会在提交时按 TCP 容器端口协议生成。">
@@ -160,15 +200,15 @@ const ContainerPortFields = () => {
                             />
                           </Tooltip>
                         </span>
-                      </span>
+                      }
+                    >
                       <Form.Item name={[field.name, 'protocol']} noStyle>
                         <Select options={protocolOptions} />
                       </Form.Item>
-                    </div>
+                    </CompactField>
                   </div>
                   <Form.Item className={styles.formItem}>
-                    <div className={styles.compactField}>
-                      <span className={styles.addon}>名称</span>
+                    <CompactField label="名称">
                       <Form.Item
                         name={[field.name, 'name']}
                         noStyle
@@ -183,27 +223,45 @@ const ContainerPortFields = () => {
                       >
                         <Input placeholder="例如 http-0" />
                       </Form.Item>
-                    </div>
+                    </CompactField>
                   </Form.Item>
-                  <Form.Item
-                    className={styles.formItem}
-                    name={[field.name, 'containerPort']}
-                    rules={[
-                      { required: true, message: '请输入容器端口' },
-                      {
-                        type: 'number',
-                        min: 1,
-                        max: 65535,
-                        message: '端口范围为 1-65535',
-                      },
-                    ]}
-                  >
-                    <InputNumber
-                      addonBefore="容器端口"
-                      min={1}
-                      max={65535}
-                      precision={0}
-                    />
+                  <Form.Item className={styles.formItem}>
+                    <CompactField label="容器端口">
+                      <Form.Item
+                        name={[field.name, 'containerPort']}
+                        noStyle
+                        rules={[
+                          { required: true, message: '请输入容器端口' },
+                          ...PORT_NUMBER_RULES,
+                        ]}
+                      >
+                        <InputNumber
+                          min={1}
+                          max={65535}
+                          placeholder="必填"
+                          precision={0}
+                        />
+                      </Form.Item>
+                    </CompactField>
+                  </Form.Item>
+                  <Form.Item className={styles.formItem}>
+                    <CompactField label="服务端口">
+                      <Form.Item
+                        name={[field.name, 'servicePort']}
+                        noStyle
+                        rules={[
+                          { required: true, message: '请输入服务端口' },
+                          ...PORT_NUMBER_RULES,
+                        ]}
+                      >
+                        <InputNumber
+                          min={1}
+                          max={65535}
+                          placeholder="必填"
+                          precision={0}
+                        />
+                      </Form.Item>
+                    </CompactField>
                   </Form.Item>
                   <Button
                     aria-label="删除端口"
@@ -217,14 +275,14 @@ const ContainerPortFields = () => {
             </div>
             <div className={styles.actions}>
               <Button
+                disabled={addDisabled}
                 icon={<PlusOutlined />}
                 onClick={async () => {
                   try {
                     await form.validateFields(
-                      fields.map((field) => [
-                        'containerPorts',
-                        field.name,
-                        'containerPort',
+                      fields.flatMap((field) => [
+                        ['containerPorts', field.name, 'containerPort'],
+                        ['containerPorts', field.name, 'servicePort'],
                       ]),
                     );
                     add(getDefaultPort(fields.length));

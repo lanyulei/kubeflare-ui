@@ -7,9 +7,11 @@ import type {
   CreateWorkloadContainerValues,
   CreateWorkloadFormValues,
   WorkloadSchedulingCustomRule,
+  WorkloadStorageKeyPathItem,
 } from './types';
 
 const DEFAULT_APP_LABEL_KEY = 'app';
+const NODE_HOSTNAME_LABEL_KEY = 'kubernetes.io/hostname';
 const HOST_TIME_VOLUME_NAME = 'host-time';
 
 const workloadApiVersions: Record<API.ClusterWorkloadType, string> = {
@@ -51,6 +53,8 @@ const getInitialCreateWorkloadValues = (
   updateStrategyType: 'RollingUpdate',
   maxUnavailable: '25%',
   maxSurge: '25%',
+  minReadySeconds: 0,
+  updatePartition: 0,
   enablePodSecurityContext: false,
   runAsNonRoot: false,
   enablePodGracefulTermination: false,
@@ -80,8 +84,18 @@ const getInitialCreateWorkloadValues = (
   syncHostTimezone: false,
   containers: [],
   protocol: 'TCP',
+  storageCategory: 'none',
   storageType: 'none',
+  volumeType: 'persistentVolumeClaim',
+  configResourceType: 'configMap',
   volumeName: 'data',
+  emptyDirSizeLimit: '200Mi',
+  containerMounts: [],
+  selectSpecificKeys: false,
+  specificKeyPaths: [],
+  enableNodeSelector: false,
+  nodeSelectors: [],
+  selectedNodeNames: [],
   labels: [],
   annotations: [],
 });
@@ -536,6 +550,46 @@ const appendCustomSchedulingRule = (
   podSpec.affinity = affinity;
 };
 
+const appendSelectedNodeAffinity = (
+  podSpec: Record<string, unknown>,
+  nodeNames?: string[],
+) => {
+  const selectedNodeNames = normalizeStringList(nodeNames);
+
+  if (selectedNodeNames.length === 0) {
+    return;
+  }
+
+  const affinity = (podSpec.affinity || {}) as Record<string, unknown>;
+  const nodeAffinity = (affinity.nodeAffinity || {}) as Record<string, unknown>;
+  const required =
+    (nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution as Record<
+      string,
+      unknown
+    >) || {};
+  const nodeSelectorTerms = Array.isArray(required.nodeSelectorTerms)
+    ? (required.nodeSelectorTerms as Record<string, unknown>[])
+    : [];
+
+  nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution = {
+    ...required,
+    nodeSelectorTerms: [
+      ...nodeSelectorTerms,
+      {
+        matchExpressions: [
+          {
+            key: NODE_HOSTNAME_LABEL_KEY,
+            operator: 'In',
+            values: selectedNodeNames,
+          },
+        ],
+      },
+    ],
+  };
+  affinity.nodeAffinity = nodeAffinity;
+  podSpec.affinity = affinity;
+};
+
 const getWorkloadStepFields = (
   step: number,
   type: API.ClusterWorkloadType,
@@ -547,7 +601,9 @@ const getWorkloadStepFields = (
     const strategyFields: (keyof CreateWorkloadFormValues)[] =
       type === 'Deployment'
         ? ['updateStrategyType', 'maxUnavailable', 'maxSurge']
-        : ['updateStrategyType'];
+        : type === 'StatefulSet'
+          ? ['updateStrategyType', 'updatePartition']
+          : ['updateStrategyType', 'maxUnavailable', 'minReadySeconds'];
     const schedulingRuleFields: (keyof CreateWorkloadFormValues)[] = [
       'podSchedulingRule',
       'podSchedulingCustomType',
@@ -564,23 +620,112 @@ const getWorkloadStepFields = (
       : ['replicas', ...strategyFields, ...schedulingRuleFields];
   }
   if (step === 2) {
-    return ['storageType', 'volumeName', 'mountPath', 'claimName'];
+    return [
+      'storageCategory',
+      'storageType',
+      'volumeType',
+      'configResourceType',
+      'volumeName',
+      'emptyDirSizeLimit',
+      'hostPath',
+      'claimName',
+      'configResourceName',
+      'containerMounts',
+      'selectSpecificKeys',
+      'specificKeyPaths',
+    ];
   }
-  return ['labels', 'annotations'];
+  return ['enableNodeSelector', 'nodeSelectors', 'labels', 'annotations'];
 };
 
-const getStorageVolumeMounts = (values: CreateWorkloadFormValues) => {
-  const volumeMounts: Record<string, unknown>[] = [];
+const sanitizeVolumeName = (value?: string, fallback = 'storage-volume') => {
+  const normalized = (value || fallback)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '')
+    .slice(0, 63);
 
-  if (values.storageType && values.storageType !== 'none' && values.mountPath) {
-    volumeMounts.push({
-      name: normalizeName(values.volumeName) || 'data',
-      mountPath: normalizeName(values.mountPath),
-      readOnly: values.readOnly || undefined,
-    });
+  return normalized || fallback;
+};
+
+const isStorageEnabled = (values: CreateWorkloadFormValues) =>
+  values.storageCategory &&
+  values.storageCategory !== 'none' &&
+  values.storageType &&
+  values.storageType !== 'none';
+
+const getStorageVolumeName = (values: CreateWorkloadFormValues) => {
+  if (values.storageType === 'persistentVolumeClaim') {
+    return sanitizeVolumeName(values.claimName, 'pvc-volume');
+  }
+  if (values.storageType === 'configMap' || values.storageType === 'secret') {
+    return sanitizeVolumeName(
+      `${values.storageType}-${values.configResourceName || 'resource'}`,
+      `${values.storageType}-volume`,
+    );
   }
 
-  return volumeMounts;
+  return sanitizeVolumeName(values.volumeName, 'data');
+};
+
+const getContainerStorageKey = (container: CreateWorkloadContainerValues) =>
+  container.id || container.containerName || '';
+
+const getContainerStorageMount = (
+  values: CreateWorkloadFormValues,
+  container: CreateWorkloadContainerValues,
+) => {
+  if (!isStorageEnabled(values)) {
+    return undefined;
+  }
+
+  const containerKey = getContainerStorageKey(container);
+  const mount = (values.containerMounts || []).find(
+    (item) =>
+      item.containerId === container.id ||
+      item.containerName === container.containerName ||
+      item.containerId === containerKey,
+  );
+
+  if (!mount?.mountPath || mount.mountMode === 'none') {
+    return undefined;
+  }
+
+  return {
+    name: getStorageVolumeName(values),
+    mountPath: normalizeName(mount.mountPath),
+    readOnly:
+      values.storageCategory === 'config' || mount.mountMode === 'readOnly'
+        ? true
+        : undefined,
+  };
+};
+
+const hasActiveStorageMount = (
+  values: CreateWorkloadFormValues,
+  containers: CreateWorkloadContainerValues[],
+) =>
+  containers.some((container) =>
+    Boolean(getContainerStorageMount(values, container)),
+  );
+
+const getStorageKeyItems = (values: CreateWorkloadFormValues) => {
+  if (!values.selectSpecificKeys) {
+    return undefined;
+  }
+
+  const items = (values.specificKeyPaths || []).flatMap<Record<string, string>>(
+    (item: WorkloadStorageKeyPathItem) => {
+      const key = normalizeName(item.keyName);
+      const path = normalizeName(item.path);
+
+      return key && path ? [{ key, path }] : [];
+    },
+  );
+
+  return items.length > 0 ? items : undefined;
 };
 
 const getPodVolumes = (
@@ -589,18 +734,55 @@ const getPodVolumes = (
 ) => {
   const volumes: Record<string, unknown>[] = [];
 
-  if (values.storageType && values.storageType !== 'none') {
-    volumes.push({
-      name: normalizeName(values.volumeName) || 'data',
-      ...(values.storageType === 'persistentVolumeClaim'
-        ? {
-            persistentVolumeClaim: {
-              claimName: normalizeName(values.claimName),
-              readOnly: values.readOnly || undefined,
-            },
-          }
-        : { emptyDir: {} }),
-    });
+  if (isStorageEnabled(values) && hasActiveStorageMount(values, containers)) {
+    const volumeName = getStorageVolumeName(values);
+    const items = getStorageKeyItems(values);
+
+    if (values.storageType === 'persistentVolumeClaim') {
+      volumes.push({
+        name: volumeName,
+        persistentVolumeClaim: {
+          claimName: normalizeName(values.claimName),
+        },
+      });
+    }
+    if (values.storageType === 'emptyDir') {
+      volumes.push({
+        name: volumeName,
+        emptyDir: {
+          ...(normalizeName(values.emptyDirSizeLimit)
+            ? { sizeLimit: normalizeName(values.emptyDirSizeLimit) }
+            : {}),
+        },
+      });
+    }
+    if (values.storageType === 'hostPath') {
+      volumes.push({
+        name: volumeName,
+        hostPath: {
+          path: normalizeName(values.hostPath),
+          type: '',
+        },
+      });
+    }
+    if (values.storageType === 'configMap') {
+      volumes.push({
+        name: volumeName,
+        configMap: {
+          name: normalizeName(values.configResourceName),
+          ...(items ? { items } : {}),
+        },
+      });
+    }
+    if (values.storageType === 'secret') {
+      volumes.push({
+        name: volumeName,
+        secret: {
+          secretName: normalizeName(values.configResourceName),
+          ...(items ? { items } : {}),
+        },
+      });
+    }
   }
   if (containers.some((container) => container.syncHostTimezone)) {
     volumes.push({
@@ -617,7 +799,7 @@ const getPodVolumes = (
 
 const getContainerManifest = (
   values: CreateWorkloadContainerValues,
-  storageVolumeMounts: Record<string, unknown>[],
+  formValues: CreateWorkloadFormValues,
 ) => {
   const ports = getContainerPorts(values);
   const resources = getContainerResources(values);
@@ -633,7 +815,8 @@ const getContainerManifest = (
     ? splitCommandText(values.startupArgs)
     : [];
   const securityContext = getContainerSecurityContext(values);
-  const volumeMounts = [...storageVolumeMounts];
+  const storageVolumeMount = getContainerStorageMount(formValues, values);
+  const volumeMounts = storageVolumeMount ? [storageVolumeMount] : [];
 
   if (values.syncHostTimezone) {
     volumeMounts.push({
@@ -686,9 +869,8 @@ const buildCreateWorkloadManifest = (
     values.containers && values.containers.length > 0
       ? values.containers
       : [values];
-  const storageVolumeMounts = getStorageVolumeMounts(values);
   const containers = configuredContainers.map((container) =>
-    getContainerManifest(container, storageVolumeMounts),
+    getContainerManifest(container, values),
   );
   const volumes = getPodVolumes(values, configuredContainers);
   const podSpec: Record<string, unknown> = {
@@ -768,6 +950,14 @@ const buildCreateWorkloadManifest = (
       appendCustomSchedulingRule(podSpec, rule);
     });
   }
+  if (values.enableNodeSelector) {
+    const nodeSelector = toRecord(values.nodeSelectors);
+
+    if (Object.keys(nodeSelector).length > 0) {
+      podSpec.nodeSelector = nodeSelector;
+    }
+    appendSelectedNodeAffinity(podSpec, values.selectedNodeNames);
+  }
   const spec: Record<string, unknown> = {
     selector: {
       matchLabels: appLabels,
@@ -809,12 +999,34 @@ const buildCreateWorkloadManifest = (
             },
           };
   } else if (type === 'DaemonSet') {
-    spec.updateStrategy = {
-      type: 'RollingUpdate',
-      rollingUpdate: {
-        maxUnavailable: normalizeName(values.maxUnavailable) || '25%',
-      },
-    };
+    spec.updateStrategy =
+      values.updateStrategyType === 'OnDelete'
+        ? {
+            type: 'OnDelete',
+          }
+        : {
+            type: 'RollingUpdate',
+            rollingUpdate: {
+              maxUnavailable: normalizeName(values.maxUnavailable) || '25%',
+            },
+          };
+    spec.minReadySeconds =
+      typeof values.minReadySeconds === 'number' ? values.minReadySeconds : 0;
+  } else if (type === 'StatefulSet') {
+    spec.updateStrategy =
+      values.updateStrategyType === 'OnDelete'
+        ? {
+            type: 'OnDelete',
+          }
+        : {
+            type: 'RollingUpdate',
+            rollingUpdate: {
+              partition:
+                typeof values.updatePartition === 'number'
+                  ? values.updatePartition
+                  : 0,
+            },
+          };
   } else {
     spec.updateStrategy = {
       type: 'RollingUpdate',

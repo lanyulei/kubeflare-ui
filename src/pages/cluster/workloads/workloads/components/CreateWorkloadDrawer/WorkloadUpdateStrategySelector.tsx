@@ -1,11 +1,16 @@
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import { Col, Form, Input, Row } from 'antd';
+import { Col, Form, Input, InputNumber, Row } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { WorkloadUpdateStrategyType } from './types';
 
-type WorkloadUpdateStrategyType = 'RollingUpdate' | 'Recreate';
+type StrategyOption = {
+  title: string;
+  value: WorkloadUpdateStrategyType;
+  description: string;
+};
 
 const useStyles = createStyles(({ token }) => ({
   updateStrategy: {
@@ -26,7 +31,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   strategyOptions: {
     position: 'absolute',
-    top: 'calc(100% + 4px)',
+    top: 0,
     right: 0,
     left: 0,
     zIndex: 10,
@@ -34,13 +39,12 @@ const useStyles = createStyles(({ token }) => ({
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
-    boxShadow: token.boxShadowSecondary,
   },
   strategyOption: {
     display: 'grid',
     width: '100%',
-    gridTemplateColumns: 'minmax(0, 1fr) 24px',
-    alignItems: 'center',
+    gridTemplateColumns: '32px minmax(0, 1fr) 24px',
+    alignItems: 'start',
     gap: token.marginSM,
     padding: `12px 16px`,
     border: 0,
@@ -55,6 +59,36 @@ const useStyles = createStyles(({ token }) => ({
 
     '&:hover': {
       background: token.colorFillQuaternary,
+    },
+  },
+  strategyIcon: {
+    position: 'relative',
+    width: 28,
+    height: 28,
+    marginTop: 4,
+    color: '#36435C',
+
+    '&::before': {
+      position: 'absolute',
+      top: 0,
+      left: 2,
+      width: 0,
+      height: 0,
+      borderRight: '12px solid transparent',
+      borderBottom: `14px solid currentColor`,
+      borderLeft: '12px solid transparent',
+      content: '""',
+    },
+
+    '&::after': {
+      position: 'absolute',
+      top: 14,
+      left: 9,
+      width: 10,
+      height: 6,
+      background: 'currentColor',
+      boxShadow: `0 4px 0 ${token.colorBgContainer}, 0 8px 0 currentColor, 0 12px 0 ${token.colorBgContainer}, 0 16px 0 currentColor`,
+      content: '""',
     },
   },
   strategyTitle: {
@@ -78,7 +112,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   rollingSettings: {
     marginTop: token.marginSM,
-    padding: `15px`,
+    padding: `14px 20px 20px`,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -87,15 +121,26 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     alignItems: 'center',
     gap: token.marginSM,
-    marginBottom: `10px`,
+    marginBottom: token.marginLG,
     color: token.colorText,
     fontSize: token.fontSizeSM,
     fontWeight: 600,
   },
+  rollingSettingsIcon: {
+    color: '#36435C',
+    fontSize: token.fontSizeSM,
+  },
   rollingSettingsBody: {
-    padding: `12px`,
+    padding: `${token.paddingMD}px ${token.paddingLG}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     background: token.colorFillQuaternary,
+
+    '.ant-form-item': {
+      marginBottom: 0,
+    },
+  },
+  partitionInput: {
+    width: '100%',
   },
 }));
 
@@ -106,20 +151,28 @@ type WorkloadUpdateStrategySelectorProps = {
   strategyName?: NamePath;
   maxUnavailableName?: NamePath;
   maxSurgeName?: NamePath;
+  minReadySecondsName?: NamePath;
+  updatePartitionName?: NamePath;
 };
 
-const rollingStrategy = {
+const rollingStrategy: StrategyOption = {
   title: '滚动更新（推荐）',
   value: 'RollingUpdate',
   description:
     '用新容器组副本逐步替换旧容器组副本。升级过程中业务流量会负载均衡到新旧容器组副本上，业务不会中断。',
-} as const;
+};
 
-const recreateStrategy = {
+const recreateStrategy: StrategyOption = {
   title: '同时更新',
   value: 'Recreate',
   description: '删除全部旧容器组副本再创建新容器组副本。升级过程中业务会中断。',
-} as const;
+};
+
+const onDeleteStrategy: StrategyOption = {
+  title: '删除容器组时更新',
+  value: 'OnDelete',
+  description: '需要手动删除容器组副本才可对其进行更新。',
+};
 
 const WorkloadUpdateStrategySelector = ({
   form,
@@ -128,39 +181,44 @@ const WorkloadUpdateStrategySelector = ({
   strategyName = 'updateStrategyType',
   maxUnavailableName = 'maxUnavailable',
   maxSurgeName = 'maxSurge',
+  minReadySecondsName = 'minReadySeconds',
+  updatePartitionName = 'updatePartition',
 }: WorkloadUpdateStrategySelectorProps) => {
   const { styles } = useStyles();
   const [strategyOpen, setStrategyOpen] = useState(false);
   const updateStrategyType =
     (Form.useWatch(strategyName, form) as WorkloadUpdateStrategyType) ||
     'RollingUpdate';
-  const strategyOptions =
-    type === 'Deployment'
-      ? [rollingStrategy, recreateStrategy]
-      : [rollingStrategy];
+  const strategyOptions: StrategyOption[] = useMemo(
+    () =>
+      type === 'Deployment'
+        ? [rollingStrategy, recreateStrategy]
+        : type === 'StatefulSet'
+          ? [rollingStrategy, onDeleteStrategy]
+          : [rollingStrategy, onDeleteStrategy],
+    [type],
+  );
   const selectedStrategy =
     strategyOptions.find((option) => option.value === updateStrategyType) ||
     strategyOptions[0];
 
   useEffect(() => {
     if (
-      type !== 'Deployment' &&
-      form.getFieldValue(strategyName) === 'Recreate'
+      !strategyOptions.some(
+        (option) => option.value === form.getFieldValue(strategyName),
+      )
     ) {
       form.setFieldValue(strategyName, 'RollingUpdate');
       setStrategyOpen(false);
     }
-  }, [form, strategyName, type]);
+  }, [form, strategyName, strategyOptions]);
 
   const selectStrategy = (value: WorkloadUpdateStrategyType) => {
     form.setFieldValue(strategyName, value);
     setStrategyOpen(false);
   };
 
-  const renderStrategyOption = (
-    option: (typeof strategyOptions)[number],
-    showArrow: boolean,
-  ) => (
+  const renderStrategyOption = (option: StrategyOption, showArrow: boolean) => (
     <button
       className={styles.strategyOption}
       key={option.value}
@@ -171,6 +229,7 @@ const WorkloadUpdateStrategySelector = ({
           : selectStrategy(option.value)
       }
     >
+      <span className={styles.strategyIcon} />
       <span>
         <span className={styles.strategyTitle}>{option.title}</span>
         <span className={styles.strategyDescription}>{option.description}</span>
@@ -193,9 +252,9 @@ const WorkloadUpdateStrategySelector = ({
         {renderStrategyOption(selectedStrategy, true)}
         {strategyOpen && (
           <div className={styles.strategyOptions}>
-            {strategyOptions
-              .filter((option) => option.value !== selectedStrategy.value)
-              .map((option) => renderStrategyOption(option, false))}
+            {strategyOptions.map((option) =>
+              renderStrategyOption(option, false),
+            )}
           </div>
         )}
       </div>
@@ -203,12 +262,16 @@ const WorkloadUpdateStrategySelector = ({
       {updateStrategyType === 'RollingUpdate' && type !== 'StatefulSet' && (
         <div className={styles.rollingSettings}>
           <div className={styles.rollingSettingsTitle}>
+            <UpOutlined className={styles.rollingSettingsIcon} />
             <span>滚动更新设置</span>
           </div>
           <div className={styles.rollingSettingsBody}>
             <Row gutter={16}>
-              <Col span={type === 'Deployment' ? 12 : 24}>
+              <Col
+                span={type === 'Deployment' || type === 'DaemonSet' ? 12 : 24}
+              >
                 <Form.Item
+                  extra="更新过程中允许的不可用容器组副本的最大数量或百分比。"
                   label="最大不可用容器组数量"
                   name={maxUnavailableName}
                   rules={[
@@ -217,7 +280,6 @@ const WorkloadUpdateStrategySelector = ({
                       message: '请输入最大不可用容器组数量',
                     },
                   ]}
-                  tooltip="更新过程中允许的不可用容器组副本的最大数量或百分比"
                 >
                   <Input placeholder="25%" />
                 </Form.Item>
@@ -239,7 +301,56 @@ const WorkloadUpdateStrategySelector = ({
                   </Form.Item>
                 </Col>
               )}
+              {type === 'DaemonSet' && (
+                <Col span={12}>
+                  <Form.Item
+                    extra="容器组副本被视为就绪所需要的最短稳定运行时长。"
+                    label="容器组就绪最短运行时长（s）"
+                    name={minReadySecondsName}
+                    rules={[
+                      {
+                        required: true,
+                        message: '请输入容器组就绪最短运行时长',
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      className={styles.partitionInput}
+                      min={0}
+                      precision={0}
+                    />
+                  </Form.Item>
+                </Col>
+              )}
             </Row>
+          </div>
+        </div>
+      )}
+
+      {updateStrategyType === 'RollingUpdate' && type === 'StatefulSet' && (
+        <div className={styles.rollingSettings}>
+          <div className={styles.rollingSettingsTitle}>
+            <UpOutlined className={styles.rollingSettingsIcon} />
+            <span>滚动更新设置</span>
+          </div>
+          <div className={styles.rollingSettingsBody}>
+            <Form.Item
+              extra="设置一个分组序号以将容器组副本分成两组。更新有状态副本集时，只有序号大于或等于分组序号的容器组副本会被更新。"
+              label="容器组副本分组序号"
+              name={updatePartitionName}
+              rules={[
+                {
+                  required: true,
+                  message: '请输入容器组副本分组序号',
+                },
+              ]}
+            >
+              <InputNumber
+                className={styles.partitionInput}
+                min={0}
+                precision={0}
+              />
+            </Form.Item>
           </div>
         </div>
       )}
@@ -247,5 +358,5 @@ const WorkloadUpdateStrategySelector = ({
   );
 };
 
-export type { WorkloadUpdateStrategySelectorProps, WorkloadUpdateStrategyType };
+export type { WorkloadUpdateStrategySelectorProps };
 export default WorkloadUpdateStrategySelector;

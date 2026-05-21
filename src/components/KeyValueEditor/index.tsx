@@ -1,7 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Input } from 'antd';
 import { createStyles } from 'antd-style';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 const useStyles = createStyles(
   ({ token }, props: { footerJustify: CSSProperties['justifyContent'] }) => ({
@@ -43,8 +43,12 @@ const useStyles = createStyles(
     },
     footer: {
       display: 'flex',
+      alignItems: 'center',
       justifyContent: props.footerJustify,
       marginTop: `12px`,
+    },
+    footerExtra: {
+      flex: '0 0 auto',
     },
   }),
 );
@@ -63,6 +67,7 @@ type KeyValueEditorProps = {
   keyPlaceholder?: string;
   value?: KeyValueEditorItem[];
   valuePlaceholder?: string;
+  footerExtra?: ReactNode;
   onAddBlocked?: () => void;
   onChange?: (value: KeyValueEditorItem[]) => void;
   onCreateItem: () => KeyValueEditorItem;
@@ -76,6 +81,7 @@ const KeyValueEditor = ({
   keyPlaceholder = '键',
   value = [],
   valuePlaceholder = '值',
+  footerExtra,
   onAddBlocked,
   onChange,
   onCreateItem,
@@ -140,6 +146,7 @@ const KeyValueEditor = ({
         ))}
       </div>
       <div className={styles.footer}>
+        {footerExtra && <div className={styles.footerExtra}>{footerExtra}</div>}
         <Button disabled={addDisabled} onClick={addItem}>
           {addIcon && <PlusOutlined />}
           {addText}

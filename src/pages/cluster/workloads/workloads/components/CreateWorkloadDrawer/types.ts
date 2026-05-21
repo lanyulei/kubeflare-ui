@@ -1,7 +1,17 @@
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 
-type WorkloadStorageType = 'none' | 'emptyDir' | 'persistentVolumeClaim';
-type WorkloadUpdateStrategyType = 'RollingUpdate' | 'Recreate';
+type WorkloadStorageCategory = 'none' | 'volume' | 'config';
+type WorkloadStorageType =
+  | 'none'
+  | 'emptyDir'
+  | 'persistentVolumeClaim'
+  | 'hostPath'
+  | 'configMap'
+  | 'secret';
+type WorkloadVolumeType = 'persistentVolumeClaim' | 'emptyDir' | 'hostPath';
+type WorkloadConfigResourceType = 'configMap' | 'secret';
+type WorkloadMountMode = 'none' | 'readWrite' | 'readOnly';
+type WorkloadUpdateStrategyType = 'RollingUpdate' | 'Recreate' | 'OnDelete';
 type WorkloadSchedulingRuleType =
   | 'default'
   | 'spread'
@@ -67,6 +77,21 @@ type ContainerPortItem = {
   protocol?: string;
   name?: string;
   containerPort?: number;
+  servicePort?: number;
+};
+
+type WorkloadContainerMountItem = {
+  id: string;
+  containerId?: string;
+  containerName?: string;
+  mountMode?: WorkloadMountMode;
+  mountPath?: string;
+};
+
+type WorkloadStorageKeyPathItem = {
+  id: string;
+  keyName?: string;
+  path?: string;
 };
 
 type CreateWorkloadContainerValues = {
@@ -118,6 +143,8 @@ type CreateWorkloadFormValues = CreateWorkloadContainerValues & {
   updateStrategyType?: WorkloadUpdateStrategyType;
   maxUnavailable?: string;
   maxSurge?: string;
+  minReadySeconds?: number;
+  updatePartition?: number;
   enablePodSecurityContext?: boolean;
   runAsNonRoot?: boolean;
   runAsUser?: number;
@@ -137,11 +164,21 @@ type CreateWorkloadFormValues = CreateWorkloadContainerValues & {
   podSchedulingCustomTargetLabels?: Record<string, string>;
   podSchedulingCustomRules?: WorkloadSchedulingCustomRule[];
   containers?: CreateWorkloadContainerValues[];
+  storageCategory?: WorkloadStorageCategory;
   storageType?: WorkloadStorageType;
+  volumeType?: WorkloadVolumeType;
+  configResourceType?: WorkloadConfigResourceType;
   volumeName?: string;
-  mountPath?: string;
+  emptyDirSizeLimit?: string;
+  hostPath?: string;
   claimName?: string;
-  readOnly?: boolean;
+  configResourceName?: string;
+  containerMounts?: WorkloadContainerMountItem[];
+  selectSpecificKeys?: boolean;
+  specificKeyPaths?: WorkloadStorageKeyPathItem[];
+  enableNodeSelector?: boolean;
+  nodeSelectors?: KeyValueEditorItem[];
+  selectedNodeNames?: string[];
   labels?: KeyValueEditorItem[];
   annotations?: KeyValueEditorItem[];
 };
@@ -162,10 +199,16 @@ export type {
   ContainerType,
   CreateWorkloadContainerValues,
   CreateWorkloadFormValues,
+  WorkloadConfigResourceType,
+  WorkloadContainerMountItem,
+  WorkloadMountMode,
   WorkloadSchedulingCustomRule,
   WorkloadSchedulingCustomStrategy,
   WorkloadSchedulingCustomType,
   WorkloadSchedulingRuleType,
+  WorkloadStorageCategory,
+  WorkloadStorageKeyPathItem,
   WorkloadStorageType,
   WorkloadUpdateStrategyType,
+  WorkloadVolumeType,
 };

@@ -21,8 +21,7 @@ import {
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
 import { parse } from 'yaml';
-import { KeyValueEditor, YamlEditor } from '@/components';
-import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+import { YamlEditor } from '@/components';
 import ContainerSettings from './ContainerSettings';
 import {
   buildCreateWorkloadManifest,
@@ -31,7 +30,9 @@ import {
   getWorkloadResourceName,
   getWorkloadStepFields,
 } from './helpers';
+import StorageSettings from './StorageSettings';
 import type { CreateWorkloadFormValues } from './types';
+import WorkloadAdvancedSettings from './WorkloadAdvancedSettings';
 
 const NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 
@@ -103,12 +104,6 @@ const useStyles = createStyles(({ token }) => ({
   section: {
     marginBottom: token.marginLG,
   },
-  metadataEditor: {
-    padding: token.paddingMD,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusLG,
-    background: token.colorFillQuaternary,
-  },
 }));
 
 type CreateWorkloadDrawerProps = {
@@ -125,11 +120,17 @@ type CreateWorkloadDrawerProps = {
   }) => Promise<void>;
 };
 
-const createKeyValueItem = (keyName = '', value = ''): KeyValueEditorItem => ({
-  id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  keyName,
-  value,
-});
+const hasKeyValueContent = (items?: { keyName?: string }[]) =>
+  (items || []).some((item) => item.keyName?.trim());
+
+const hasAdvancedSettingsContent = (values: CreateWorkloadFormValues) =>
+  Boolean(
+    values.enableNodeSelector ||
+      hasKeyValueContent(values.nodeSelectors) ||
+      (values.selectedNodeNames && values.selectedNodeNames.length > 0) ||
+      hasKeyValueContent(values.labels) ||
+      hasKeyValueContent(values.annotations),
+  );
 
 const getStepStatusText = (
   current: number,
@@ -145,14 +146,14 @@ const getStepStatusText = (
   if (index === 1 && values.containers && values.containers.length > 0) {
     return '已设置';
   }
-  if (index === 2 && values.storageType && values.storageType !== 'none') {
+  if (
+    index === 2 &&
+    values.storageCategory &&
+    values.storageCategory !== 'none'
+  ) {
     return '已设置';
   }
-  if (
-    index === 3 &&
-    ((values.labels && values.labels.length > 0) ||
-      (values.annotations && values.annotations.length > 0))
-  ) {
+  if (index === 3 && hasAdvancedSettingsContent(values)) {
     return '已设置';
   }
   return '未设置';
@@ -173,7 +174,6 @@ const CreateWorkloadDrawer = ({
   const [yamlMode, setYamlMode] = useState(false);
   const [yamlValue, setYamlValue] = useState('');
   const values = Form.useWatch([], form) || {};
-  const storageType = Form.useWatch('storageType', form);
   const resourceName = getWorkloadResourceName(type);
   const steps = useMemo(
     () => [
@@ -325,84 +325,9 @@ const CreateWorkloadDrawer = ({
     <ContainerSettings form={form} type={type} />
   );
 
-  const renderStorageSettings = () => (
-    <Row gutter={24}>
-      <Col span={12}>
-        <Form.Item label="存储类型" name="storageType">
-          <Select
-            options={[
-              { label: '不挂载存储', value: 'none' },
-              { label: '临时卷 EmptyDir', value: 'emptyDir' },
-              { label: '已有持久卷声明 PVC', value: 'persistentVolumeClaim' },
-            ]}
-          />
-        </Form.Item>
-        {storageType !== 'none' && (
-          <>
-            <Form.Item
-              label="卷名称"
-              name="volumeName"
-              rules={[{ required: true, message: '请输入卷名称' }]}
-            >
-              <Input placeholder="例如 data" />
-            </Form.Item>
-            <Form.Item
-              label="挂载路径"
-              name="mountPath"
-              rules={[{ required: true, message: '请输入挂载路径' }]}
-            >
-              <Input placeholder="例如 /data" />
-            </Form.Item>
-          </>
-        )}
-      </Col>
-      <Col span={12}>
-        {storageType === 'persistentVolumeClaim' && (
-          <>
-            <Form.Item
-              label="PVC 名称"
-              name="claimName"
-              rules={[{ required: true, message: '请输入 PVC 名称' }]}
-            >
-              <Input placeholder="选择或输入已有 PVC 名称" />
-            </Form.Item>
-            <Form.Item label="只读挂载" name="readOnly" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-          </>
-        )}
-      </Col>
-    </Row>
-  );
+  const renderStorageSettings = () => <StorageSettings form={form} />;
 
-  const renderAdvancedSettings = () => (
-    <Row gutter={24}>
-      <Col span={12}>
-        <div className={styles.metadataEditor}>
-          <Form.Item label="标签" name="labels">
-            <KeyValueEditor
-              addText="添加标签"
-              deleteAriaLabel="删除标签"
-              onAddBlocked={() => message.warning('请先填写已有标签的键。')}
-              onCreateItem={() => createKeyValueItem()}
-            />
-          </Form.Item>
-        </div>
-      </Col>
-      <Col span={12}>
-        <div className={styles.metadataEditor}>
-          <Form.Item label="注解" name="annotations">
-            <KeyValueEditor
-              addText="添加注解"
-              deleteAriaLabel="删除注解"
-              onAddBlocked={() => message.warning('请先填写已有注解的键。')}
-              onCreateItem={() => createKeyValueItem()}
-            />
-          </Form.Item>
-        </div>
-      </Col>
-    </Row>
-  );
+  const renderAdvancedSettings = () => <WorkloadAdvancedSettings form={form} />;
 
   const stepContent = [
     renderBasicInfo,
