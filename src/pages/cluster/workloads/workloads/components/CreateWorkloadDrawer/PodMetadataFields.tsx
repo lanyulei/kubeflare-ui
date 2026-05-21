@@ -18,7 +18,7 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   metadata: {
-    padding: `14px 16px`,
+    padding: `12px 16px`,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
