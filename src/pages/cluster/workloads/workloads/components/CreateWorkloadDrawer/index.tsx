@@ -380,6 +380,7 @@ const CreateWorkloadDrawer = ({
           </div>
         </div>
       }
+      keyboard={false}
       maskClosable={false}
       open={open}
       title={`创建${resourceName}`}
