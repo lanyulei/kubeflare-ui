@@ -213,7 +213,7 @@ const CreateWorkloadDrawer = ({
   }, [defaultNamespace, form, open, type]);
 
   const syncYamlFromForm = () => {
-    const formValues = form.getFieldsValue();
+    const formValues = form.getFieldsValue(true);
     setYamlValue(buildCreateWorkloadYaml(type, formValues));
   };
 
@@ -494,7 +494,7 @@ const CreateWorkloadDrawer = ({
               onValuesChange={() => {
                 if (!yamlMode) {
                   setYamlValue(
-                    buildCreateWorkloadYaml(type, form.getFieldsValue()),
+                    buildCreateWorkloadYaml(type, form.getFieldsValue(true)),
                   );
                 }
               }}

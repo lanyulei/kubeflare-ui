@@ -1,11 +1,9 @@
-import {
-  CodeSandboxOutlined,
-  DatabaseOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons';
+import { CodeSandboxOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { Form, InputNumber } from 'antd';
+import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
+import { createLessThanFieldValidator } from '@/components/ComputeQuotaFields/validation';
 
 const useStyles = createStyles(({ token }) => ({
   notice: {
@@ -82,6 +80,8 @@ type ResourceFieldProps = {
   placeholder: string;
   unit: string;
   precision: number;
+  lessThanField?: string;
+  lessThanMessage?: string;
 };
 
 const resourceFields: {
@@ -98,6 +98,8 @@ const resourceFields: {
         placeholder: '无预留',
         unit: 'Core',
         precision: 3,
+        lessThanField: 'cpuLimit',
+        lessThanMessage: 'CPU 预留必须小于 CPU 限制',
       },
       {
         label: 'CPU 限制',
@@ -118,6 +120,8 @@ const resourceFields: {
         placeholder: '无预留',
         unit: 'Mi',
         precision: 0,
+        lessThanField: 'memoryLimit',
+        lessThanMessage: '内存预留必须小于内存限制',
       },
       {
         label: '内存限制',
@@ -134,23 +138,47 @@ const ContainerResourceFields = () => {
   const { styles } = useStyles();
 
   return (
-    <>
-      <div className={styles.panel}>
-        {resourceFields.map((group) => (
-          <div className={styles.group} key={group.fields[0].name}>
-            <span
-              className={[
-                styles.icon,
-                group.iconClassName === 'memory' ? styles.memoryIcon : '',
-              ].join(' ')}
-            >
-              {group.icon}
-            </span>
-            <div className={styles.rows}>
-              {group.fields.map((field) => (
+    <div className={styles.panel}>
+      {resourceFields.map((group) => (
+        <div className={styles.group} key={group.fields[0].name}>
+          <span
+            className={[
+              styles.icon,
+              group.iconClassName === 'memory' ? styles.memoryIcon : '',
+            ].join(' ')}
+          >
+            {group.icon}
+          </span>
+          <div className={styles.rows}>
+            {group.fields.map((field) => {
+              const rules =
+                field.lessThanField && field.lessThanMessage
+                  ? [
+                      ({
+                        getFieldValue,
+                      }: {
+                        getFieldValue: (name: NamePath) => unknown;
+                      }) => ({
+                        validator: createLessThanFieldValidator(
+                          getFieldValue,
+                          field.lessThanField as NamePath,
+                          field.lessThanMessage as string,
+                        ),
+                      }),
+                    ]
+                  : undefined;
+
+              return (
                 <div className={styles.row} key={field.name}>
                   <span className={styles.label}>{field.label}</span>
-                  <Form.Item className={styles.formItem} name={field.name}>
+                  <Form.Item
+                    className={styles.formItem}
+                    dependencies={
+                      field.lessThanField ? [field.lessThanField] : undefined
+                    }
+                    name={field.name}
+                    rules={rules}
+                  >
                     <InputNumber
                       addonAfter={field.unit}
                       min={0}
@@ -160,12 +188,12 @@ const ContainerResourceFields = () => {
                     />
                   </Form.Item>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-    </>
+        </div>
+      ))}
+    </div>
   );
 };
 

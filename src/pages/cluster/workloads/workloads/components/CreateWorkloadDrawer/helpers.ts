@@ -10,6 +10,7 @@ import type {
 } from './types';
 
 const DEFAULT_APP_LABEL_KEY = 'app';
+const HOST_TIME_VOLUME_NAME = 'host-time';
 
 const workloadApiVersions: Record<API.ClusterWorkloadType, string> = {
   Deployment: 'apps/v1',
@@ -52,6 +53,7 @@ const getInitialCreateWorkloadValues = (
   maxSurge: '25%',
   enablePodSecurityContext: false,
   runAsNonRoot: false,
+  enablePodGracefulTermination: false,
   terminationGracePeriodSeconds: 30,
   podAnnotations: [],
   podSchedulingRule: 'default',
@@ -552,6 +554,7 @@ const getWorkloadStepFields = (
       'podSchedulingCustomStrategy',
       'podSchedulingCustomTarget',
       'podSchedulingCustomRules',
+      'enablePodGracefulTermination',
       'terminationGracePeriodSeconds',
       'podAnnotations',
     ];
@@ -601,10 +604,10 @@ const getPodVolumes = (
   }
   if (containers.some((container) => container.syncHostTimezone)) {
     volumes.push({
-      name: 'host-timezone',
+      name: HOST_TIME_VOLUME_NAME,
       hostPath: {
         path: '/etc/localtime',
-        type: 'File',
+        type: '',
       },
     });
   }
@@ -634,7 +637,7 @@ const getContainerManifest = (
 
   if (values.syncHostTimezone) {
     volumeMounts.push({
-      name: 'host-timezone',
+      name: HOST_TIME_VOLUME_NAME,
       mountPath: '/etc/localtime',
       readOnly: true,
     });
@@ -715,11 +718,13 @@ const buildCreateWorkloadManifest = (
       podSpec.securityContext = securityContext;
     }
   }
-  setIfDefined(
-    podSpec,
-    'terminationGracePeriodSeconds',
-    values.terminationGracePeriodSeconds,
-  );
+  if (values.enablePodGracefulTermination) {
+    setIfDefined(
+      podSpec,
+      'terminationGracePeriodSeconds',
+      values.terminationGracePeriodSeconds,
+    );
+  }
   if (values.podSchedulingRule === 'spread') {
     podSpec.affinity = {
       podAntiAffinity: {

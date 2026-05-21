@@ -231,6 +231,8 @@ const ProjectQuotaModal = ({
               label: 'CPU 预留',
               name: 'cpuRequest',
               placeholder: '无预留',
+              lessThanField: 'cpuLimit',
+              lessThanMessage: 'CPU 预留必须小于 CPU 限制',
             },
             {
               label: 'CPU 限制',
@@ -243,6 +245,8 @@ const ProjectQuotaModal = ({
               label: '内存预留',
               name: 'memoryRequest',
               placeholder: '无预留',
+              lessThanField: 'memoryLimit',
+              lessThanMessage: '内存预留必须小于内存限制',
             },
             {
               label: '内存限制',

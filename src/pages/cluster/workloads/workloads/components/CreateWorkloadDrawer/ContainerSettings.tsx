@@ -208,6 +208,14 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
 
   const saveContainerModal = async () => {
     await containerForm.validateFields(CONTAINER_VALIDATE_FIELD_NAMES);
+    const containerPorts = containerForm.getFieldValue('containerPorts') || [];
+    await containerForm.validateFields(
+      containerPorts.map((_: unknown, index: number) => [
+        'containerPorts',
+        index,
+        'containerPort',
+      ]),
+    );
     const containerValues = {
       ...containerForm.getFieldsValue(true),
       id: containers[editingContainerIndex ?? -1]?.id || createContainerId(),

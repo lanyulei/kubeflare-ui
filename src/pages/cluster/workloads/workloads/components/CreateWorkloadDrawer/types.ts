@@ -126,6 +126,7 @@ type CreateWorkloadFormValues = CreateWorkloadContainerValues & {
   seLinuxRole?: string;
   seLinuxType?: string;
   seLinuxUser?: string;
+  enablePodGracefulTermination?: boolean;
   terminationGracePeriodSeconds?: number;
   podAnnotations?: KeyValueEditorItem[];
   podSchedulingRule?: WorkloadSchedulingRuleType;

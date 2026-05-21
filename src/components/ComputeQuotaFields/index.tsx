@@ -1,6 +1,7 @@
 import { Form, InputNumber, Typography } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
+import { createLessThanFieldValidator } from './validation';
 
 const useStyles = createStyles(({ token }) => ({
   fields: {
@@ -40,6 +41,8 @@ type QuotaFieldConfig = {
   label: string;
   name: NamePath;
   placeholder?: string;
+  lessThanField?: NamePath;
+  lessThanMessage?: string;
 };
 
 type ComputeQuotaFieldsProps = {
@@ -58,22 +61,48 @@ const ComputeQuotaFields = ({
   const { styles } = useStyles();
 
   const renderFields = (fields: QuotaFieldConfig[], unit: string) =>
-    fields.map((field) => (
-      <div className={styles.row} key={field.label}>
-        <Typography.Text className={styles.label}>
-          {field.label}
-        </Typography.Text>
-        <Form.Item className={styles.formItem} name={field.name}>
-          <InputNumber
-            addonAfter={unit}
-            min={0}
-            placeholder={field.placeholder}
-            precision={unit === 'Core' ? 3 : 0}
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
-      </div>
-    ));
+    fields.map((field) => {
+      const rules =
+        field.lessThanField && field.lessThanMessage
+          ? [
+              ({
+                getFieldValue,
+              }: {
+                getFieldValue: (name: NamePath) => unknown;
+              }) => ({
+                validator: createLessThanFieldValidator(
+                  getFieldValue,
+                  field.lessThanField as NamePath,
+                  field.lessThanMessage as string,
+                ),
+              }),
+            ]
+          : undefined;
+
+      return (
+        <div className={styles.row} key={field.label}>
+          <Typography.Text className={styles.label}>
+            {field.label}
+          </Typography.Text>
+          <Form.Item
+            className={styles.formItem}
+            dependencies={
+              field.lessThanField ? [field.lessThanField] : undefined
+            }
+            name={field.name}
+            rules={rules}
+          >
+            <InputNumber
+              addonAfter={unit}
+              min={0}
+              placeholder={field.placeholder}
+              precision={unit === 'Core' ? 3 : 0}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </div>
+      );
+    });
 
   return (
     <div className={styles.fields}>

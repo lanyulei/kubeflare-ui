@@ -86,6 +86,10 @@ const useStyles = createStyles(({ token }) => ({
       width: '100%',
     },
 
+    '.ant-input-number-group-wrapper': {
+      width: '100%',
+    },
+
     '.ant-input-number-focused': {
       boxShadow: 'none',
     },
@@ -133,13 +137,16 @@ const getDefaultPort = (index: number) => ({
 
 const ContainerPortFields = () => {
   const { styles } = useStyles();
+  const form = Form.useFormInstance();
 
   return (
     <div className={styles.ports}>
       <Form.List name="containerPorts">
         {(fields, { add, remove }) => (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: `12px` }}>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: `12px` }}
+            >
               {fields.map((field) => (
                 <div className={styles.portRow} key={field.key}>
                   <div className={styles.formItem}>
@@ -148,7 +155,9 @@ const ContainerPortFields = () => {
                         <span className={styles.inputPrefix}>
                           协议
                           <Tooltip title="HTTP/HTTPS 会在提交时按 TCP 容器端口协议生成。">
-                            <QuestionCircleOutlined className={styles.helpIcon} />
+                            <QuestionCircleOutlined
+                              className={styles.helpIcon}
+                            />
                           </Tooltip>
                         </span>
                       </span>
@@ -176,24 +185,25 @@ const ContainerPortFields = () => {
                       </Form.Item>
                     </div>
                   </Form.Item>
-                  <Form.Item className={styles.formItem}>
-                    <div className={styles.compactField}>
-                      <span className={styles.addon}>容器端口</span>
-                      <Form.Item
-                        name={[field.name, 'containerPort']}
-                        noStyle
-                        rules={[
-                          {
-                            type: 'number',
-                            min: 1,
-                            max: 65535,
-                            message: '端口范围为 1-65535',
-                          },
-                        ]}
-                      >
-                        <InputNumber min={1} max={65535} precision={0} />
-                      </Form.Item>
-                    </div>
+                  <Form.Item
+                    className={styles.formItem}
+                    name={[field.name, 'containerPort']}
+                    rules={[
+                      { required: true, message: '请输入容器端口' },
+                      {
+                        type: 'number',
+                        min: 1,
+                        max: 65535,
+                        message: '端口范围为 1-65535',
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      addonBefore="容器端口"
+                      min={1}
+                      max={65535}
+                      precision={0}
+                    />
                   </Form.Item>
                   <Button
                     aria-label="删除端口"
@@ -208,7 +218,20 @@ const ContainerPortFields = () => {
             <div className={styles.actions}>
               <Button
                 icon={<PlusOutlined />}
-                onClick={() => add(getDefaultPort(fields.length))}
+                onClick={async () => {
+                  try {
+                    await form.validateFields(
+                      fields.map((field) => [
+                        'containerPorts',
+                        field.name,
+                        'containerPort',
+                      ]),
+                    );
+                    add(getDefaultPort(fields.length));
+                  } catch {
+                    // Validation errors are displayed by Form.Item.
+                  }
+                }}
               >
                 添加端口
               </Button>

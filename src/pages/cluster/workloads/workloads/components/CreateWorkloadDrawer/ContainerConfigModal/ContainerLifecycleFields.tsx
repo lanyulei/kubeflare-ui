@@ -134,12 +134,14 @@ const useStyles = createStyles(({ token }) => ({
   },
   handlerTabActive: {
     '&&': {
-      background: token.colorText,
-      color: token.colorBgContainer,
+      background: token.colorPrimaryBg,
+      color: token.colorPrimaryText,
+      boxShadow: `inset 0 0 0 1px ${token.colorPrimaryBorder}`,
     },
 
     '&&:hover': {
-      background: token.colorText,
+      background: token.colorPrimaryBgHover,
+      color: token.colorPrimaryText,
     },
   },
   actionFooter: {
