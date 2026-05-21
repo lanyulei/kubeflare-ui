@@ -16,6 +16,7 @@ import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import SectionTitle from './SectionTitle';
 import SelectValueEditor from './SelectValueEditor';
 import TaintEditor from './TaintEditor';
+import UnitInputNumber from './UnitInputNumber';
 import YamlEditor from './YamlEditor';
 
 export {
@@ -33,5 +34,6 @@ export {
   SelectLang,
   SelectValueEditor,
   TaintEditor,
+  UnitInputNumber,
   YamlEditor,
 };

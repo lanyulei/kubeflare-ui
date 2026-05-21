@@ -87,6 +87,7 @@ type WorkloadContainerMountItem = {
   containerName?: string;
   mountMode?: WorkloadMountMode;
   mountPath?: string;
+  subPath?: string;
 };
 
 type WorkloadStorageKeyPathItem = {

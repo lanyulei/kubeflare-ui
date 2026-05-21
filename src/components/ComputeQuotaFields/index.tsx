@@ -1,6 +1,7 @@
-import { Form, InputNumber, Typography } from 'antd';
+import { Form, Typography } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
+import UnitInputNumber from '../UnitInputNumber';
 import { createLessThanFieldValidator } from './validation';
 
 const useStyles = createStyles(({ token }) => ({
@@ -92,12 +93,12 @@ const ComputeQuotaFields = ({
             name={field.name}
             rules={rules}
           >
-            <InputNumber
-              addonAfter={unit}
+            <UnitInputNumber
               min={0}
               placeholder={field.placeholder}
               precision={unit === 'Core' ? 3 : 0}
               style={{ width: '100%' }}
+              unit={unit}
             />
           </Form.Item>
         </div>

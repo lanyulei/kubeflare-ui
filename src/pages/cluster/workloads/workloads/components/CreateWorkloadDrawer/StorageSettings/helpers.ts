@@ -43,6 +43,7 @@ const createContainerMountItem = (
   containerName: container.containerName,
   mountMode,
   mountPath: '',
+  subPath: '',
 });
 
 const createStorageKeyPathItem = (): WorkloadStorageKeyPathItem => ({

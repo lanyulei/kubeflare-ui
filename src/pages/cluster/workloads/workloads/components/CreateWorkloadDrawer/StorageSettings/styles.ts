@@ -540,6 +540,55 @@ const useStyles = createStyles(({ token }) => ({
     width: '100%',
     minWidth: 0,
   },
+  subPathTrigger: {
+    width: 22,
+    height: 22,
+    color: token.colorTextSecondary,
+    borderRadius: token.borderRadiusXS,
+
+    '&:hover': {
+      color: token.colorPrimary,
+      background: token.colorFillSecondary,
+    },
+  },
+  subPathTriggerActive: {
+    color: token.colorPrimary,
+    background: token.colorPrimaryBg,
+  },
+  subPathEditor: {
+    width: 440,
+    padding: `4px`,
+  },
+  subPathHeader: {
+    marginBottom: token.marginSM,
+  },
+  subPathTitle: {
+    color: token.colorText,
+    fontSize: token.fontSize,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+  },
+  subPathDescription: {
+    marginTop: 2,
+    color: token.colorTextSecondary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeightSM,
+  },
+  subPathError: {
+    marginTop: token.marginXS,
+    color: token.colorError,
+    fontSize: token.fontSizeSM,
+  },
+  subPathFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: token.marginSM,
+    marginTop: `16px`,
+
+    '.ant-btn': {
+      minWidth: 72,
+    },
+  },
   specificPanel: {
     marginTop: token.marginSM,
     padding: `12px 16px`,

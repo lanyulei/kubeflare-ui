@@ -752,6 +752,9 @@ const getContainerStorageMount = (
   return {
     name: getStorageVolumeName(values),
     mountPath: normalizeName(mount.mountPath),
+    ...(normalizeName(mount.subPath)
+      ? { subPath: normalizeName(mount.subPath) }
+      : {}),
     readOnly:
       values.storageCategory === 'config' || mount.mountMode === 'readOnly'
         ? true

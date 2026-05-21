@@ -2,6 +2,7 @@ import {
   DeleteOutlined,
   DockerOutlined,
   EditOutlined,
+  FolderOpenOutlined,
   HddOutlined,
   KeyOutlined,
   PlusOutlined,
@@ -19,9 +20,11 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popover,
   Select,
   Slider,
   Spin,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { ReactNode } from 'react';
@@ -71,6 +74,12 @@ type ResourcePlaceholderProps = {
 
 type ResourceOptionContentProps = ResourcePlaceholderProps & {
   metrics?: { label: string; value?: string }[];
+};
+
+type SubPathEditorState = {
+  index: number;
+  value: string;
+  error?: string;
 };
 
 const getConfigResourceLabel = (type?: WorkloadConfigResourceType) =>
@@ -166,6 +175,9 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
   );
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [editingStorageIndex, setEditingStorageIndex] = useState<number | null>(
+    null,
+  );
+  const [subPathEditor, setSubPathEditor] = useState<SubPathEditorState | null>(
     null,
   );
   const namespace = Form.useWatch('namespace', {
@@ -297,6 +309,41 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
     [form],
   );
 
+  const openSubPathEditor = (index: number) => {
+    const mount = form.getFieldValue(['containerMounts', index]);
+
+    setSubPathEditor({
+      index,
+      value: mount?.subPath || '',
+    });
+  };
+
+  const cancelSubPathEditor = () => {
+    setSubPathEditor(null);
+  };
+
+  const confirmSubPathEditor = () => {
+    if (!subPathEditor) {
+      return;
+    }
+
+    const nextValue = subPathEditor.value.trim();
+
+    if (nextValue && !isRelativeVolumeItemPath(nextValue)) {
+      setSubPathEditor({
+        ...subPathEditor,
+        error: '请使用相对路径，且不能包含 ..',
+      });
+      return;
+    }
+
+    form.setFieldValue(
+      ['containerMounts', subPathEditor.index, 'subPath'],
+      nextValue || undefined,
+    );
+    setSubPathEditor(null);
+  };
+
   const activateMounts = useCallback(
     (category = storageCategory) => {
       updateMounts(activateEmptyMounts(normalizeMounts(category), category));
@@ -332,6 +379,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
     (setupStorage: () => void) => {
       storageSnapshotRef.current = getStorageSnapshot();
       setEditingStorageIndex(null);
+      setSubPathEditor(null);
       setupStorage();
       setStorageModalOpen(true);
     },
@@ -347,6 +395,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
         id: item.id,
         mountMode: item.mountMode,
         mountPath: item.mountPath,
+        subPath: item.subPath,
       })),
     );
     const nextValue = JSON.stringify(
@@ -356,6 +405,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
         id: item.id,
         mountMode: item.mountMode,
         mountPath: item.mountPath,
+        subPath: item.subPath,
       })),
     );
 
@@ -572,6 +622,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
   const cancelStorageModal = () => {
     restoreStorageSnapshot();
     setEditingStorageIndex(null);
+    setSubPathEditor(null);
     setStorageModalOpen(false);
   };
 
@@ -616,6 +667,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
     form.setFieldValue('storageItems', nextItems);
     storageSnapshotRef.current = null;
     setEditingStorageIndex(null);
+    setSubPathEditor(null);
     resetStorageCategory();
     setStorageModalOpen(false);
   };
@@ -647,6 +699,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
       selectSpecificKeys: item.selectSpecificKeys,
       specificKeyPaths: item.specificKeyPaths,
     });
+    setSubPathEditor(null);
     setStorageModalOpen(true);
   };
 
@@ -943,6 +996,45 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
     </div>
   );
 
+  const renderSubPathEditor = () => (
+    <div className={styles.subPathEditor}>
+      <div className={styles.subPathHeader}>
+        <div className={styles.subPathTitle}>指定子路径</div>
+        <div className={styles.subPathDescription}>
+          指定需要挂载到容器的卷子路径。
+        </div>
+      </div>
+      <Input
+        autoFocus
+        placeholder="子路径"
+        prefix={<FolderOpenOutlined />}
+        status={subPathEditor?.error ? 'error' : undefined}
+        value={subPathEditor?.value}
+        onChange={(event) =>
+          setSubPathEditor((current) =>
+            current
+              ? {
+                  ...current,
+                  error: undefined,
+                  value: event.target.value,
+                }
+              : current,
+          )
+        }
+        onPressEnter={confirmSubPathEditor}
+      />
+      {subPathEditor?.error && (
+        <div className={styles.subPathError}>{subPathEditor.error}</div>
+      )}
+      <div className={styles.subPathFooter}>
+        <Button onClick={cancelSubPathEditor}>取消</Button>
+        <Button type="primary" onClick={confirmSubPathEditor}>
+          确定
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderContainerMountRows = () => {
     if (containers.length === 0) {
       return (
@@ -959,6 +1051,9 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
         {containerMounts.map((item, index) => {
           const mountMode = item.mountMode || 'none';
           const disabled = mountMode === 'none';
+          const mountPath = item.mountPath?.trim();
+          const subPath = item.subPath?.trim();
+          const subPathDisabled = disabled || !mountPath;
 
           return (
             <div className={styles.mountRow} key={item.id}>
@@ -993,6 +1088,36 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
                   disabled={disabled}
                   placeholder="挂载路径"
                   prefix={<SettingOutlined />}
+                  suffix={
+                    <Popover
+                      arrow
+                      content={renderSubPathEditor()}
+                      open={subPathEditor?.index === index}
+                      placement="topRight"
+                      trigger="click"
+                      onOpenChange={(open) => {
+                        if (open) {
+                          openSubPathEditor(index);
+                          return;
+                        }
+                        cancelSubPathEditor();
+                      }}
+                    >
+                      <Tooltip title="指定子路径">
+                        <Button
+                          aria-label="指定子路径"
+                          className={[
+                            styles.subPathTrigger,
+                            subPath ? styles.subPathTriggerActive : '',
+                          ].join(' ')}
+                          disabled={subPathDisabled}
+                          icon={<FolderOpenOutlined />}
+                          size="small"
+                          type="text"
+                        />
+                      </Tooltip>
+                    </Popover>
+                  }
                 />
               </Form.Item>
             </div>
@@ -1273,6 +1398,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
               <SettingOutlined />
               {mount.mountPath}
               {mount.mountMode === 'readWrite' ? '（读写）' : ''}
+              {mount.subPath ? ` · 子路径：${mount.subPath}` : ''}
             </span>
           </div>
         ))}

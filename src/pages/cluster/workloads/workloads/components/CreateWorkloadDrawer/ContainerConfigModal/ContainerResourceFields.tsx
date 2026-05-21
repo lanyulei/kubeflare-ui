@@ -1,8 +1,9 @@
 import { CodeSandboxOutlined, DatabaseOutlined } from '@ant-design/icons';
-import { Form, InputNumber } from 'antd';
+import { Form } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
+import { UnitInputNumber } from '@/components';
 import { createLessThanFieldValidator } from '@/components/ComputeQuotaFields/validation';
 
 const useStyles = createStyles(({ token }) => ({
@@ -179,12 +180,12 @@ const ContainerResourceFields = () => {
                     name={field.name}
                     rules={rules}
                   >
-                    <InputNumber
-                      addonAfter={field.unit}
+                    <UnitInputNumber
                       min={0}
                       placeholder={field.placeholder}
                       precision={field.precision}
                       style={{ width: '100%' }}
+                      unit={field.unit}
                     />
                   </Form.Item>
                 </div>
