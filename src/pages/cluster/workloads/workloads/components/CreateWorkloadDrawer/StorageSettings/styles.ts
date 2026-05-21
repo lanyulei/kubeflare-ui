@@ -10,7 +10,7 @@ const useStyles = createStyles(({ token }) => ({
   entryGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: `16px`,
+    gap: 15,
     padding: `14px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusSM,
@@ -72,7 +72,15 @@ const useStyles = createStyles(({ token }) => ({
   storageList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: token.marginSM,
+  },
+  storageListPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 15,
+    padding: 14,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorFillQuaternary,
   },
   storageCard: {
     padding: `12px 16px 16px`,
@@ -200,7 +208,7 @@ const useStyles = createStyles(({ token }) => ({
   addStorageGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: token.marginMD,
+    gap: 15,
 
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
@@ -225,6 +233,9 @@ const useStyles = createStyles(({ token }) => ({
       borderColor: token.colorPrimary,
       background: token.colorFillQuaternary,
     },
+  },
+  addStorageCardWide: {
+    gridColumn: '1 / -1',
   },
   addStorageTitle: {
     color: token.colorText,

@@ -1450,7 +1450,9 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
     <div className={styles.addStorageGrid}>
       {type === 'StatefulSet' && (
         <button
-          className={styles.addStorageCard}
+          className={[styles.addStorageCard, styles.addStorageCardWide].join(
+            ' ',
+          )}
           type="button"
           onClick={() => openStorageModal(selectVolumeClaimTemplate)}
         >
@@ -1486,8 +1488,10 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
   const renderConfiguredStorage = () => (
     <div className={styles.storageList}>
       <div className={styles.storageTitle}>存储设置</div>
-      {storageItems.map(renderStorageCard)}
-      {renderAddStorageActions()}
+      <div className={styles.storageListPanel}>
+        {storageItems.map(renderStorageCard)}
+        {renderAddStorageActions()}
+      </div>
     </div>
   );
 

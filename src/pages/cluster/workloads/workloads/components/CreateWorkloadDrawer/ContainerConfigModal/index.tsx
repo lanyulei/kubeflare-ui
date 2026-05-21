@@ -1,6 +1,6 @@
-import { CodeSandboxOutlined } from '@ant-design/icons';
+import { CodeSandboxOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import { Col, Form, Input, Modal, Row, Select } from 'antd';
+import { Col, Form, Input, Modal, Row, Select, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useState } from 'react';
 import type { CreateWorkloadContainerValues } from '../types';
@@ -39,6 +39,20 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: token.marginSM,
+  },
+  sectionTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginXS,
+    marginBottom: `8px`,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  sectionHelpIcon: {
+    color: token.colorTextTertiary,
+    cursor: 'help',
+    fontSize: `14px`,
   },
   imageInput: {
     '.ant-input-prefix': {
@@ -128,24 +142,30 @@ const ContainerConfigModal = ({
     >
       <Form form={form} layout="vertical" requiredMark>
         <div className={styles.stack}>
-          <ContainerFormSection
-            description="设置容器的镜像、名称、类型和计算资源。"
-            title="容器设置"
-          >
-            <Form.Item
-              label="镜像"
-              name="image"
-              tooltip="如需使用私有镜像服务，您需要先创建镜像服务保密字典"
-              rules={[{ required: true, message: '请输入容器镜像' }]}
-            >
-              <Input
-                className={styles.imageInput}
-                placeholder="镜像名称或路径，例如 nginx:latest"
-                suffix={<CodeSandboxOutlined className={styles.imageSuffix} />}
-              />
-            </Form.Item>
+          <div>
+            <div className={styles.sectionTitle}>
+              容器设置
+              {/* <Tooltip title="配置容器的镜像、名称、类型和计算资源">
+                <QuestionCircleOutlined className={styles.sectionHelpIcon} />
+              </Tooltip> */}
+            </div>
+            <ContainerFormSection description="配置容器的镜像、名称、类型和计算资源">
+              <Form.Item
+                label="镜像"
+                name="image"
+                tooltip="如需使用私有镜像服务，您需要先创建镜像服务保密字典"
+                rules={[{ required: true, message: '请输入容器镜像' }]}
+              >
+                <Input
+                  className={styles.imageInput}
+                  placeholder="镜像名称或路径，例如 nginx:latest"
+                  suffix={
+                    <CodeSandboxOutlined className={styles.imageSuffix} />
+                  }
+                />
+              </Form.Item>
 
-            {/* <Button
+              {/* <Button
             className={styles.advancedToggle}
             type="link"
             onClick={() => setAdvancedOpen((current) => !current)}
@@ -153,42 +173,43 @@ const ContainerConfigModal = ({
             高级设置 {advancedOpen ? <UpOutlined /> : <DownOutlined />}
           </Button> */}
 
-            {advancedOpen && (
-              <>
-                <Row gutter={18}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="容器名称"
-                      name="containerName"
-                      tooltip="名称只能包含大写字母、小写字母、数字和连字符（-），必须以字母或数字开头和结尾，最长 63 个字符"
-                      rules={[
-                        { required: true, message: '请输入容器名称' },
-                        { max: 63, message: '容器名称最长 63 个字符' },
-                        {
-                          pattern: NAME_PATTERN,
-                          message:
-                            '容器名称只能包含大写字母、小写字母、数字和连字符（-），且不能以连字符开头或结尾',
-                        },
-                      ]}
-                    >
-                      <Input placeholder="例如 container-Ab12Cd34" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="容器类型" name="containerType">
-                      <Select
-                        options={[
-                          { label: '工作容器', value: 'worker' },
-                          { label: '初始化容器', value: 'init' },
+              {advancedOpen && (
+                <>
+                  <Row gutter={18}>
+                    <Col span={12}>
+                      <Form.Item
+                        label="容器名称"
+                        name="containerName"
+                        tooltip="名称只能包含大写字母、小写字母、数字和连字符（-），必须以字母或数字开头和结尾，最长 63 个字符"
+                        rules={[
+                          { required: true, message: '请输入容器名称' },
+                          { max: 63, message: '容器名称最长 63 个字符' },
+                          {
+                            pattern: NAME_PATTERN,
+                            message:
+                              '容器名称只能包含大写字母、小写字母、数字和连字符（-），且不能以连字符开头或结尾',
+                          },
                         ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <ContainerResourceFields />
-              </>
-            )}
-          </ContainerFormSection>
+                      >
+                        <Input placeholder="例如 container-Ab12Cd34" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item label="容器类型" name="containerType">
+                        <Select
+                          options={[
+                            { label: '工作容器', value: 'worker' },
+                            { label: '初始化容器', value: 'init' },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <ContainerResourceFields />
+                </>
+              )}
+            </ContainerFormSection>
+          </div>
 
           <ContainerFormSection
             description="设置用于访问容器的端口。"

@@ -26,7 +26,7 @@ const useStyles = createStyles(({ token }) => ({
 }));
 
 type ContainerFormSectionProps = {
-  title: ReactNode;
+  title?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
 };
@@ -40,7 +40,7 @@ const ContainerFormSection = ({
 
   return (
     <section className={styles.section}>
-      <div className={styles.title}>{title}</div>
+      {title && <div className={styles.title}>{title}</div>}
       {description && <div className={styles.description}>{description}</div>}
       <div className={styles.content}>{children}</div>
     </section>
