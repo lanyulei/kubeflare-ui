@@ -1,6 +1,12 @@
 import { createStyles } from 'antd-style';
 
 const useStyles = createStyles(({ token }) => ({
+  storageTitle: {
+    marginBottom: `8px`,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
   entryGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -39,6 +45,9 @@ const useStyles = createStyles(({ token }) => ({
       outlineOffset: 1,
     },
   },
+  entryCardWide: {
+    gridColumn: '1 / -1',
+  },
   entryIcon: {
     color: '#3a4b63',
     fontSize: 28,
@@ -60,6 +69,173 @@ const useStyles = createStyles(({ token }) => ({
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeightSM,
   },
+  storageList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+  },
+  storageCard: {
+    padding: `${token.paddingSM}px ${token.paddingLG}px`,
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+    transition: `border-color ${token.motionDurationMid}, box-shadow ${token.motionDurationMid}`,
+
+    '&:hover': {
+      borderColor: token.colorPrimaryBorder,
+      boxShadow: token.boxShadowTertiary,
+    },
+  },
+  storageCardMain: {
+    display: 'grid',
+    minHeight: 56,
+    gridTemplateColumns:
+      '44px minmax(150px, 1fr) repeat(3, minmax(120px, 0.6fr)) auto',
+    alignItems: 'center',
+    gap: token.marginMD,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '40px minmax(0, 1fr) auto',
+    },
+  },
+  storageCardIcon: {
+    display: 'inline-flex',
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#3a4b63',
+    fontSize: 30,
+  },
+  storageCardIdentity: {
+    minWidth: 0,
+  },
+  storageCardName: {
+    overflow: 'hidden',
+    color: token.colorText,
+    fontSize: token.fontSize,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  storageCardDescription: {
+    marginTop: 2,
+    overflow: 'hidden',
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeightSM,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  storageCardMetric: {
+    minWidth: 0,
+    overflow: 'hidden',
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+
+    span: {
+      display: 'block',
+      marginTop: 2,
+      color: token.colorTextTertiary,
+      fontWeight: 400,
+    },
+
+    '@media (max-width: 768px)': {
+      display: 'none',
+    },
+  },
+  storageCardActions: {
+    display: 'inline-flex',
+    justifySelf: 'end',
+    gap: token.marginXS,
+
+    '.ant-btn': {
+      color: token.colorTextTertiary,
+    },
+  },
+  cardMountRows: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginXS,
+    marginTop: token.marginSM,
+  },
+  cardMountRow: {
+    display: 'grid',
+    minHeight: 38,
+    gridTemplateColumns: 'minmax(160px, 0.8fr) minmax(220px, 1fr)',
+    alignItems: 'center',
+    gap: token.marginLG,
+    padding: `${token.paddingXXS}px ${token.paddingSM}px`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorFillQuaternary,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+      gap: token.marginXS,
+    },
+  },
+  cardMountContainer: {
+    display: 'inline-flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: token.marginSM,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+  },
+  cardMountMeta: {
+    display: 'inline-flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: token.marginSM,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+  },
+  addStorageGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: token.marginMD,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  addStorageCard: {
+    display: 'flex',
+    minHeight: 64,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    gap: token.marginXXS,
+    padding: `${token.paddingSM}px ${token.paddingLG}px`,
+    border: `1px dashed ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+    color: token.colorText,
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: `border-color ${token.motionDurationMid}, background ${token.motionDurationMid}`,
+
+    '&:hover': {
+      borderColor: token.colorPrimary,
+      background: token.colorFillQuaternary,
+    },
+  },
+  addStorageTitle: {
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+  },
+  addStorageDescription: {
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeightSM,
+  },
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
@@ -68,10 +244,17 @@ const useStyles = createStyles(({ token }) => ({
     marginBottom: token.marginXS,
   },
   title: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: token.marginXXS,
     color: token.colorText,
     fontSize: token.fontSize,
     fontWeight: 500,
     lineHeight: token.lineHeight,
+  },
+  titleIcon: {
+    color: '#3a4b63',
+    fontSize: token.fontSizeSM,
   },
   typeTabs: {
     display: 'grid',
@@ -131,10 +314,61 @@ const useStyles = createStyles(({ token }) => ({
     },
   },
   panel: {
-    padding: token.paddingSM,
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: token.borderRadiusSM,
-    background: token.colorBgContainer,
+    // padding: token.paddingSM,
+    // border: `1px solid ${token.colorBorder}`,
+    // borderRadius: token.borderRadiusSM,
+    // background: token.colorBgContainer,
+  },
+  templatePanel: {
+    marginBottom: token.marginSM,
+  },
+  templateFormGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(320px, 456px) minmax(0, 1fr)',
+    gap: token.marginSM,
+
+    '.ant-form-item': {
+      marginBottom: 0,
+    },
+
+    '.ant-form-item-extra': {
+      color: token.colorTextTertiary,
+      fontSize: token.fontSizeSM,
+      lineHeight: token.lineHeightSM,
+    },
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  templateField: {
+    gridColumn: 1,
+  },
+  capacityFormItem: {
+    gridColumn: '1 / -1',
+  },
+  capacityRow: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) 100px auto',
+    alignItems: 'center',
+    gap: `20px`,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr 92px auto',
+    },
+  },
+  capacitySlider: {
+    '.ant-slider-mark-text': {
+      color: token.colorTextSecondary,
+      fontSize: token.fontSizeSM,
+    },
+  },
+  capacityInput: {
+    width: '100%',
+  },
+  capacityUnit: {
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
   },
   resourceSelector: {
     marginBottom: token.marginSM,

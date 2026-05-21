@@ -123,11 +123,15 @@ type CreateWorkloadDrawerProps = {
 const hasKeyValueContent = (items?: { keyName?: string }[]) =>
   (items || []).some((item) => item.keyName?.trim());
 
-const hasAdvancedSettingsContent = (values: CreateWorkloadFormValues) =>
+const hasAdvancedSettingsContent = (
+  values: CreateWorkloadFormValues,
+  type: API.ClusterWorkloadType,
+) =>
   Boolean(
-    values.enableNodeSelector ||
-      hasKeyValueContent(values.nodeSelectors) ||
-      (values.selectedNodeNames && values.selectedNodeNames.length > 0) ||
+    (type !== 'DaemonSet' &&
+      (values.enableNodeSelector ||
+        hasKeyValueContent(values.nodeSelectors) ||
+        (values.selectedNodeNames && values.selectedNodeNames.length > 0))) ||
       hasKeyValueContent(values.labels) ||
       hasKeyValueContent(values.annotations),
   );
@@ -136,6 +140,7 @@ const getStepStatusText = (
   current: number,
   index: number,
   values: CreateWorkloadFormValues,
+  type: API.ClusterWorkloadType,
 ) => {
   if (current === index) {
     return '当前';
@@ -148,12 +153,12 @@ const getStepStatusText = (
   }
   if (
     index === 2 &&
-    values.storageCategory &&
-    values.storageCategory !== 'none'
+    ((values.storageItems && values.storageItems.length > 0) ||
+      (values.storageCategory && values.storageCategory !== 'none'))
   ) {
     return '已设置';
   }
-  if (index === 3 && hasAdvancedSettingsContent(values)) {
+  if (index === 3 && hasAdvancedSettingsContent(values, type)) {
     return '已设置';
   }
   return '未设置';
@@ -325,9 +330,13 @@ const CreateWorkloadDrawer = ({
     <ContainerSettings form={form} type={type} />
   );
 
-  const renderStorageSettings = () => <StorageSettings form={form} />;
+  const renderStorageSettings = () => (
+    <StorageSettings form={form} type={type} />
+  );
 
-  const renderAdvancedSettings = () => <WorkloadAdvancedSettings form={form} />;
+  const renderAdvancedSettings = () => (
+    <WorkloadAdvancedSettings form={form} type={type} />
+  );
 
   const stepContent = [
     renderBasicInfo,
@@ -393,7 +402,7 @@ const CreateWorkloadDrawer = ({
             items={steps.map((step, index) => ({
               ...step,
               disabled: index > current + 1,
-              description: getStepStatusText(current, index, values),
+              description: getStepStatusText(current, index, values, type),
             }))}
             onChange={async (nextStep) => {
               if (nextStep <= current) {

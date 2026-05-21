@@ -5,6 +5,7 @@ type WorkloadStorageType =
   | 'none'
   | 'emptyDir'
   | 'persistentVolumeClaim'
+  | 'volumeClaimTemplate'
   | 'hostPath'
   | 'configMap'
   | 'secret';
@@ -94,6 +95,29 @@ type WorkloadStorageKeyPathItem = {
   path?: string;
 };
 
+type WorkloadStorageConfigItem = {
+  id: string;
+  storageCategory?: WorkloadStorageCategory;
+  storageType?: WorkloadStorageType;
+  volumeType?: WorkloadVolumeType;
+  configResourceType?: WorkloadConfigResourceType;
+  volumeName?: string;
+  emptyDirSizeLimit?: string;
+  hostPath?: string;
+  claimName?: string;
+  claimStorageClassName?: string;
+  claimCapacity?: string;
+  claimAccessModes?: string[];
+  pvcNamePrefix?: string;
+  pvcStorageClassName?: string;
+  pvcAccessModes?: string[];
+  pvcSizeGi?: number;
+  configResourceName?: string;
+  containerMounts?: WorkloadContainerMountItem[];
+  selectSpecificKeys?: boolean;
+  specificKeyPaths?: WorkloadStorageKeyPathItem[];
+};
+
 type CreateWorkloadContainerValues = {
   id?: string;
   containerName?: string;
@@ -172,10 +196,18 @@ type CreateWorkloadFormValues = CreateWorkloadContainerValues & {
   emptyDirSizeLimit?: string;
   hostPath?: string;
   claimName?: string;
+  claimStorageClassName?: string;
+  claimCapacity?: string;
+  claimAccessModes?: string[];
+  pvcNamePrefix?: string;
+  pvcStorageClassName?: string;
+  pvcAccessModes?: string[];
+  pvcSizeGi?: number;
   configResourceName?: string;
   containerMounts?: WorkloadContainerMountItem[];
   selectSpecificKeys?: boolean;
   specificKeyPaths?: WorkloadStorageKeyPathItem[];
+  storageItems?: WorkloadStorageConfigItem[];
   enableNodeSelector?: boolean;
   nodeSelectors?: KeyValueEditorItem[];
   selectedNodeNames?: string[];
@@ -207,6 +239,7 @@ export type {
   WorkloadSchedulingCustomType,
   WorkloadSchedulingRuleType,
   WorkloadStorageCategory,
+  WorkloadStorageConfigItem,
   WorkloadStorageKeyPathItem,
   WorkloadStorageType,
   WorkloadUpdateStrategyType,

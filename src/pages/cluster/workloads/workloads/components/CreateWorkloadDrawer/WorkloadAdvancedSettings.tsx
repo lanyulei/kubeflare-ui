@@ -91,6 +91,7 @@ const useStyles = createStyles(({ token }) => ({
 
 type WorkloadAdvancedSettingsProps = {
   form: FormInstance<CreateWorkloadFormValues>;
+  type: API.ClusterWorkloadType;
 };
 
 const createKeyValueItem = (keyName = '', value = ''): KeyValueEditorItem => ({
@@ -99,10 +100,14 @@ const createKeyValueItem = (keyName = '', value = ''): KeyValueEditorItem => ({
   value,
 });
 
-const WorkloadAdvancedSettings = ({ form }: WorkloadAdvancedSettingsProps) => {
+const WorkloadAdvancedSettings = ({
+  form,
+  type,
+}: WorkloadAdvancedSettingsProps) => {
   const { styles } = useStyles();
   const [metadataOpen, setMetadataOpen] = useState(true);
   const [nodeModalOpen, setNodeModalOpen] = useState(false);
+  const showNodeSelector = type !== 'DaemonSet';
   const enableNodeSelector = Form.useWatch('enableNodeSelector', form);
   const nodeSelectors =
     (Form.useWatch('nodeSelectors', form) as KeyValueEditorItem[]) || [];
@@ -136,44 +141,46 @@ const WorkloadAdvancedSettings = ({ form }: WorkloadAdvancedSettingsProps) => {
 
   return (
     <div className={styles.stack}>
-      <div className={styles.option}>
-        <div className={styles.optionHeader}>
-          <Form.Item
-            className={styles.checkbox}
-            name="enableNodeSelector"
-            valuePropName="checked"
-          >
-            <Checkbox aria-label="选择节点" />
-          </Form.Item>
-          <span>
-            <div className={styles.title}>选择节点</div>
-            <div className={styles.description}>
-              将容器组副本分配给特定的节点。您可以使用标签选择节点或手动指定节点
-            </div>
-          </span>
-        </div>
-        {enableNodeSelector && (
-          <div className={styles.body}>
-            <Form.Item name="nodeSelectors">
-              <KeyValueEditor
-                addIcon={false}
-                addText="添加节点选择器"
-                deleteAriaLabel="删除节点选择器"
-                footerExtra={
-                  <Button onClick={() => setNodeModalOpen(true)}>
-                    指定节点
-                  </Button>
-                }
-                footerJustify="space-between"
-                onAddBlocked={() =>
-                  message.warning('请先填写已有节点选择器的键。')
-                }
-                onCreateItem={() => createKeyValueItem()}
-              />
+      {showNodeSelector && (
+        <div className={styles.option}>
+          <div className={styles.optionHeader}>
+            <Form.Item
+              className={styles.checkbox}
+              name="enableNodeSelector"
+              valuePropName="checked"
+            >
+              <Checkbox aria-label="选择节点" />
             </Form.Item>
+            <span>
+              <div className={styles.title}>选择节点</div>
+              <div className={styles.description}>
+                将容器组副本分配给特定的节点。您可以使用标签选择节点或手动指定节点
+              </div>
+            </span>
           </div>
-        )}
-      </div>
+          {enableNodeSelector && (
+            <div className={styles.body}>
+              <Form.Item name="nodeSelectors">
+                <KeyValueEditor
+                  addIcon={false}
+                  addText="添加节点选择器"
+                  deleteAriaLabel="删除节点选择器"
+                  footerExtra={
+                    <Button onClick={() => setNodeModalOpen(true)}>
+                      指定节点
+                    </Button>
+                  }
+                  footerJustify="space-between"
+                  onAddBlocked={() =>
+                    message.warning('请先填写已有节点选择器的键。')
+                  }
+                  onCreateItem={() => createKeyValueItem()}
+                />
+              </Form.Item>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={styles.option}>
         <button
@@ -219,15 +226,17 @@ const WorkloadAdvancedSettings = ({ form }: WorkloadAdvancedSettingsProps) => {
         )}
       </div>
 
-      <NodeSelectorModal
-        open={nodeModalOpen}
-        selectedNodeNames={selectedNodeNames}
-        onCancel={() => setNodeModalOpen(false)}
-        onOk={(nodeNames) => {
-          form.setFieldValue('selectedNodeNames', nodeNames);
-          setNodeModalOpen(false);
-        }}
-      />
+      {showNodeSelector && (
+        <NodeSelectorModal
+          open={nodeModalOpen}
+          selectedNodeNames={selectedNodeNames}
+          onCancel={() => setNodeModalOpen(false)}
+          onOk={(nodeNames) => {
+            form.setFieldValue('selectedNodeNames', nodeNames);
+            setNodeModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

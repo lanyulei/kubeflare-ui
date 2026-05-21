@@ -56,6 +56,7 @@ const isConfigResourceStorage = (storageType?: WorkloadStorageType) =>
 
 const isVolumeStorage = (storageType?: WorkloadStorageType) =>
   storageType === 'persistentVolumeClaim' ||
+  storageType === 'volumeClaimTemplate' ||
   storageType === 'emptyDir' ||
   storageType === 'hostPath';
 
@@ -177,8 +178,6 @@ const sanitizeVolumeName = (value?: string, fallback = 'storage-volume') => {
 
 export {
   ABSOLUTE_PATH_PATTERN,
-  KUBERNETES_NAME_PATTERN,
-  STORAGE_QUANTITY_PATTERN,
   activateEmptyMounts,
   configResourceTypeOptions,
   createStorageKeyPathItem,
@@ -190,7 +189,9 @@ export {
   isConfigResourceStorage,
   isRelativeVolumeItemPath,
   isVolumeStorage,
+  KUBERNETES_NAME_PATTERN,
   normalizeContainerMounts,
+  STORAGE_QUANTITY_PATTERN,
   sanitizeVolumeName,
   volumeTypeOptions,
 };

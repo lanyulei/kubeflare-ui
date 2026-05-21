@@ -7,6 +7,7 @@ import type {
   CreateWorkloadContainerValues,
   CreateWorkloadFormValues,
   WorkloadSchedulingCustomRule,
+  WorkloadStorageConfigItem,
   WorkloadStorageKeyPathItem,
 } from './types';
 
@@ -90,9 +91,17 @@ const getInitialCreateWorkloadValues = (
   configResourceType: 'configMap',
   volumeName: 'data',
   emptyDirSizeLimit: '200Mi',
+  claimStorageClassName: undefined,
+  claimCapacity: undefined,
+  claimAccessModes: undefined,
+  pvcNamePrefix: '',
+  pvcStorageClassName: undefined,
+  pvcAccessModes: ['ReadWriteOnce'],
+  pvcSizeGi: 10,
   containerMounts: [],
   selectSpecificKeys: false,
   specificKeyPaths: [],
+  storageItems: [],
   enableNodeSelector: false,
   nodeSelectors: [],
   selectedNodeNames: [],
@@ -629,13 +638,20 @@ const getWorkloadStepFields = (
       'emptyDirSizeLimit',
       'hostPath',
       'claimName',
+      'pvcNamePrefix',
+      'pvcStorageClassName',
+      'pvcAccessModes',
+      'pvcSizeGi',
       'configResourceName',
       'containerMounts',
       'selectSpecificKeys',
       'specificKeyPaths',
+      'storageItems',
     ];
   }
-  return ['enableNodeSelector', 'nodeSelectors', 'labels', 'annotations'];
+  return type === 'DaemonSet'
+    ? ['labels', 'annotations']
+    : ['enableNodeSelector', 'nodeSelectors', 'labels', 'annotations'];
 };
 
 const sanitizeVolumeName = (value?: string, fallback = 'storage-volume') => {
@@ -656,9 +672,49 @@ const isStorageEnabled = (values: CreateWorkloadFormValues) =>
   values.storageType &&
   values.storageType !== 'none';
 
+const getConfiguredStorageItems = (
+  values: CreateWorkloadFormValues,
+): WorkloadStorageConfigItem[] => {
+  if (values.storageItems && values.storageItems.length > 0) {
+    return values.storageItems;
+  }
+
+  if (!isStorageEnabled(values)) {
+    return [];
+  }
+
+  return [
+    {
+      id: 'legacy-storage',
+      storageCategory: values.storageCategory,
+      storageType: values.storageType,
+      volumeType: values.volumeType,
+      configResourceType: values.configResourceType,
+      volumeName: values.volumeName,
+      emptyDirSizeLimit: values.emptyDirSizeLimit,
+      hostPath: values.hostPath,
+      claimName: values.claimName,
+      claimStorageClassName: values.claimStorageClassName,
+      claimCapacity: values.claimCapacity,
+      claimAccessModes: values.claimAccessModes,
+      pvcNamePrefix: values.pvcNamePrefix,
+      pvcStorageClassName: values.pvcStorageClassName,
+      pvcAccessModes: values.pvcAccessModes,
+      pvcSizeGi: values.pvcSizeGi,
+      configResourceName: values.configResourceName,
+      containerMounts: values.containerMounts,
+      selectSpecificKeys: values.selectSpecificKeys,
+      specificKeyPaths: values.specificKeyPaths,
+    },
+  ];
+};
+
 const getStorageVolumeName = (values: CreateWorkloadFormValues) => {
   if (values.storageType === 'persistentVolumeClaim') {
     return sanitizeVolumeName(values.claimName, 'pvc-volume');
+  }
+  if (values.storageType === 'volumeClaimTemplate') {
+    return sanitizeVolumeName(values.pvcNamePrefix, 'data');
   }
   if (values.storageType === 'configMap' || values.storageType === 'secret') {
     return sanitizeVolumeName(
@@ -674,7 +730,7 @@ const getContainerStorageKey = (container: CreateWorkloadContainerValues) =>
   container.id || container.containerName || '';
 
 const getContainerStorageMount = (
-  values: CreateWorkloadFormValues,
+  values: CreateWorkloadFormValues | WorkloadStorageConfigItem,
   container: CreateWorkloadContainerValues,
 ) => {
   if (!isStorageEnabled(values)) {
@@ -704,14 +760,16 @@ const getContainerStorageMount = (
 };
 
 const hasActiveStorageMount = (
-  values: CreateWorkloadFormValues,
+  values: CreateWorkloadFormValues | WorkloadStorageConfigItem,
   containers: CreateWorkloadContainerValues[],
 ) =>
   containers.some((container) =>
     Boolean(getContainerStorageMount(values, container)),
   );
 
-const getStorageKeyItems = (values: CreateWorkloadFormValues) => {
+const getStorageKeyItems = (
+  values: CreateWorkloadFormValues | WorkloadStorageConfigItem,
+) => {
   if (!values.selectSpecificKeys) {
     return undefined;
   }
@@ -733,57 +791,66 @@ const getPodVolumes = (
   containers: CreateWorkloadContainerValues[],
 ) => {
   const volumes: Record<string, unknown>[] = [];
+  const storageItems = getConfiguredStorageItems(values);
 
-  if (isStorageEnabled(values) && hasActiveStorageMount(values, containers)) {
-    const volumeName = getStorageVolumeName(values);
-    const items = getStorageKeyItems(values);
+  storageItems.forEach((item) => {
+    if (
+      item.storageType === 'volumeClaimTemplate' ||
+      !hasActiveStorageMount(item, containers)
+    ) {
+      return;
+    }
 
-    if (values.storageType === 'persistentVolumeClaim') {
+    const volumeName = getStorageVolumeName(item);
+    const items = getStorageKeyItems(item);
+
+    if (item.storageType === 'persistentVolumeClaim') {
       volumes.push({
         name: volumeName,
         persistentVolumeClaim: {
-          claimName: normalizeName(values.claimName),
+          claimName: normalizeName(item.claimName),
         },
       });
     }
-    if (values.storageType === 'emptyDir') {
+    if (item.storageType === 'emptyDir') {
       volumes.push({
         name: volumeName,
         emptyDir: {
-          ...(normalizeName(values.emptyDirSizeLimit)
-            ? { sizeLimit: normalizeName(values.emptyDirSizeLimit) }
+          ...(normalizeName(item.emptyDirSizeLimit)
+            ? { sizeLimit: normalizeName(item.emptyDirSizeLimit) }
             : {}),
         },
       });
     }
-    if (values.storageType === 'hostPath') {
+    if (item.storageType === 'hostPath') {
       volumes.push({
         name: volumeName,
         hostPath: {
-          path: normalizeName(values.hostPath),
+          path: normalizeName(item.hostPath),
           type: '',
         },
       });
     }
-    if (values.storageType === 'configMap') {
+    if (item.storageType === 'configMap') {
       volumes.push({
         name: volumeName,
         configMap: {
-          name: normalizeName(values.configResourceName),
+          name: normalizeName(item.configResourceName),
           ...(items ? { items } : {}),
         },
       });
     }
-    if (values.storageType === 'secret') {
+    if (item.storageType === 'secret') {
       volumes.push({
         name: volumeName,
         secret: {
-          secretName: normalizeName(values.configResourceName),
+          secretName: normalizeName(item.configResourceName),
           ...(items ? { items } : {}),
         },
       });
     }
-  }
+  });
+
   if (containers.some((container) => container.syncHostTimezone)) {
     volumes.push({
       name: HOST_TIME_VOLUME_NAME,
@@ -795,6 +862,47 @@ const getPodVolumes = (
   }
 
   return volumes;
+};
+
+const getVolumeClaimTemplates = (
+  type: API.ClusterWorkloadType,
+  values: CreateWorkloadFormValues,
+  containers: CreateWorkloadContainerValues[],
+) => {
+  if (type !== 'StatefulSet') {
+    return undefined;
+  }
+
+  const templates = getConfiguredStorageItems(values).flatMap((item) => {
+    if (
+      item.storageType !== 'volumeClaimTemplate' ||
+      !hasActiveStorageMount(item, containers)
+    ) {
+      return [];
+    }
+
+    return {
+      metadata: {
+        name: getStorageVolumeName(item),
+      },
+      spec: {
+        accessModes:
+          item.pvcAccessModes && item.pvcAccessModes.length > 0
+            ? item.pvcAccessModes
+            : ['ReadWriteOnce'],
+        ...(normalizeName(item.pvcStorageClassName)
+          ? { storageClassName: normalizeName(item.pvcStorageClassName) }
+          : {}),
+        resources: {
+          requests: {
+            storage: `${item.pvcSizeGi || 10}Gi`,
+          },
+        },
+      },
+    };
+  });
+
+  return templates.length > 0 ? templates : undefined;
 };
 
 const getContainerManifest = (
@@ -816,7 +924,19 @@ const getContainerManifest = (
     : [];
   const securityContext = getContainerSecurityContext(values);
   const storageVolumeMount = getContainerStorageMount(formValues, values);
-  const volumeMounts = storageVolumeMount ? [storageVolumeMount] : [];
+  const storageVolumeMounts = getConfiguredStorageItems(formValues).flatMap(
+    (item) => {
+      const mount = getContainerStorageMount(item, values);
+
+      return mount ? [mount] : [];
+    },
+  );
+  const volumeMounts =
+    storageVolumeMounts.length > 0
+      ? storageVolumeMounts
+      : storageVolumeMount
+        ? [storageVolumeMount]
+        : [];
 
   if (values.syncHostTimezone) {
     volumeMounts.push({
@@ -873,6 +993,11 @@ const buildCreateWorkloadManifest = (
     getContainerManifest(container, values),
   );
   const volumes = getPodVolumes(values, configuredContainers);
+  const volumeClaimTemplates = getVolumeClaimTemplates(
+    type,
+    values,
+    configuredContainers,
+  );
   const podSpec: Record<string, unknown> = {
     containers,
     volumes: volumes.length > 0 ? volumes : undefined,
@@ -950,7 +1075,7 @@ const buildCreateWorkloadManifest = (
       appendCustomSchedulingRule(podSpec, rule);
     });
   }
-  if (values.enableNodeSelector) {
+  if (type !== 'DaemonSet' && values.enableNodeSelector) {
     const nodeSelector = toRecord(values.nodeSelectors);
 
     if (Object.keys(nodeSelector).length > 0) {
@@ -984,6 +1109,9 @@ const buildCreateWorkloadManifest = (
   }
   if (type === 'StatefulSet') {
     spec.serviceName = name;
+    if (volumeClaimTemplates) {
+      spec.volumeClaimTemplates = volumeClaimTemplates;
+    }
   }
   if (type === 'Deployment') {
     spec.strategy =
