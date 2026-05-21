@@ -44,9 +44,12 @@ const useStyles = createStyles(({ token }) => ({
     textAlign: 'left',
   },
   headerIcon: {
-    marginTop: 2,
     color: '#36435C',
     fontSize: token.fontSizeSM,
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   checkbox: {
     marginTop: 2,
@@ -64,19 +67,19 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   body: {
-    marginTop: token.marginMD,
-    padding: token.paddingSM,
+    marginTop: `14px`,
+    // padding: token.paddingSM,
     borderRadius: token.borderRadiusSM,
-    background: token.colorFillQuaternary,
+    // background: token.colorFillQuaternary,
   },
   metadataBody: {
     display: 'flex',
     flexDirection: 'column',
     gap: token.marginLG,
-    marginTop: token.marginMD,
-    padding: token.paddingSM,
+    marginTop: `14px`,
+    // padding: token.paddingSM,
     borderRadius: token.borderRadiusSM,
-    background: token.colorFillQuaternary,
+    // background: token.colorFillQuaternary,
   },
   fieldLabel: {
     marginBottom: token.marginSM,
@@ -98,7 +101,7 @@ const createKeyValueItem = (keyName = '', value = ''): KeyValueEditorItem => ({
 
 const WorkloadAdvancedSettings = ({ form }: WorkloadAdvancedSettingsProps) => {
   const { styles } = useStyles();
-  const [metadataOpen, setMetadataOpen] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(true);
   const [nodeModalOpen, setNodeModalOpen] = useState(false);
   const enableNodeSelector = Form.useWatch('enableNodeSelector', form);
   const nodeSelectors =
@@ -145,7 +148,7 @@ const WorkloadAdvancedSettings = ({ form }: WorkloadAdvancedSettingsProps) => {
           <span>
             <div className={styles.title}>选择节点</div>
             <div className={styles.description}>
-              将容器组副本分配给特定的节点。您可以使用标签选择节点或手动指定节点。
+              将容器组副本分配给特定的节点。您可以使用标签选择节点或手动指定节点
             </div>
           </span>
         </div>
@@ -183,7 +186,7 @@ const WorkloadAdvancedSettings = ({ form }: WorkloadAdvancedSettingsProps) => {
           </span>
           <span>
             <div className={styles.title}>添加元数据</div>
-            <div className={styles.description}>为资源添加元数据。</div>
+            <div className={styles.description}>为资源添加元数据</div>
           </span>
         </button>
         {metadataOpen && (

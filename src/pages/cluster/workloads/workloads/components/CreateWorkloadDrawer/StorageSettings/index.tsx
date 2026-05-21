@@ -16,7 +16,6 @@ import {
   Empty,
   Form,
   Input,
-  Segmented,
   Select,
   Spin,
   Typography,
@@ -39,15 +38,15 @@ import type {
 } from '../types';
 import {
   ABSOLUTE_PATH_PATTERN,
-  KUBERNETES_NAME_PATTERN,
-  STORAGE_QUANTITY_PATTERN,
   activateEmptyMounts,
   configResourceTypeOptions,
   createStorageKeyPathItem,
   getAvailableKeyOptions,
   getMountModeOptions,
   isRelativeVolumeItemPath,
+  KUBERNETES_NAME_PATTERN,
   normalizeContainerMounts,
+  STORAGE_QUANTITY_PATTERN,
   volumeTypeOptions,
 } from './helpers';
 
@@ -300,15 +299,9 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
     }
 
     if (specificKeyPaths.length === 0) {
-      form.setFieldValue('specificKeyPaths', [
-        {
-          ...createStorageKeyPathItem(),
-          keyName: selectedKeys[0],
-          path: selectedKeys[0] || '',
-        },
-      ]);
+      form.setFieldValue('specificKeyPaths', [createStorageKeyPathItem()]);
     }
-  }, [form, selectSpecificKeys, selectedKeys, specificKeyPaths.length]);
+  }, [form, selectSpecificKeys, specificKeyPaths.length]);
 
   const selectStorageCategory = (
     category: Exclude<WorkloadStorageCategory, 'none'>,
@@ -423,40 +416,11 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
   );
 
   const renderPvcSelector = () => (
-    <Form.Item
-      className={styles.resourceItem}
-      name="claimName"
-      rules={[{ required: true, message: '请选择持久卷声明' }]}
-    >
-      <Select
-        className={styles.resourceSelect}
-        loading={resourceLoading}
-        notFoundContent={
-          resourceLoading ? <Spin size="small" /> : '未发现可用资源'
-        }
-        optionFilterProp="searchLabel"
-        options={pvcOptions}
-        placeholder={
-          <ResourcePlaceholder
-            description="将根据持久卷声明创建的持久卷挂载到容器"
-            icon={<HddOutlined />}
-            title={pvcs.length > 0 ? '选择持久卷声明' : '未发现可用资源'}
-          />
-        }
-        showSearch
-        onChange={() => activateMounts('volume')}
-      />
-    </Form.Item>
-  );
-
-  const renderConfigResourceSelector = () => {
-    const resourceLabel = getConfigResourceLabel(configResourceType);
-
-    return (
+    <div className={styles.resourceSelector}>
       <Form.Item
         className={styles.resourceItem}
-        name="configResourceName"
-        rules={[{ required: true, message: `请选择${resourceLabel}。` }]}
+        name="claimName"
+        rules={[{ required: true, message: '请选择持久卷声明' }]}
       >
         <Select
           className={styles.resourceSelect}
@@ -465,25 +429,58 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
             resourceLoading ? <Spin size="small" /> : '未发现可用资源'
           }
           optionFilterProp="searchLabel"
-          options={configResourceOptions}
+          options={pvcOptions}
           placeholder={
             <ResourcePlaceholder
-              description={`将${resourceLabel}挂载到容器。`}
-              icon={getResourceIcon(configResourceType)}
-              title={
-                selectedConfigResources.length > 0
-                  ? `选择${resourceLabel}`
-                  : '未发现可用资源'
-              }
+              description="将根据持久卷声明创建的持久卷挂载到容器"
+              icon={<HddOutlined />}
+              title={pvcs.length > 0 ? '选择持久卷声明' : '未发现可用资源'}
             />
           }
           showSearch
-          onChange={() => {
-            form.setFieldValue('specificKeyPaths', []);
-            activateMounts('config');
-          }}
+          onChange={() => activateMounts('volume')}
         />
       </Form.Item>
+    </div>
+  );
+
+  const renderConfigResourceSelector = () => {
+    const resourceLabel = getConfigResourceLabel(configResourceType);
+
+    return (
+      <div className={styles.resourceSelector}>
+        <Form.Item
+          className={styles.resourceItem}
+          name="configResourceName"
+          rules={[{ required: true, message: `请选择${resourceLabel}。` }]}
+        >
+          <Select
+            className={styles.resourceSelect}
+            loading={resourceLoading}
+            notFoundContent={
+              resourceLoading ? <Spin size="small" /> : '未发现可用资源'
+            }
+            optionFilterProp="searchLabel"
+            options={configResourceOptions}
+            placeholder={
+              <ResourcePlaceholder
+                description={`将${resourceLabel}挂载到容器。`}
+                icon={getResourceIcon(configResourceType)}
+                title={
+                  selectedConfigResources.length > 0
+                    ? `选择${resourceLabel}`
+                    : '未发现可用资源'
+                }
+              />
+            }
+            showSearch
+            onChange={() => {
+              form.setFieldValue('specificKeyPaths', []);
+              activateMounts('config');
+            }}
+          />
+        </Form.Item>
+      </div>
     );
   };
 
@@ -641,47 +638,50 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
 
     return (
       <div className={styles.keyRows}>
-        {specificKeyPaths.map((item, index) => (
-          <div className={styles.keyRow} key={item.id}>
-            <Form.Item
-              name={['specificKeyPaths', index, 'keyName']}
-              rules={[{ required: true, message: '请选择键' }]}
-            >
-              <Select
-                disabled={selectedKeys.length === 0}
-                options={getAvailableKeyOptions(
-                  selectedKeys,
-                  specificKeyPaths,
-                  item.keyName,
-                )}
-                placeholder="键"
-                showSearch
+        <div className={styles.keyEditor}>
+          {specificKeyPaths.map((item, index) => (
+            <div className={styles.keyRow} key={item.id}>
+              <Form.Item
+                name={['specificKeyPaths', index, 'keyName']}
+                rules={[{ required: true, message: '请选择键' }]}
+              >
+                <Select
+                  disabled={selectedKeys.length === 0}
+                  options={getAvailableKeyOptions(
+                    selectedKeys,
+                    specificKeyPaths,
+                    item.keyName,
+                  )}
+                  placeholder="键"
+                  showSearch
+                />
+              </Form.Item>
+              <Form.Item
+                className={styles.keyValueField}
+                name={['specificKeyPaths', index, 'path']}
+                rules={[
+                  { required: true, message: '请输入路径' },
+                  {
+                    validator: (_, value) =>
+                      isRelativeVolumeItemPath(value)
+                        ? Promise.resolve()
+                        : Promise.reject(new Error('请使用相对路径。')),
+                  },
+                ]}
+              >
+                <Input placeholder="相对路径" />
+              </Form.Item>
+              <Button
+                aria-label="删除键映射"
+                className={styles.deleteButton}
+                icon={<DeleteOutlined />}
+                type="text"
+                onClick={() => removeSpecificKeyPath(index)}
               />
-            </Form.Item>
-            <Form.Item
-              name={['specificKeyPaths', index, 'path']}
-              rules={[
-                { required: true, message: '请输入路径' },
-                {
-                  validator: (_, value) =>
-                    isRelativeVolumeItemPath(value)
-                      ? Promise.resolve()
-                      : Promise.reject(new Error('请使用相对路径。')),
-                },
-              ]}
-            >
-              <Input placeholder="相对路径" />
-            </Form.Item>
-            <Button
-              aria-label="删除键映射"
-              className={styles.deleteButton}
-              icon={<DeleteOutlined />}
-              type="text"
-              onClick={() => removeSpecificKeyPath(index)}
-            />
-          </div>
-        ))}
-        <div className={styles.addAction}>
+            </div>
+          ))}
+        </div>
+        <div className={styles.keyFooter}>
           <Button disabled={addDisabled} onClick={addSpecificKeyPath}>
             <PlusOutlined />
             添加
@@ -705,7 +705,7 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
           <div>
             <div className={styles.specificText}>选择特定键</div>
             <div className={styles.specificDescription}>
-              选择需要挂载到容器的特定键。
+              选择需要挂载到容器的特定键
             </div>
           </div>
         </div>
@@ -713,6 +713,44 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
       </div>
     );
   };
+
+  const renderVolumeTypeTabs = () => (
+    <div className={styles.typeTabs}>
+      {volumeTypeOptions.map((option) => (
+        <button
+          aria-pressed={option.value === volumeType}
+          className={[
+            styles.typeTab,
+            option.value === volumeType ? styles.typeTabActive : '',
+          ].join(' ')}
+          key={option.value}
+          type="button"
+          onClick={() => handleVolumeTypeChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderConfigResourceTypeTabs = () => (
+    <div className={styles.typeTabs}>
+      {configResourceTypeOptions.map((option) => (
+        <button
+          aria-pressed={option.value === configResourceType}
+          className={[
+            styles.typeTab,
+            option.value === configResourceType ? styles.typeTabActive : '',
+          ].join(' ')}
+          key={option.value}
+          type="button"
+          onClick={() => handleConfigResourceTypeChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
 
   const renderSelectedStorage = () => (
     <>
@@ -724,27 +762,9 @@ const StorageSettings = ({ form }: StorageSettingsProps) => {
           重新选择
         </Button>
       </div>
-      {storageCategory === 'volume' ? (
-        <Segmented
-          block={false}
-          className={styles.segmented}
-          options={volumeTypeOptions}
-          value={volumeType}
-          onChange={(value) =>
-            handleVolumeTypeChange(value as WorkloadVolumeType)
-          }
-        />
-      ) : (
-        <Segmented
-          block={false}
-          className={styles.segmented}
-          options={configResourceTypeOptions}
-          value={configResourceType}
-          onChange={(value) =>
-            handleConfigResourceTypeChange(value as WorkloadConfigResourceType)
-          }
-        />
-      )}
+      {storageCategory === 'volume'
+        ? renderVolumeTypeTabs()
+        : renderConfigResourceTypeTabs()}
       <div className={styles.panel}>
         {storageCategory === 'volume'
           ? renderVolumeFields()

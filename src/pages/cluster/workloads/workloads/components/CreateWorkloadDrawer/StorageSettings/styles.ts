@@ -73,20 +73,61 @@ const useStyles = createStyles(({ token }) => ({
     fontWeight: 500,
     lineHeight: token.lineHeight,
   },
-  segmented: {
+  typeTabs: {
+    display: 'grid',
+    width: 'min(454px, 100%)',
+    gridAutoColumns: 'minmax(112px, 1fr)',
+    gridAutoFlow: 'column',
+    gap: 2,
     marginBottom: token.marginSM,
+    padding: 2,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: 999,
     background: token.colorFillQuaternary,
 
-    '.ant-segmented-item': {
-      minWidth: 116,
-      borderRadius: 999,
+    '@media (max-width: 576px)': {
+      gridAutoFlow: 'row',
+      gridTemplateColumns: '1fr',
+      borderRadius: token.borderRadiusSM,
+    },
+  },
+  typeTab: {
+    height: 28,
+    border: 0,
+    borderRadius: 999,
+    background: 'transparent',
+    color: token.colorText,
+    cursor: 'pointer',
+    fontSize: token.fontSizeSM,
+    lineHeight: '28px',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+    transition: `background ${token.motionDurationMid}, color ${token.motionDurationMid}`,
+
+    '&:hover': {
+      background: token.colorFillSecondary,
     },
 
-    '.ant-segmented-item-selected': {
-      background: '#35435c',
-      color: '#ffffff',
+    '&:focus-visible': {
+      outline: `2px solid ${token.colorPrimaryBorder}`,
+      outlineOffset: 1,
+    },
+
+    '@media (max-width: 576px)': {
+      borderRadius: token.borderRadiusSM,
+      fontSize: 12,
+    },
+  },
+  typeTabActive: {
+    '&&': {
+      background: token.colorPrimaryBg,
+      color: token.colorPrimaryText,
+      boxShadow: `inset 0 0 0 1px ${token.colorPrimaryBorder}`,
+    },
+
+    '&&:hover': {
+      background: token.colorPrimaryBgHover,
+      color: token.colorPrimaryText,
     },
   },
   panel: {
@@ -95,8 +136,13 @@ const useStyles = createStyles(({ token }) => ({
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
   },
-  resourceItem: {
+  resourceSelector: {
     marginBottom: token.marginSM,
+  },
+  resourceItem: {
+    '&.ant-form-item': {
+      marginBottom: 0,
+    },
 
     '.ant-form-item-explain-error': {
       marginTop: token.marginXS,
@@ -104,6 +150,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   resourceSelect: {
     width: '100%',
+    height: '100% !important',
 
     '.ant-select-selector': {
       minHeight: '72px !important',
@@ -213,8 +260,7 @@ const useStyles = createStyles(({ token }) => ({
   mountRow: {
     display: 'grid',
     minHeight: 46,
-    gridTemplateColumns:
-      'minmax(180px, 0.8fr) minmax(220px, 1fr) minmax(240px, 1fr)',
+    gridTemplateColumns: 'minmax(180px, 0.8fr) repeat(2, minmax(220px, 1fr))',
     alignItems: 'center',
     gap: token.marginSM,
     padding: `${token.paddingXS}px ${token.paddingMD}px`,
@@ -226,19 +272,20 @@ const useStyles = createStyles(({ token }) => ({
       marginBottom: 0,
     },
 
-    '.ant-select-single': {
+    '.ant-select-single, .ant-input-affix-wrapper': {
       height: 32,
     },
 
-    '.ant-select-selector, .ant-input': {
+    '.ant-select-selector, .ant-input, .ant-input-affix-wrapper': {
       borderColor: `${token.colorBorder} !important`,
       borderRadius: `${token.borderRadiusSM}px !important`,
       background: `${token.colorBgContainer} !important`,
       boxShadow: 'none !important',
     },
 
-    '.ant-input': {
-      height: 32,
+    '.ant-input-affix-wrapper': {
+      display: 'inline-flex',
+      alignItems: 'center',
     },
 
     '@media (max-width: 768px)': {
@@ -265,7 +312,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   specificPanel: {
     marginTop: token.marginSM,
-    padding: `${token.paddingSM}px ${token.padding}px ${token.paddingMD}px`,
+    padding: `12px 16px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorFillQuaternary,
@@ -274,7 +321,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     alignItems: 'flex-start',
     gap: token.marginSM,
-    marginBottom: token.marginSM,
+    // marginBottom: token.marginSM,
 
     '.ant-form-item': {
       marginBottom: 0,
@@ -292,6 +339,13 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeightSM,
   },
   keyRows: {
+    padding: `12px 16px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+    marginTop: `14px`,
+  },
+  keyEditor: {
     display: 'flex',
     flexDirection: 'column',
     gap: token.marginSM,
@@ -299,10 +353,11 @@ const useStyles = createStyles(({ token }) => ({
   keyRow: {
     display: 'grid',
     minHeight: 46,
-    gridTemplateColumns: 'minmax(180px, 1fr) minmax(220px, 1fr) 40px',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 40px',
     alignItems: 'center',
     gap: token.marginSM,
     padding: `${token.paddingXS}px ${token.paddingMD}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: 24,
     background: token.colorFillQuaternary,
 
@@ -315,13 +370,14 @@ const useStyles = createStyles(({ token }) => ({
       background: `${token.colorBgContainer} !important`,
     },
 
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr 40px',
-
-      '.ant-form-item:last-of-type': {
-        gridColumn: '1 / -1',
-        gridRow: 2,
-      },
+    '@media (max-width: 576px)': {
+      gridTemplateColumns: 'minmax(0, 1fr) 40px',
+    },
+  },
+  keyValueField: {
+    '@media (max-width: 576px)': {
+      gridColumn: '1 / -1',
+      gridRow: 2,
     },
   },
   deleteButton: {
@@ -332,10 +388,11 @@ const useStyles = createStyles(({ token }) => ({
       color: token.colorError,
     },
   },
-  addAction: {
+  keyFooter: {
     display: 'flex',
+    alignItems: 'center',
     justifyContent: 'flex-end',
-    marginTop: token.marginSM,
+    marginTop: `12px`,
   },
   empty: {
     padding: `${token.paddingMD}px 0`,
