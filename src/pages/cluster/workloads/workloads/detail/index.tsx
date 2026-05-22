@@ -35,6 +35,10 @@ import {
   updateClusterWorkloadManifest,
   updateClusterWorkloadReplicas,
 } from '@/services/kubeflare/cluster/workload';
+import {
+  getWorkloadApiVersion,
+  getWorkloadKind,
+} from '../components/CreateWorkloadDrawer/helpers';
 import ContainerReplicas from './components/ContainerReplicas';
 import ContainerStatusManagement from './components/ContainerStatusManagement';
 import EventTable from './components/EventTable';
@@ -186,6 +190,11 @@ const isClusterWorkloadType = (
   type?: string,
 ): type is API.ClusterWorkloadType =>
   type === 'Deployment' || type === 'StatefulSet' || type === 'DaemonSet';
+
+const getRecordValue = (value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
 
 const WorkloadDetail = () => {
   const { message, modal } = App.useApp();
@@ -431,11 +440,43 @@ const WorkloadDetail = () => {
       return;
     }
 
+    const resource = manifest as Record<string, unknown>;
+    const metadataRecord = getRecordValue(resource.metadata);
+    const manifestName =
+      typeof metadataRecord?.name === 'string' ? metadataRecord.name : '';
+    const manifestNamespace =
+      typeof metadataRecord?.namespace === 'string'
+        ? metadataRecord.namespace
+        : '';
+    const kind = typeof resource.kind === 'string' ? resource.kind : '';
+    const apiVersion =
+      typeof resource.apiVersion === 'string' ? resource.apiVersion : '';
+
+    if (
+      manifestName !== detailParams.name ||
+      manifestNamespace !== detailParams.namespace
+    ) {
+      message.error(
+        'YAML metadata.name 和 metadata.namespace 必须与当前资源一致',
+      );
+      return;
+    }
+    if (kind !== getWorkloadKind(detailParams.type)) {
+      message.error(`YAML kind 必须为 ${getWorkloadKind(detailParams.type)}`);
+      return;
+    }
+    if (apiVersion !== getWorkloadApiVersion(detailParams.type)) {
+      message.error(
+        `YAML apiVersion 必须为 ${getWorkloadApiVersion(detailParams.type)}`,
+      );
+      return;
+    }
+
     setActionLoading('yaml');
     try {
       const res = await updateClusterWorkloadManifest({
         ...detailParams,
-        manifest: manifest as Record<string, unknown>,
+        manifest: resource,
       });
       message.success('工作负载 YAML 已更新');
       setWorkload(res.data);

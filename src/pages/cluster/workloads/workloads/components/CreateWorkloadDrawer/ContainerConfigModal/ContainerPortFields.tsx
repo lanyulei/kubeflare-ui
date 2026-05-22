@@ -26,137 +26,132 @@ const protocolOptions = [
   { label: 'SCTP', value: 'SCTP' },
 ];
 
-const useStyles = createStyles(
-  ({ token }, props: { showServicePort: boolean }) => ({
-    ports: {
-      display: 'flex',
-      flexDirection: 'column',
-      // gap: token.marginSM,
-    },
-    portRow: {
-      display: 'grid',
-      minHeight: 46,
-      gridTemplateColumns: props.showServicePort
-        ? 'minmax(192px, 0.9fr) minmax(148px, 1fr) minmax(148px, 0.9fr) minmax(148px, 0.9fr) 40px'
-        : 'minmax(192px, 0.9fr) minmax(148px, 1fr) minmax(148px, 0.9fr) 40px',
-      alignItems: 'center',
-      gap: token.marginSM,
-      padding: `${token.paddingXS}px ${token.paddingMD}px`,
-      border: `1px solid ${token.colorBorderSecondary}`,
-      borderRadius: 24,
-      background: token.colorFillQuaternary,
+const useStyles = createStyles(({ token }) => ({
+  ports: {
+    display: 'flex',
+    flexDirection: 'column',
+    // gap: token.marginSM,
+  },
+  portRow: {
+    display: 'grid',
+    minHeight: 46,
+    gridTemplateColumns:
+      'minmax(192px, 0.9fr) minmax(148px, 1fr) minmax(148px, 0.9fr) 40px',
+    alignItems: 'center',
+    gap: token.marginSM,
+    padding: `${token.paddingXS}px ${token.paddingMD}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: 24,
+    background: token.colorFillQuaternary,
 
-      '& + &': {
-        marginTop: 0,
-      },
+    '& + &': {
+      marginTop: 0,
+    },
 
-      '@media (max-width: 768px)': {
-        gridTemplateColumns: 'minmax(0, 1fr) 40px',
-      },
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: 'minmax(0, 1fr) 40px',
     },
-    inputPrefix: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: token.marginXXS,
-    },
-    helpIcon: {
-      color: token.colorTextTertiary,
-      cursor: 'help',
-      fontSize: 12,
-    },
-    formItem: {
-      marginBottom: 0,
+  },
+  inputPrefix: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: token.marginXXS,
+  },
+  helpIcon: {
+    color: token.colorTextTertiary,
+    cursor: 'help',
+    fontSize: 12,
+  },
+  formItem: {
+    marginBottom: 0,
 
-      '@media (max-width: 768px)': {
-        gridColumn: '1 / -1',
-      },
+    '@media (max-width: 768px)': {
+      gridColumn: '1 / -1',
     },
-    compactField: {
-      display: 'grid',
-      gridTemplateColumns: 'auto minmax(0, 1fr)',
-      overflow: 'hidden',
-      border: `1px solid ${token.colorBorder}`,
-      borderRadius: token.borderRadiusSM,
+  },
+  compactField: {
+    display: 'grid',
+    gridTemplateColumns: 'auto minmax(0, 1fr)',
+    overflow: 'hidden',
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+
+    '.ant-select-selector': {
+      border: '0 !important',
+      boxShadow: 'none !important',
+    },
+
+    '.ant-select-single': {
+      height: 32,
+    },
+
+    '.ant-input, .ant-input-number': {
+      height: 32,
+      border: 0,
+      boxShadow: 'none',
       background: token.colorBgContainer,
-
-      '.ant-select-selector': {
-        border: '0 !important',
-        boxShadow: 'none !important',
-      },
-
-      '.ant-select-single': {
-        height: 32,
-      },
-
-      '.ant-input, .ant-input-number': {
-        height: 32,
-        border: 0,
-        boxShadow: 'none',
-        background: token.colorBgContainer,
-      },
-
-      '.ant-input-number': {
-        width: '100%',
-      },
-
-      '.ant-input-number-group-wrapper': {
-        width: '100%',
-      },
-
-      '.ant-input-number-focused': {
-        boxShadow: 'none',
-      },
-
-      '.ant-input-number-input': {
-        height: 32,
-        paddingInlineStart: token.paddingSM,
-      },
-
-      '.ant-form-item-control-input': {
-        minHeight: 32,
-      },
     },
-    addon: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: token.marginXXS,
-      padding: `0 ${token.paddingSM}px`,
-      borderRight: `1px solid ${token.colorBorder}`,
-      background: token.colorFillQuaternary,
-      color: token.colorText,
-      fontSize: token.fontSizeSM,
-      lineHeight: '30px',
-      whiteSpace: 'nowrap',
-    },
-    deleteButton: {
-      justifySelf: 'center',
-      color: token.colorTextTertiary,
 
-      '&:hover': {
-        color: token.colorError,
-      },
+    '.ant-input-number': {
+      width: '100%',
+    },
 
-      '@media (max-width: 768px)': {
-        gridColumn: 2,
-      },
+    '.ant-input-number-group-wrapper': {
+      width: '100%',
     },
-    actions: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      marginTop: 12,
+
+    '.ant-input-number-focused': {
+      boxShadow: 'none',
     },
-  }),
-);
+
+    '.ant-input-number-input': {
+      height: 32,
+      paddingInlineStart: token.paddingSM,
+    },
+
+    '.ant-form-item-control-input': {
+      minHeight: 32,
+    },
+  },
+  addon: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: token.marginXXS,
+    padding: `0 ${token.paddingSM}px`,
+    borderRight: `1px solid ${token.colorBorder}`,
+    background: token.colorFillQuaternary,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: '30px',
+    whiteSpace: 'nowrap',
+  },
+  deleteButton: {
+    justifySelf: 'center',
+    color: token.colorTextTertiary,
+
+    '&:hover': {
+      color: token.colorError,
+    },
+
+    '@media (max-width: 768px)': {
+      gridColumn: 2,
+    },
+  },
+  actions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+  },
+}));
 
 const getDefaultPort = (index: number) => ({
   protocol: 'HTTP',
   name: `http-${index}`,
 });
 
-const isPortItemIncomplete = (
-  item: ContainerPortItem | undefined,
-  showServicePort: boolean,
-) => !item?.containerPort || (showServicePort && !item.servicePort);
+const isPortItemIncomplete = (item: ContainerPortItem | undefined) =>
+  !item?.containerPort;
 
 type CompactFieldProps = {
   addonClassName: string;
@@ -179,22 +174,15 @@ const CompactField = ({
   );
 };
 
-type ContainerPortFieldsProps = {
-  type: API.ClusterWorkloadType;
-};
-
-const ContainerPortFields = ({ type }: ContainerPortFieldsProps) => {
-  const showServicePort = type === 'StatefulSet';
-  const { styles } = useStyles({ showServicePort });
+const ContainerPortFields = () => {
+  const { styles } = useStyles();
   const form = Form.useFormInstance();
   const containerPorts =
     (Form.useWatch('containerPorts', {
       form,
       preserve: true,
     }) as ContainerPortItem[]) || [];
-  const addDisabled = containerPorts.some((item) =>
-    isPortItemIncomplete(item, showServicePort),
-  );
+  const addDisabled = containerPorts.some(isPortItemIncomplete);
 
   return (
     <div className={styles.ports}>
@@ -271,31 +259,6 @@ const ContainerPortFields = ({ type }: ContainerPortFieldsProps) => {
                       </Form.Item>
                     </CompactField>
                   </Form.Item>
-                  {showServicePort && (
-                    <Form.Item className={styles.formItem}>
-                      <CompactField
-                        addonClassName={styles.addon}
-                        compactFieldClassName={styles.compactField}
-                        label="服务端口"
-                      >
-                        <Form.Item
-                          name={[field.name, 'servicePort']}
-                          noStyle
-                          rules={[
-                            { required: true, message: '请输入服务端口' },
-                            ...PORT_NUMBER_RULES,
-                          ]}
-                        >
-                          <InputNumber
-                            min={1}
-                            max={65535}
-                            placeholder="必填"
-                            precision={0}
-                          />
-                        </Form.Item>
-                      </CompactField>
-                    </Form.Item>
-                  )}
                   <Button
                     aria-label="删除端口"
                     className={styles.deleteButton}
@@ -313,14 +276,11 @@ const ContainerPortFields = ({ type }: ContainerPortFieldsProps) => {
                 onClick={async () => {
                   try {
                     await form.validateFields(
-                      fields.flatMap((field) =>
-                        showServicePort
-                          ? [
-                              ['containerPorts', field.name, 'containerPort'],
-                              ['containerPorts', field.name, 'servicePort'],
-                            ]
-                          : [['containerPorts', field.name, 'containerPort']],
-                      ),
+                      fields.map((field) => [
+                        'containerPorts',
+                        field.name,
+                        'containerPort',
+                      ]),
                     );
                     add(getDefaultPort(fields.length));
                   } catch {

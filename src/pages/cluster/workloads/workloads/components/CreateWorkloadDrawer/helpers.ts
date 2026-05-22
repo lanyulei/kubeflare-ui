@@ -45,11 +45,17 @@ const toRecord = (items?: KeyValueEditorItem[]) =>
 const getWorkloadResourceName = (type: API.ClusterWorkloadType) =>
   workloadTypeNames[type];
 
+const getWorkloadKind = (type: API.ClusterWorkloadType) => workloadKinds[type];
+
+const getWorkloadApiVersion = (type: API.ClusterWorkloadType) =>
+  workloadApiVersions[type];
+
 const getInitialCreateWorkloadValues = (
   type: API.ClusterWorkloadType,
   namespace?: string,
 ): CreateWorkloadFormValues => ({
   namespace,
+  name: undefined,
   replicas: type === 'DaemonSet' ? undefined : 1,
   updateStrategyType: 'RollingUpdate',
   maxUnavailable: '25%',
@@ -63,21 +69,39 @@ const getInitialCreateWorkloadValues = (
   podAnnotations: [],
   podSchedulingRule: 'default',
   podSchedulingCustomRules: [],
+  id: undefined,
+  containerName: undefined,
+  image: undefined,
   containerType: 'worker',
   imagePullPolicy: 'IfNotPresent',
+  cpuRequest: undefined,
+  cpuLimit: undefined,
+  memoryRequest: undefined,
+  memoryLimit: undefined,
   containerPorts: [{ protocol: 'HTTP', name: 'http-0' }],
+  containerPort: undefined,
   enableHealthCheck: false,
   healthChecks: {},
   enableLifecycle: false,
   lifecycleActions: {},
+  postStartCommand: undefined,
+  preStopCommand: undefined,
   enableStartupCommand: false,
+  startupCommand: undefined,
+  startupArgs: undefined,
   enableContainerEnv: false,
   containerEnv: [],
   enableContainerSecurityContext: false,
   containerPrivileged: false,
   containerRunAsNonRoot: false,
+  containerRunAsUser: undefined,
+  containerRunAsGroup: undefined,
   containerReadOnlyRootFilesystem: false,
   allowPrivilegeEscalation: false,
+  containerSeLinuxLevel: undefined,
+  containerSeLinuxRole: undefined,
+  containerSeLinuxType: undefined,
+  containerSeLinuxUser: undefined,
   containerCapabilitiesAdd: [''],
   containerCapabilitiesDrop: [''],
   containerSeccompProfileType: undefined,
@@ -91,6 +115,8 @@ const getInitialCreateWorkloadValues = (
   configResourceType: 'configMap',
   volumeName: 'data',
   emptyDirSizeLimit: '200Mi',
+  hostPath: undefined,
+  claimName: undefined,
   claimStorageClassName: undefined,
   claimCapacity: undefined,
   claimAccessModes: undefined,
@@ -98,6 +124,7 @@ const getInitialCreateWorkloadValues = (
   pvcStorageClassName: undefined,
   pvcAccessModes: ['ReadWriteOnce'],
   pvcSizeGi: 10,
+  configResourceName: undefined,
   containerMounts: [],
   selectSpecificKeys: false,
   specificKeyPaths: [],
@@ -992,9 +1019,12 @@ const buildCreateWorkloadManifest = (
     values.containers && values.containers.length > 0
       ? values.containers
       : [values];
-  const containers = configuredContainers.map((container) =>
-    getContainerManifest(container, values),
-  );
+  const containers = configuredContainers
+    .filter((container) => container.containerType !== 'init')
+    .map((container) => getContainerManifest(container, values));
+  const initContainers = configuredContainers
+    .filter((container) => container.containerType === 'init')
+    .map((container) => getContainerManifest(container, values));
   const volumes = getPodVolumes(values, configuredContainers);
   const volumeClaimTemplates = getVolumeClaimTemplates(
     type,
@@ -1003,6 +1033,7 @@ const buildCreateWorkloadManifest = (
   );
   const podSpec: Record<string, unknown> = {
     containers,
+    initContainers: initContainers.length > 0 ? initContainers : undefined,
     volumes: volumes.length > 0 ? volumes : undefined,
   };
   if (values.enablePodSecurityContext) {
@@ -1181,6 +1212,8 @@ export {
   buildCreateWorkloadManifest,
   buildCreateWorkloadYaml,
   getInitialCreateWorkloadValues,
+  getWorkloadApiVersion,
+  getWorkloadKind,
   getWorkloadResourceName,
   getWorkloadStepFields,
 };

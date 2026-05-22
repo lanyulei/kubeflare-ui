@@ -136,6 +136,31 @@ const storageFieldNames: (keyof CreateWorkloadFormValues)[] = [
 const createStorageConfigId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+const getInitialStorageDraftValues = (): Pick<
+  CreateWorkloadFormValues,
+  (typeof storageFieldNames)[number]
+> => ({
+  storageCategory: 'none',
+  storageType: 'none',
+  volumeType: 'persistentVolumeClaim',
+  configResourceType: 'configMap',
+  volumeName: 'data',
+  emptyDirSizeLimit: '200Mi',
+  hostPath: undefined,
+  claimName: undefined,
+  claimStorageClassName: undefined,
+  claimCapacity: undefined,
+  claimAccessModes: undefined,
+  pvcNamePrefix: '',
+  pvcStorageClassName: undefined,
+  pvcAccessModes: ['ReadWriteOnce'],
+  pvcSizeGi: 10,
+  configResourceName: undefined,
+  containerMounts: [],
+  selectSpecificKeys: false,
+  specificKeyPaths: [],
+});
+
 const ResourceOptionContent = ({
   description,
   icon,
@@ -392,10 +417,11 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
       storageSnapshotRef.current = getStorageSnapshot();
       setEditingStorageIndex(null);
       setSubPathEditor(null);
+      form.setFieldsValue(getInitialStorageDraftValues());
       setupStorage();
       setStorageModalOpen(true);
     },
-    [getStorageSnapshot],
+    [form, getStorageSnapshot],
   );
 
   useEffect(() => {
@@ -1629,9 +1655,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
           />
         </div>
       </div>
-      <div style={{marginBottom: 15}}>
-        {renderStorageMounts(item)}
-      </div>
+      <div style={{ marginBottom: 15 }}>{renderStorageMounts(item)}</div>
     </div>
   );
 

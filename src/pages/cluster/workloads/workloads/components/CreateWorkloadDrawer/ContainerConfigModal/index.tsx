@@ -1,6 +1,6 @@
-import { CodeSandboxOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { CodeSandboxOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import { Col, Form, Input, Modal, Row, Select, Tooltip } from 'antd';
+import { Col, Form, Input, Modal, Row, Select } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useState } from 'react';
 import type { CreateWorkloadContainerValues } from '../types';
@@ -107,7 +107,6 @@ const useStyles = createStyles(({ token }) => ({
 type ContainerConfigModalProps = {
   form: FormInstance<CreateWorkloadContainerValues>;
   open: boolean;
-  type: API.ClusterWorkloadType;
   onCancel: () => void;
   onOk: () => Promise<void>;
 };
@@ -115,7 +114,6 @@ type ContainerConfigModalProps = {
 const ContainerConfigModal = ({
   form,
   open,
-  type,
   onCancel,
   onOk,
 }: ContainerConfigModalProps) => {
@@ -215,7 +213,7 @@ const ContainerConfigModal = ({
             description="设置用于访问容器的端口。"
             title="端口设置"
           >
-            <ContainerPortFields type={type} />
+            <ContainerPortFields />
           </ContainerFormSection>
 
           <ContainerAdvancedOptions />

@@ -27,6 +27,8 @@ import {
   buildCreateWorkloadManifest,
   buildCreateWorkloadYaml,
   getInitialCreateWorkloadValues,
+  getWorkloadApiVersion,
+  getWorkloadKind,
   getWorkloadResourceName,
   getWorkloadStepFields,
 } from './helpers';
@@ -123,6 +125,16 @@ type CreateWorkloadDrawerProps = {
 const hasKeyValueContent = (items?: { keyName?: string }[]) =>
   (items || []).some((item) => item.keyName?.trim());
 
+const hasWorkerContainer = (values: CreateWorkloadFormValues) =>
+  (values.containers || []).some(
+    (container) => container.containerType !== 'init',
+  );
+
+const getRecordValue = (value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+
 const hasAdvancedSettingsContent = (
   values: CreateWorkloadFormValues,
   type: API.ClusterWorkloadType,
@@ -211,6 +223,7 @@ const CreateWorkloadDrawer = ({
       type,
       defaultNamespace,
     );
+    form.resetFields();
     form.setFieldsValue(initialValues);
     setCurrent(0);
     setYamlMode(false);
@@ -232,6 +245,10 @@ const CreateWorkloadDrawer = ({
   const handleNext = async () => {
     if (current === 1 && !form.getFieldValue('containers')?.length) {
       message.warning('请先添加容器并填写容器名称和镜像');
+      return;
+    }
+    if (current === 1 && !hasWorkerContainer(form.getFieldsValue(true))) {
+      message.warning('请至少添加一个工作容器');
       return;
     }
     await form.validateFields(getWorkloadStepFields(current, type));
@@ -258,19 +275,26 @@ const CreateWorkloadDrawer = ({
       }
 
       const resource = manifest as Record<string, unknown>;
-      const metadata = resource.metadata;
-      const metadataRecord =
-        metadata && typeof metadata === 'object' && !Array.isArray(metadata)
-          ? (metadata as Record<string, unknown>)
-          : undefined;
+      const metadataRecord = getRecordValue(resource.metadata);
       const name =
         typeof metadataRecord?.name === 'string' ? metadataRecord.name : '';
       const namespace =
         typeof metadataRecord?.namespace === 'string'
           ? metadataRecord.namespace
           : '';
+      const kind = typeof resource.kind === 'string' ? resource.kind : '';
+      const apiVersion =
+        typeof resource.apiVersion === 'string' ? resource.apiVersion : '';
       if (!name || !namespace) {
         message.error('YAML 必须包含 metadata.name 和 metadata.namespace');
+        return;
+      }
+      if (kind !== getWorkloadKind(type)) {
+        message.error(`YAML kind 必须为 ${getWorkloadKind(type)}`);
+        return;
+      }
+      if (apiVersion !== getWorkloadApiVersion(type)) {
+        message.error(`YAML apiVersion 必须为 ${getWorkloadApiVersion(type)}`);
         return;
       }
 
@@ -283,6 +307,10 @@ const CreateWorkloadDrawer = ({
     }
 
     const formValues = await form.validateFields();
+    if (!hasWorkerContainer(formValues)) {
+      message.warning('请至少添加一个工作容器');
+      return;
+    }
     await onSubmit({
       name: formValues.name || '',
       namespace: formValues.namespace || '',
@@ -415,6 +443,13 @@ const CreateWorkloadDrawer = ({
               }
               if (current === 1 && !form.getFieldValue('containers')?.length) {
                 message.warning('请先添加容器并填写容器名称和镜像');
+                return;
+              }
+              if (
+                current === 1 &&
+                !hasWorkerContainer(form.getFieldsValue(true))
+              ) {
+                message.warning('请至少添加一个工作容器');
                 return;
               }
               await form.validateFields(getWorkloadStepFields(current, type));

@@ -129,21 +129,38 @@ const createContainerId = () =>
 
 const getInitialContainerValues = (): CreateWorkloadContainerValues => ({
   id: createContainerId(),
+  containerName: undefined,
+  image: undefined,
   containerType: 'worker',
   imagePullPolicy: 'IfNotPresent',
+  cpuRequest: undefined,
+  cpuLimit: undefined,
+  memoryRequest: undefined,
+  memoryLimit: undefined,
   containerPorts: [{ protocol: 'HTTP', name: 'http-0' }],
+  containerPort: undefined,
   enableHealthCheck: false,
   healthChecks: {},
   enableLifecycle: false,
   lifecycleActions: {},
+  postStartCommand: undefined,
+  preStopCommand: undefined,
   enableStartupCommand: false,
+  startupCommand: undefined,
+  startupArgs: undefined,
   enableContainerEnv: false,
   containerEnv: [],
   enableContainerSecurityContext: false,
   containerPrivileged: false,
   containerRunAsNonRoot: false,
+  containerRunAsUser: undefined,
+  containerRunAsGroup: undefined,
   containerReadOnlyRootFilesystem: false,
   allowPrivilegeEscalation: false,
+  containerSeLinuxLevel: undefined,
+  containerSeLinuxRole: undefined,
+  containerSeLinuxType: undefined,
+  containerSeLinuxUser: undefined,
   containerCapabilitiesAdd: [''],
   containerCapabilitiesDrop: [''],
   containerSeccompProfileType: undefined,
@@ -187,16 +204,16 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   ) => {
     setEditingContainerIndex(index);
     containerForm.resetFields();
-    containerForm.setFieldsValue(
-      index === null
-        ? {
-            ...getInitialContainerValues(),
-            containerName: shouldPrefillName
-              ? createRandomContainerName()
-              : undefined,
-          }
-        : containers[index],
-    );
+    if (index === null) {
+      containerForm.setFieldsValue({
+        ...getInitialContainerValues(),
+        containerName: shouldPrefillName
+          ? createRandomContainerName()
+          : undefined,
+      });
+    } else {
+      containerForm.setFieldsValue(containers[index]);
+    }
     setContainerModalOpen(true);
   };
 
@@ -210,28 +227,20 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
     await containerForm.validateFields(CONTAINER_VALIDATE_FIELD_NAMES);
     const containerPorts = containerForm.getFieldValue('containerPorts') || [];
     await containerForm.validateFields(
-      containerPorts.flatMap((_: unknown, index: number) =>
-        type === 'StatefulSet'
-          ? [
-              ['containerPorts', index, 'containerPort'],
-              ['containerPorts', index, 'servicePort'],
-            ]
-          : [['containerPorts', index, 'containerPort']],
-      ),
+      containerPorts.flatMap((_: unknown, index: number) => [
+        ['containerPorts', index, 'containerPort'],
+      ]),
     );
     const rawContainerValues = {
       ...containerForm.getFieldsValue(true),
       id: containers[editingContainerIndex ?? -1]?.id || createContainerId(),
     } as CreateWorkloadContainerValues;
-    const containerValues =
-      type === 'StatefulSet'
-        ? rawContainerValues
-        : {
-            ...rawContainerValues,
-            containerPorts: rawContainerValues.containerPorts?.map(
-              ({ servicePort: _servicePort, ...port }) => port,
-            ),
-          };
+    const containerValues = {
+      ...rawContainerValues,
+      containerPorts: rawContainerValues.containerPorts?.map(
+        ({ servicePort: _servicePort, ...port }) => port,
+      ),
+    };
     const nextContainers = [...containers];
     if (editingContainerIndex === null) {
       nextContainers.push(containerValues);
@@ -298,7 +307,6 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       <ContainerConfigModal
         form={containerForm}
         open={containerModalOpen}
-        type={type}
         onCancel={cancelContainerModal}
         onOk={saveContainerModal}
       />
