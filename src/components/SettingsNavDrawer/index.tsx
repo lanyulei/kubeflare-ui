@@ -45,7 +45,7 @@ const useStyles = createStyles(({ token }) => ({
   layout: {
     display: 'grid',
     minHeight: 'calc(100vh - 116px)',
-    gridTemplateColumns: '196px minmax(0, 1fr)',
+    gridTemplateColumns: '260px minmax(0, 1fr)',
     background: token.colorBgLayout,
 
     '@media (max-width: 768px)': {
@@ -53,9 +53,12 @@ const useStyles = createStyles(({ token }) => ({
     },
   },
   nav: {
-    padding: `${token.paddingLG}px ${token.paddingSM}px`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginXS,
+    padding: token.paddingLG,
     borderRight: `1px solid ${token.colorBorderSecondary}`,
-    background: token.colorFillQuaternary,
+    background: token.colorBgContainer,
 
     '@media (max-width: 768px)': {
       display: 'grid',
@@ -69,49 +72,75 @@ const useStyles = createStyles(({ token }) => ({
   navItem: {
     display: 'grid',
     width: '100%',
-    minHeight: 38,
-    gridTemplateColumns: '24px minmax(0, 1fr)',
+    minHeight: 64,
+    gridTemplateColumns: '34px minmax(0, 1fr)',
     alignItems: 'center',
     gap: token.marginSM,
-    marginBottom: token.marginXS,
-    padding: `0 ${token.paddingSM}px`,
+    padding: `0 ${token.padding}px`,
     border: 0,
-    borderRadius: 999,
+    borderRadius: token.borderRadiusSM,
     background: 'transparent',
-    color: token.colorTextSecondary,
+    color: token.colorText,
     cursor: 'pointer',
-    fontSize: token.fontSizeSM,
-    fontWeight: 600,
     textAlign: 'left',
-    transition: `background ${token.motionDurationMid}, color ${token.motionDurationMid}, box-shadow ${token.motionDurationMid}`,
+    font: 'inherit',
+    transition: `background ${token.motionDurationMid}, box-shadow ${token.motionDurationMid}`,
 
     '&:hover': {
-      background: token.colorFillSecondary,
-      color: token.colorText,
+      background: token.colorFillQuaternary,
     },
 
     '&:focus-visible': {
-      outline: `2px solid ${token.colorPrimaryBorder}`,
-      outlineOffset: 1,
+      outline: `2px solid ${token.colorPrimary}`,
+      outlineOffset: -2,
     },
 
     '@media (max-width: 768px)': {
-      marginBottom: 0,
-      borderRadius: token.borderRadiusSM,
+      minHeight: 58,
     },
   },
   navItemActive: {
     '&&': {
-      background: '#354159',
-      color: token.colorBgContainer,
-      boxShadow: token.boxShadowTertiary,
+      background: token.colorFillAlter,
+      boxShadow: `inset 3px 0 0 ${token.colorPrimary}`,
+    },
+
+    '&&:hover': {
+      background: token.colorFillAlter,
     },
   },
   navIcon: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: 16,
+    width: 34,
+    height: 34,
+    borderRadius: token.borderRadiusLG,
+    color: token.colorTextSecondary,
+    background: token.colorFillSecondary,
+    fontSize: 18,
+  },
+  navText: {
+    display: 'flex',
+    minWidth: 0,
+    flexDirection: 'column',
+  },
+  navTitle: {
+    overflow: 'hidden',
+    color: token.colorText,
+    fontSize: token.fontSize,
+    fontWeight: 600,
+    lineHeight: 1.5,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  navDescription: {
+    overflow: 'hidden',
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: 1.5,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   content: {
     minWidth: 0,
@@ -185,6 +214,7 @@ const SettingsNavDrawer = <Value extends string>({
           <nav className={styles.nav}>
             {sections.map((section) => (
               <button
+                aria-pressed={activeKey === section.key}
                 className={cx(
                   styles.navItem,
                   activeKey === section.key && styles.navItemActive,
@@ -194,7 +224,12 @@ const SettingsNavDrawer = <Value extends string>({
                 onClick={() => onActiveKeyChange(section.key)}
               >
                 <span className={styles.navIcon}>{section.icon}</span>
-                <span>{section.title}</span>
+                <span className={styles.navText}>
+                  <span className={styles.navTitle}>{section.title}</span>
+                  <span className={styles.navDescription}>
+                    {section.description}
+                  </span>
+                </span>
               </button>
             ))}
           </nav>

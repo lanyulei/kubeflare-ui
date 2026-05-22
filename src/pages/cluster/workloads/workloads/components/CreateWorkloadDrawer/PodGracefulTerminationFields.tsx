@@ -1,6 +1,7 @@
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { Checkbox, Col, Form, InputNumber, Row, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
+import type { CSSProperties } from 'react';
 
 const useStyles = createStyles(({ token }) => ({
   terminationWrapper: {
@@ -61,17 +62,16 @@ const useStyles = createStyles(({ token }) => ({
       marginBottom: 0,
     },
   },
-  embeddedEnable: {
-    marginBottom: token.marginMD,
-  },
 }));
 
 type PodGracefulTerminationFieldsProps = {
   embedded?: boolean;
+  terminationConfigMarginTop?: CSSProperties['marginTop'];
 };
 
 const PodGracefulTerminationFields = ({
   embedded = false,
+  terminationConfigMarginTop,
 }: PodGracefulTerminationFieldsProps) => {
   const { styles } = useStyles();
   const form = Form.useFormInstance();
@@ -89,15 +89,39 @@ const PodGracefulTerminationFields = ({
             form.setFieldValue('terminationGracePeriodSeconds', 30);
           }
         }}
-      >
-        {embedded ? '启用容器组优雅终止' : undefined}
-      </Checkbox>
+      />
     </Form.Item>
+  );
+
+  const enableHeader = (
+    <div className={styles.terminationHeader}>
+      <div className={styles.terminationCheckbox}>{enableCheckbox}</div>
+      <div>
+        <div className={styles.terminationTitle}>
+          <span>容器组优雅终止</span>
+          <Tooltip title={terminationTip}>
+            <QuestionCircleOutlined className={styles.terminationHelpIcon} />
+          </Tooltip>
+        </div>
+        <div className={styles.terminationDescription}>
+          设置容器终止前的等待时间。
+        </div>
+      </div>
+    </div>
   );
 
   const terminationConfig = enabled ? (
     <>
-      <div className={styles.terminationGroupTitle}>终止配置</div>
+      <div
+        className={styles.terminationGroupTitle}
+        style={
+          terminationConfigMarginTop !== undefined
+            ? { marginTop: terminationConfigMarginTop }
+            : undefined
+        }
+      >
+        终止配置
+      </div>
       <div className={styles.terminationGroup}>
         <Row gutter={16}>
           <Col span={12}>
@@ -117,7 +141,7 @@ const PodGracefulTerminationFields = ({
   if (embedded) {
     return (
       <div className={styles.embedded}>
-        <div className={styles.embeddedEnable}>{enableCheckbox}</div>
+        {enableHeader}
         {terminationConfig}
       </div>
     );
@@ -126,23 +150,7 @@ const PodGracefulTerminationFields = ({
   return (
     <div className={styles.terminationWrapper}>
       <div className={styles.termination}>
-        <div className={styles.terminationHeader}>
-          <div className={styles.terminationCheckbox}>{enableCheckbox}</div>
-          <span>
-            <div className={styles.terminationTitle}>
-              <span>容器组优雅终止</span>
-              <Tooltip title={terminationTip}>
-                <QuestionCircleOutlined
-                  className={styles.terminationHelpIcon}
-                />
-              </Tooltip>
-            </div>
-            <div className={styles.terminationDescription}>
-              设置容器终止前的等待时间。
-            </div>
-          </span>
-        </div>
-
+        {enableHeader}
         {terminationConfig}
       </div>
     </div>

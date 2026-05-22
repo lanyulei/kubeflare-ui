@@ -89,9 +89,14 @@ const WorkloadSettingsDrawer = ({
         key: 'containers',
         icon: <DockerOutlined />,
         title: '容器',
-        description: '调整副本数量，并维护容器镜像、端口、资源和高级配置。',
+        description: '维护容器镜像、端口、资源和高级配置。',
         content: (
-          <WorkloadContainerEditor form={form} showTitle={false} type={type} />
+          <WorkloadContainerEditor
+            form={form}
+            showReplicaPanel={false}
+            showTitle={false}
+            type={type}
+          />
         ),
       },
       {

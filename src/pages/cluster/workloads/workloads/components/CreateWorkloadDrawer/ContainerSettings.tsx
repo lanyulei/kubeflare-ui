@@ -115,6 +115,7 @@ type ContainerSettingsProps = {
 };
 
 type WorkloadContainerEditorProps = ContainerSettingsProps & {
+  showReplicaPanel?: boolean;
   showTitle?: boolean;
 };
 
@@ -176,6 +177,7 @@ const getInitialContainerValues = (): CreateWorkloadContainerValues => ({
 const WorkloadContainerEditor = ({
   form,
   type,
+  showReplicaPanel = true,
   showTitle = true,
 }: WorkloadContainerEditorProps) => {
   const { styles } = useStyles();
@@ -261,7 +263,7 @@ const WorkloadContainerEditor = ({
 
   return (
     <>
-      {type !== 'DaemonSet' && (
+      {showReplicaPanel && type !== 'DaemonSet' && (
         <div className={styles.replicaPanel}>
           <div className={styles.replicaLabel}>容器组副本数量</div>
           <div className={styles.replicaControl}>
