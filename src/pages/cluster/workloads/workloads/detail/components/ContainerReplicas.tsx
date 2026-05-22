@@ -53,6 +53,14 @@ const useStyles = createStyles(({ token }) => ({
     display: 'inline-flex',
     alignItems: 'center',
     gap: token.marginXS,
+    maxWidth: '100%',
+    minWidth: 0,
+    whiteSpace: 'nowrap',
+  },
+  statusText: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
   statusDot: {
@@ -391,16 +399,19 @@ const ContainerReplicas = ({
 
   const renderStatus = (status?: string) => {
     const statusType = getStatusType(status);
+    const statusLabel = getStatusLabel(status);
 
     return (
-      <span className={styles.status}>
-        <span
-          className={[styles.statusDot, statusDotClassNames[statusType]].join(
-            ' ',
-          )}
-        />
-        <span>{getStatusLabel(status)}</span>
-      </span>
+      <Tooltip title={statusLabel}>
+        <span className={styles.status}>
+          <span
+            className={[styles.statusDot, statusDotClassNames[statusType]].join(
+              ' ',
+            )}
+          />
+          <span className={styles.statusText}>{statusLabel}</span>
+        </span>
+      </Tooltip>
     );
   };
 
@@ -480,6 +491,7 @@ const ContainerReplicas = ({
     {
       title: '状态',
       dataIndex: 'status',
+      ellipsis: true,
       render: (_, record) => renderStatus(record.status || record.phase),
     },
     {

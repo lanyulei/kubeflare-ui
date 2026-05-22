@@ -3,6 +3,7 @@ import { Col, Form, Input, InputNumber, Row } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
 import { useEffect, useRef } from 'react';
+import { SegmentedTabs } from '@/components';
 import type {
   ContainerActionFormValue,
   ContainerHandlerType,
@@ -94,55 +95,6 @@ const useStyles = createStyles(({ token }) => ({
     justifyContent: 'flex-start',
     gap: token.marginSM,
     marginBottom: token.marginSM,
-  },
-  handlerTabs: {
-    display: 'grid',
-    width: 'min(454px, 100%)',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 2,
-    padding: 2,
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: 999,
-    background: token.colorFillQuaternary,
-
-    '@media (max-width: 576px)': {
-      gridTemplateColumns: '1fr',
-      borderRadius: token.borderRadiusSM,
-    },
-  },
-  handlerTab: {
-    height: 28,
-    border: 0,
-    borderRadius: 999,
-    background: 'transparent',
-    color: token.colorText,
-    cursor: 'pointer',
-    fontSize: token.fontSizeSM,
-    lineHeight: '28px',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-    transition: `background ${token.motionDurationMid}, color ${token.motionDurationMid}`,
-
-    '&:hover': {
-      background: token.colorFillSecondary,
-    },
-
-    '@media (max-width: 576px)': {
-      fontSize: 12,
-      borderRadius: token.borderRadiusSM,
-    },
-  },
-  handlerTabActive: {
-    '&&': {
-      background: token.colorPrimaryBg,
-      color: token.colorPrimaryText,
-      boxShadow: `inset 0 0 0 1px ${token.colorPrimaryBorder}`,
-    },
-
-    '&&:hover': {
-      background: token.colorPrimaryBgHover,
-      color: token.colorPrimaryText,
-    },
   },
   actionFooter: {
     display: 'flex',
@@ -268,21 +220,11 @@ const ContainerLifecycleFields = () => {
     actionName: ContainerLifecycleActionName,
     handlerType: ContainerHandlerType,
   ) => (
-    <div className={styles.handlerTabs}>
-      {HANDLER_OPTIONS.map((option) => (
-        <button
-          className={[
-            styles.handlerTab,
-            option.value === handlerType ? styles.handlerTabActive : '',
-          ].join(' ')}
-          key={option.value}
-          type="button"
-          onClick={() => selectHandler(actionName, option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
+    <SegmentedTabs
+      items={HANDLER_OPTIONS}
+      value={handlerType}
+      onChange={(value) => selectHandler(actionName, value)}
+    />
   );
 
   const renderHttpFields = (actionName: ContainerLifecycleActionName) => {

@@ -80,7 +80,7 @@ const useStyles = createStyles(({ token }) => ({
     minWidth: 420,
   },
   section: {
-    marginTop: token.marginLG,
+    marginTop: `20px`,
   },
   yamlDrawerBody: {
     display: 'flex',

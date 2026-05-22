@@ -2,6 +2,7 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Input, InputNumber, Row } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
+import { SegmentedTabs } from '@/components';
 import type {
   ContainerHealthChecksValue,
   ContainerProbeFormValue,
@@ -151,55 +152,6 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginSM,
     marginBottom: token.marginSM,
   },
-  handlerTabs: {
-    display: 'grid',
-    width: 'min(454px, 100%)',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 2,
-    padding: 2,
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: 999,
-    background: token.colorFillQuaternary,
-
-    '@media (max-width: 576px)': {
-      gridTemplateColumns: '1fr',
-      borderRadius: token.borderRadiusSM,
-    },
-  },
-  handlerTab: {
-    height: 28,
-    border: 0,
-    borderRadius: 999,
-    background: 'transparent',
-    color: token.colorText,
-    cursor: 'pointer',
-    fontSize: token.fontSizeSM,
-    lineHeight: '28px',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-    transition: `background ${token.motionDurationMid}, color ${token.motionDurationMid}`,
-
-    '&:hover': {
-      background: token.colorFillSecondary,
-    },
-
-    '@media (max-width: 576px)': {
-      fontSize: 12,
-      borderRadius: token.borderRadiusSM,
-    },
-  },
-  handlerTabActive: {
-    '&&': {
-      background: token.colorPrimaryBg,
-      color: token.colorPrimaryText,
-      boxShadow: `inset 0 0 0 1px ${token.colorPrimaryBorder}`,
-    },
-
-    '&&:hover': {
-      background: token.colorPrimaryBgHover,
-      color: token.colorPrimaryText,
-    },
-  },
   removeButton: {
     flexShrink: 0,
     color: token.colorTextTertiary,
@@ -321,21 +273,11 @@ const ContainerHealthCheckFields = () => {
     probeName: ContainerProbeKind,
     handlerType: ContainerProbeHandlerType,
   ) => (
-    <div className={styles.handlerTabs}>
-      {HANDLER_OPTIONS.map((option) => (
-        <button
-          className={[
-            styles.handlerTab,
-            option.value === handlerType ? styles.handlerTabActive : '',
-          ].join(' ')}
-          key={option.value}
-          type="button"
-          onClick={() => selectHandler(probeName, option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
+    <SegmentedTabs
+      items={HANDLER_OPTIONS}
+      value={handlerType}
+      onChange={(value) => selectHandler(probeName, value)}
+    />
   );
 
   const renderHttpFields = (probeName: ContainerProbeKind) => {

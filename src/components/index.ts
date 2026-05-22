@@ -16,6 +16,7 @@ import KeyValueList from './KeyValueList';
 import { ClusterSwitch, Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import SectionTitle from './SectionTitle';
+import SegmentedTabs from './SegmentedTabs';
 import SelectValueEditor from './SelectValueEditor';
 import TaintEditor from './TaintEditor';
 import UnitInputNumber from './UnitInputNumber';
@@ -35,6 +36,7 @@ export {
   KeyValueList,
   Question,
   SectionTitle,
+  SegmentedTabs,
   SelectLang,
   SelectValueEditor,
   TaintEditor,

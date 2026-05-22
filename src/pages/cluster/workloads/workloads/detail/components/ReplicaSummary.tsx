@@ -19,26 +19,24 @@ const useStyles = createStyles(({ token }) => ({
     minHeight: 0,
     padding: `${token.paddingSM}px ${token.paddingXL}px ${token.paddingSM}px ${token.paddingLG}px`,
     overflow: 'hidden',
-    border: '1px solid rgba(255, 255, 255, 0.10)',
+    border: `1px solid ${token.colorPrimaryBorder}33`,
     borderRadius: token.borderRadiusSM,
-    background:
-      'linear-gradient(135deg, #2b3951 0%, #33445d 58%, #40536d 100%)',
-    boxShadow: token.boxShadowSecondary,
+    background: token.colorPrimaryBg,
   },
   halo: {
     position: 'absolute',
-    top: -42,
-    right: -34,
-    width: 92,
-    height: 92,
-    borderRadius: '50%',
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 72,
+    // background: token.colorPrimaryBgHover,
+    opacity: 0.32,
   },
   progress: {
     flex: '0 0 auto',
 
     '.ant-progress-text': {
-      color: '#ffffff !important',
+      color: `${token.colorPrimaryText} !important`,
       fontSize: 18,
       fontWeight: 500,
     },
@@ -51,7 +49,7 @@ const useStyles = createStyles(({ token }) => ({
     minWidth: 0,
     marginLeft: token.marginMD,
     paddingRight: token.paddingMD,
-    color: '#ffffff',
+    color: token.colorText,
   },
   title: {
     fontSize: token.fontSize,
@@ -65,7 +63,7 @@ const useStyles = createStyles(({ token }) => ({
     marginTop: 4,
   },
   meta: {
-    color: 'rgba(255, 255, 255, 0.86)',
+    color: token.colorTextSecondary,
     fontSize: token.fontSizeSM,
     lineHeight: 1.5,
   },
@@ -83,21 +81,21 @@ const useStyles = createStyles(({ token }) => ({
     width: 22,
     minWidth: 22,
     height: 22,
-    color: '#ffffff',
-    border: '1px solid rgba(255, 255, 255, 0.10)',
+    color: token.colorPrimaryText,
+    border: `1px solid ${token.colorPrimaryBorder}`,
     borderRadius: token.borderRadiusSM,
-    backgroundColor: 'rgba(255, 255, 255, 0.13)',
+    backgroundColor: token.colorBgContainer,
 
     '&:hover': {
-      color: '#ffffff !important',
-      borderColor: 'rgba(255, 255, 255, 0.24) !important',
-      backgroundColor: 'rgba(255, 255, 255, 0.22) !important',
+      color: `${token.colorPrimaryText} !important`,
+      borderColor: `${token.colorPrimaryBorderHover} !important`,
+      backgroundColor: `${token.colorPrimaryBgHover} !important`,
     },
 
     '&[disabled]': {
-      color: 'rgba(255, 255, 255, 0.42)',
-      borderColor: 'rgba(255, 255, 255, 0.08)',
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      color: token.colorTextDisabled,
+      borderColor: token.colorBorderSecondary,
+      backgroundColor: token.colorFillQuaternary,
     },
   },
 }));
@@ -130,9 +128,9 @@ const ReplicaSummary = ({
         format={() => `${currentReplicas}/${desiredReplicas}`}
         percent={getReplicaPercent(currentReplicas, desiredReplicas)}
         size={60}
-        strokeColor={token.colorSuccess}
+        strokeColor={token.colorPrimary}
         strokeWidth={10}
-        trailColor="rgba(255, 255, 255, 0.18)"
+        trailColor={token.colorFillSecondary}
         type="circle"
       />
       <div className={styles.content}>

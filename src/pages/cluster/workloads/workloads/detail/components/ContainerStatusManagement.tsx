@@ -10,10 +10,10 @@ import {
   SettingOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
-import { Empty, Radio, Spin, Tooltip, Typography } from 'antd';
+import { Empty, Spin, Tooltip, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
-import { KeyValueList } from '@/components';
+import { KeyValueList, SegmentedTabs } from '@/components';
 
 type ContainerStatusManagementProps = {
   loading?: boolean;
@@ -171,24 +171,8 @@ const useStyles = createStyles(({ token }) => ({
     color: token.colorText,
     fontSize: token.fontSize,
   },
-  radioGroup: {
+  configTabs: {
     marginBottom: token.marginSM,
-
-    '.ant-radio-button-wrapper': {
-      minWidth: 118,
-      textAlign: 'center',
-    },
-
-    '.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)':
-      {
-        borderColor: '#3a4660',
-        backgroundColor: '#3a4660',
-        color: '#ffffff',
-
-        '&::before': {
-          backgroundColor: '#3a4660',
-        },
-      },
   },
   tabContent: {
     minHeight: 160,
@@ -197,6 +181,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   portTable: {
     backgroundColor: `#ffffff`,
+    border: `1px solid ${token.colorBorderSecondary}`,
     width: '100%',
   },
   portRow: {
@@ -703,11 +688,10 @@ const ContainerStatusManagement = ({
                   <CaretDownOutlined />
                   容器: {activeContainer.name || '-'}
                 </div>
-                <Radio.Group
-                  className={styles.radioGroup}
-                  onChange={(event) => setActiveConfigKey(event.target.value)}
-                  optionType="button"
-                  options={containerConfigOptions}
+                <SegmentedTabs
+                  className={styles.configTabs}
+                  items={containerConfigOptions}
+                  onChange={setActiveConfigKey}
                   value={activeConfigKey}
                 />
                 {renderConfigContent(activeContainer)}
