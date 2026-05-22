@@ -82,6 +82,17 @@ type SubPathEditorState = {
   error?: string;
 };
 
+type StorageActionVariant = 'entry' | 'add';
+
+type StorageActionItem = {
+  description: string;
+  icon?: ReactNode;
+  key: string;
+  onSelect: () => void;
+  title: string;
+  wide?: boolean;
+};
+
 const getConfigResourceLabel = (type?: WorkloadConfigResourceType) =>
   type === 'secret' ? '保密字典' : '配置字典';
 
@@ -710,51 +721,138 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
     );
   };
 
-  const renderEntry = () => (
-    <div className={styles.entryGrid}>
-      {type === 'StatefulSet' && (
-        <button
-          className={[styles.entryCard, styles.entryCardWide].join(' ')}
-          type="button"
-          onClick={() => openStorageModal(selectVolumeClaimTemplate)}
-        >
-          <HddOutlined className={styles.entryIcon} />
-          <span className={styles.entryContent}>
-            <span className={styles.entryTitle}>添加持久卷声明模板</span>
-            <span className={styles.entryDescription}>
-              添加持久卷声明模板为有状态副本集的每个容器组挂载一个持久卷。
-            </span>
-          </span>
-        </button>
-      )}
+  const volumeClaimTemplateActionGroup = {
+    key: 'volumeClaimTemplate',
+    actions:
+      type === 'StatefulSet'
+        ? [
+            {
+              description:
+                '添加持久卷声明模板为有状态副本集的每个容器组挂载一个持久卷',
+              icon: <HddOutlined />,
+              key: 'volumeClaimTemplate',
+              onSelect: () => openStorageModal(selectVolumeClaimTemplate),
+              title: '添加持久卷声明模板',
+              wide: true,
+            },
+          ]
+        : [],
+    match: (item: WorkloadStorageConfigItem) =>
+      item.storageType === 'volumeClaimTemplate',
+  };
+
+  const mountStorageActionGroup = {
+    key: 'mounts',
+    actions: [
+      {
+        description: '为容器挂载持久卷、临时卷或 HostPath 卷',
+        icon: <HddOutlined />,
+        key: 'volume',
+        onSelect: () => openStorageModal(() => selectStorageCategory('volume')),
+        title: '挂载卷',
+      },
+      {
+        description: '为容器挂载配置字典或保密字典',
+        icon: <ToolOutlined />,
+        key: 'config',
+        onSelect: () => openStorageModal(() => selectStorageCategory('config')),
+        title: '挂载配置字典或保密字典',
+      },
+    ],
+    match: (item: WorkloadStorageConfigItem) =>
+      item.storageType !== 'volumeClaimTemplate',
+  };
+
+  const storageActionGroups = [
+    volumeClaimTemplateActionGroup,
+    mountStorageActionGroup,
+  ];
+
+  const renderStorageActionCard = (
+    action: StorageActionItem,
+    variant: StorageActionVariant,
+  ) => {
+    const isEntry = variant === 'entry';
+    const cardClassName = [
+      isEntry ? styles.entryCard : styles.addStorageCard,
+      action.wide
+        ? isEntry
+          ? styles.entryCardWide
+          : styles.addStorageCardWide
+        : '',
+    ].join(' ');
+
+    return (
       <button
-        className={styles.entryCard}
+        className={cardClassName}
+        key={action.key}
         type="button"
-        onClick={() => openStorageModal(() => selectStorageCategory('volume'))}
+        onClick={action.onSelect}
       >
-        <HddOutlined className={styles.entryIcon} />
-        <span className={styles.entryContent}>
-          <span className={styles.entryTitle}>挂载卷</span>
-          <span className={styles.entryDescription}>
-            为容器挂载持久卷、临时卷或 HostPath 卷
+        {isEntry && action.icon && (
+          <span className={styles.entryIcon}>{action.icon}</span>
+        )}
+        <span className={isEntry ? styles.entryContent : undefined}>
+          <span
+            className={isEntry ? styles.entryTitle : styles.addStorageTitle}
+          >
+            {action.title}
+          </span>
+          <span
+            className={
+              isEntry ? styles.entryDescription : styles.addStorageDescription
+            }
+          >
+            {action.description}
           </span>
         </span>
       </button>
-      <button
-        className={styles.entryCard}
-        type="button"
-        onClick={() => openStorageModal(() => selectStorageCategory('config'))}
-      >
-        <ToolOutlined className={styles.entryIcon} />
-        <span className={styles.entryContent}>
-          <span className={styles.entryTitle}>挂载配置字典或保密字典</span>
-          <span className={styles.entryDescription}>
-            为容器挂载配置字典或保密字典
-          </span>
-        </span>
-      </button>
+    );
+  };
+
+  const renderStorageActionGrid = (
+    actions: StorageActionItem[],
+    variant: StorageActionVariant,
+    className: string,
+  ) => (
+    <div className={className}>
+      {actions.map((action) => renderStorageActionCard(action, variant))}
     </div>
   );
+
+  const renderStatefulStorageActionSections = (
+    variant: StorageActionVariant,
+  ) => (
+    <div className={styles.statefulStorageSections}>
+      {storageActionGroups.map((group) => (
+        <div className={styles.statefulStorageSection} key={group.key}>
+          {renderStorageActionGrid(
+            group.actions,
+            variant,
+            styles.statefulStorageActionGrid,
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderEntry = () =>
+    type === 'StatefulSet'
+      ? renderStatefulStorageActionSections('entry')
+      : renderStorageActionGrid(
+          mountStorageActionGroup.actions,
+          'entry',
+          styles.entryGrid,
+        );
+
+  const renderAddStorageActions = () =>
+    type === 'StatefulSet'
+      ? renderStatefulStorageActionSections('add')
+      : renderStorageActionGrid(
+          mountStorageActionGroup.actions,
+          'add',
+          styles.addStorageGrid,
+        );
 
   const renderPvcSelector = () => (
     <div className={styles.resourceSelector}>
@@ -1446,51 +1544,42 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
     </div>
   );
 
-  const renderAddStorageActions = () => (
-    <div className={styles.addStorageGrid}>
-      {type === 'StatefulSet' && (
-        <button
-          className={[styles.addStorageCard, styles.addStorageCardWide].join(
-            ' ',
-          )}
-          type="button"
-          onClick={() => openStorageModal(selectVolumeClaimTemplate)}
-        >
-          <span className={styles.addStorageTitle}>添加持久卷声明模板</span>
-          <span className={styles.addStorageDescription}>
-            添加持久卷声明模板为有状态副本集的每个容器组挂载一个持久卷。
-          </span>
-        </button>
-      )}
-      <button
-        className={styles.addStorageCard}
-        type="button"
-        onClick={() => openStorageModal(() => selectStorageCategory('volume'))}
-      >
-        <span className={styles.addStorageTitle}>挂载卷</span>
-        <span className={styles.addStorageDescription}>
-          为容器挂载持久卷、临时卷或 HostPath 卷。
-        </span>
-      </button>
-      <button
-        className={styles.addStorageCard}
-        type="button"
-        onClick={() => openStorageModal(() => selectStorageCategory('config'))}
-      >
-        <span className={styles.addStorageTitle}>挂载配置字典或保密字典</span>
-        <span className={styles.addStorageDescription}>
-          为容器挂载配置字典或保密字典。
-        </span>
-      </button>
-    </div>
-  );
+  const renderStatefulSetConfiguredStorage = () => {
+    const indexedStorageItems = storageItems.map((item, index) => ({
+      index,
+      item,
+    }));
+
+    return (
+      <div className={styles.statefulStorageSections}>
+        {storageActionGroups.map((group) => (
+          <div className={styles.statefulStorageSection} key={group.key}>
+            {indexedStorageItems
+              .filter(({ item }) => group.match(item))
+              .map(({ index, item }) => renderStorageCard(item, index))}
+            {renderStorageActionGrid(
+              group.actions,
+              'add',
+              styles.statefulStorageActionGrid,
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const renderConfiguredStorage = () => (
     <div className={styles.storageList}>
       <div className={styles.storageTitle}>存储设置</div>
       <div className={styles.storageListPanel}>
-        {storageItems.map(renderStorageCard)}
-        {renderAddStorageActions()}
+        {type === 'StatefulSet' ? (
+          renderStatefulSetConfiguredStorage()
+        ) : (
+          <>
+            {storageItems.map(renderStorageCard)}
+            {renderAddStorageActions()}
+          </>
+        )}
       </div>
     </div>
   );

@@ -20,6 +20,29 @@ const useStyles = createStyles(({ token }) => ({
       gridTemplateColumns: '1fr',
     },
   },
+  statefulStorageSections: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 15,
+  },
+  statefulStorageSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+    padding: `14px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorFillQuaternary,
+  },
+  statefulStorageActionGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 15,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
   entryCard: {
     display: 'flex',
     minHeight: 64,
