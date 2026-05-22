@@ -16,7 +16,6 @@ import {
   Empty,
   Form,
   Input,
-  InputNumber,
   Modal,
   Select,
   Spin,
@@ -44,6 +43,7 @@ import ContainerStatusManagement from './components/ContainerStatusManagement';
 import EventTable from './components/EventTable';
 import ReplicaSummary from './components/ReplicaSummary';
 import useWorkloadPods from './components/useWorkloadPods';
+import WorkloadSettingsDrawer from './components/WorkloadSettingsDrawer';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 
@@ -53,10 +53,6 @@ type WorkloadActionKey =
   | 'yaml'
   | 'recreate'
   | 'delete';
-
-type WorkloadSettingsFormValues = {
-  replicas?: number;
-};
 
 type WorkloadRollbackFormValues = {
   target_revision?: number;
@@ -200,7 +196,6 @@ const WorkloadDetail = () => {
   const { message, modal } = App.useApp();
   const intl = useIntl();
   const { styles } = useStyles();
-  const [settingsForm] = Form.useForm<WorkloadSettingsFormValues>();
   const [rollbackForm] = Form.useForm<WorkloadRollbackFormValues>();
   const params = useParams<{
     type?: string;
@@ -213,7 +208,7 @@ const WorkloadDetail = () => {
   const [loading, setLoading] = useState(false);
   const [scaling, setScaling] = useState(false);
   const [actionLoading, setActionLoading] = useState<WorkloadActionKey>();
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
   const [rollbackModalOpen, setRollbackModalOpen] = useState(false);
   const [revisionLoading, setRevisionLoading] = useState(false);
   const [revisions, setRevisions] = useState<API.ClusterWorkloadRevisionItem[]>(
@@ -331,36 +326,6 @@ const WorkloadDetail = () => {
   const refreshDetail = async () => {
     await fetchWorkload();
     await reloadPods();
-  };
-
-  const openSettingsModal = () => {
-    settingsForm.setFieldsValue({
-      replicas: descriptionData?.replicas || 0,
-    });
-    setSettingsModalOpen(true);
-  };
-
-  const handleSaveSettings = async () => {
-    if (!detailParams) {
-      return;
-    }
-
-    const values = await settingsForm.validateFields();
-    const replicas = values.replicas ?? 0;
-
-    setActionLoading('settings');
-    try {
-      const res = await updateClusterWorkloadReplicas({
-        ...detailParams,
-        replicas,
-      });
-      message.success('工作负载设置已更新');
-      setWorkload(res.data);
-      setSettingsModalOpen(false);
-      await refreshDetail();
-    } finally {
-      setActionLoading(undefined);
-    }
   };
 
   const openRollbackModal = async () => {
@@ -570,7 +535,7 @@ const WorkloadDetail = () => {
                 handleRollback();
               }
               if (key === 'settings') {
-                openSettingsModal();
+                setSettingsDrawerOpen(true);
               }
               if (key === 'yaml') {
                 openYamlModal();
@@ -749,25 +714,18 @@ const WorkloadDetail = () => {
           </Form>
         </Spin>
       </Modal>
-      <Modal
-        title="编辑设置"
-        open={settingsModalOpen}
-        confirmLoading={actionLoading === 'settings'}
-        okText="保存"
-        cancelText="取消"
-        onCancel={() => setSettingsModalOpen(false)}
-        onOk={handleSaveSettings}
-      >
-        <Form form={settingsForm} layout="vertical">
-          <Form.Item
-            label="副本数"
-            name="replicas"
-            rules={[{ required: true, message: '请输入副本数' }]}
-          >
-            <InputNumber min={0} precision={0} style={{ width: '100%' }} />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <WorkloadSettingsDrawer
+        name={name}
+        namespace={namespace}
+        open={settingsDrawerOpen}
+        type={type}
+        onCancel={() => setSettingsDrawerOpen(false)}
+        onSaved={async (nextWorkload) => {
+          setWorkload(nextWorkload);
+          setSettingsDrawerOpen(false);
+          await refreshDetail();
+        }}
+      />
       <Drawer
         title={
           <>

@@ -114,6 +114,10 @@ type ContainerSettingsProps = {
   type: API.ClusterWorkloadType;
 };
 
+type WorkloadContainerEditorProps = ContainerSettingsProps & {
+  showTitle?: boolean;
+};
+
 const createRandomContainerName = () => {
   const chars =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -169,7 +173,11 @@ const getInitialContainerValues = (): CreateWorkloadContainerValues => ({
   protocol: 'TCP',
 });
 
-const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
+const WorkloadContainerEditor = ({
+  form,
+  type,
+  showTitle = true,
+}: WorkloadContainerEditorProps) => {
   const { styles } = useStyles();
   const [containerForm] = Form.useForm<CreateWorkloadContainerValues>();
   const [containerModalOpen, setContainerModalOpen] = useState(false);
@@ -287,20 +295,12 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
         </div>
       )}
 
-      <div className={styles.containerTitle}>容器</div>
+      {showTitle && <div className={styles.containerTitle}>容器</div>}
       <ContainerSummaryList
         items={containerItems}
         onAdd={() => openContainerModal(true)}
         onEdit={(_, index) => openContainerModal(false, index)}
       />
-
-      <WorkloadUpdateStrategySelector form={form} type={type} />
-      <PodSecurityContextFields />
-      <PodSchedulingRuleSelector />
-      <PodGracefulTerminationFields />
-      <div style={{ marginBottom: `16px` }}>
-        <PodMetadataFields />
-      </div>
 
       <ContainerConfigModal
         form={containerForm}
@@ -313,4 +313,18 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
   );
 };
 
+const ContainerSettings = ({ form, type }: ContainerSettingsProps) => (
+  <>
+    <WorkloadContainerEditor form={form} type={type} />
+    <WorkloadUpdateStrategySelector form={form} type={type} />
+    <PodSecurityContextFields />
+    <PodSchedulingRuleSelector />
+    <PodGracefulTerminationFields />
+    <div style={{ marginBottom: `16px` }}>
+      <PodMetadataFields />
+    </div>
+  </>
+);
+
+export { WorkloadContainerEditor };
 export default ContainerSettings;

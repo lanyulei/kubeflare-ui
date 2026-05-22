@@ -1,0 +1,265 @@
+import { DownOutlined } from '@ant-design/icons';
+import type { DrawerProps } from 'antd';
+import { Button, Drawer, Spin } from 'antd';
+import { createStyles } from 'antd-style';
+import type { ReactNode } from 'react';
+
+type SettingsNavDrawerSection<Value extends string> = {
+  description: string;
+  icon: ReactNode;
+  key: Value;
+  title: string;
+  content: ReactNode;
+};
+
+type SettingsNavDrawerProps<Value extends string> = {
+  activeKey: Value;
+  cancelText?: string;
+  footerExtra?: ReactNode;
+  loading?: boolean;
+  okButtonIcon?: ReactNode;
+  okButtonLoading?: boolean;
+  okText?: string;
+  open: boolean;
+  sections: SettingsNavDrawerSection<Value>[];
+  title: ReactNode;
+  width?: DrawerProps['width'];
+  onActiveKeyChange: (key: Value) => void;
+  onCancel: () => void;
+  onOk: () => void;
+};
+
+const useStyles = createStyles(({ token }) => ({
+  drawer: {
+    '.ant-drawer-header': {
+      padding: `${token.paddingMD}px ${token.paddingLG}px`,
+    },
+    '.ant-drawer-body': {
+      padding: 0,
+      background: token.colorBgLayout,
+    },
+    '.ant-drawer-footer': {
+      padding: `${token.paddingSM}px ${token.paddingLG}px`,
+      background: token.colorBgContainer,
+    },
+  },
+  layout: {
+    display: 'grid',
+    minHeight: 'calc(100vh - 116px)',
+    gridTemplateColumns: '196px minmax(0, 1fr)',
+    background: token.colorBgLayout,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  nav: {
+    padding: `${token.paddingLG}px ${token.paddingSM}px`,
+    borderRight: `1px solid ${token.colorBorderSecondary}`,
+    background: token.colorFillQuaternary,
+
+    '@media (max-width: 768px)': {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gap: token.marginXS,
+      borderRight: 0,
+      borderBottom: `1px solid ${token.colorBorderSecondary}`,
+      padding: token.paddingSM,
+    },
+  },
+  navItem: {
+    display: 'grid',
+    width: '100%',
+    minHeight: 38,
+    gridTemplateColumns: '24px minmax(0, 1fr)',
+    alignItems: 'center',
+    gap: token.marginSM,
+    marginBottom: token.marginXS,
+    padding: `0 ${token.paddingSM}px`,
+    border: 0,
+    borderRadius: 999,
+    background: 'transparent',
+    color: token.colorTextSecondary,
+    cursor: 'pointer',
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+    textAlign: 'left',
+    transition: `background ${token.motionDurationMid}, color ${token.motionDurationMid}, box-shadow ${token.motionDurationMid}`,
+
+    '&:hover': {
+      background: token.colorFillSecondary,
+      color: token.colorText,
+    },
+
+    '&:focus-visible': {
+      outline: `2px solid ${token.colorPrimaryBorder}`,
+      outlineOffset: 1,
+    },
+
+    '@media (max-width: 768px)': {
+      marginBottom: 0,
+      borderRadius: token.borderRadiusSM,
+    },
+  },
+  navItemActive: {
+    '&&': {
+      background: '#354159',
+      color: token.colorBgContainer,
+      boxShadow: token.boxShadowTertiary,
+    },
+  },
+  navIcon: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 16,
+  },
+  content: {
+    minWidth: 0,
+    padding: token.paddingLG,
+    background: token.colorBgContainer,
+  },
+  section: {
+    display: 'none',
+  },
+  sectionActive: {
+    display: 'block',
+  },
+  sectionCard: {
+    minHeight: 'calc(100vh - 164px)',
+    padding: `${token.paddingMD}px`,
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+  },
+  sectionHeader: {
+    display: 'grid',
+    gridTemplateColumns: '24px minmax(0, 1fr)',
+    alignItems: 'start',
+    gap: token.marginSM,
+    marginBottom: token.marginMD,
+    padding: `${token.paddingSM}px ${token.paddingMD}px`,
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+  },
+  sectionArrow: {
+    marginTop: 2,
+    color: token.colorText,
+    fontSize: 13,
+  },
+  sectionTitle: {
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+  },
+  sectionDescription: {
+    marginTop: token.marginXXS,
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  sectionBody: {
+    padding: `0 ${token.paddingXS}px`,
+  },
+  footer: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: token.marginSM,
+  },
+}));
+
+const SettingsNavDrawer = <Value extends string>({
+  activeKey,
+  cancelText = '取消',
+  footerExtra,
+  loading = false,
+  okButtonIcon,
+  okButtonLoading = false,
+  okText = '保存',
+  open,
+  sections,
+  title,
+  width = '78vw',
+  onActiveKeyChange,
+  onCancel,
+  onOk,
+}: SettingsNavDrawerProps<Value>) => {
+  const { styles, cx } = useStyles();
+
+  return (
+    <Drawer
+      className={styles.drawer}
+      destroyOnHidden
+      footer={
+        <div className={styles.footer}>
+          {footerExtra}
+          <Button onClick={onCancel}>{cancelText}</Button>
+          <Button
+            icon={okButtonIcon}
+            loading={okButtonLoading}
+            type="primary"
+            onClick={onOk}
+          >
+            {okText}
+          </Button>
+        </div>
+      }
+      keyboard={false}
+      maskClosable={false}
+      open={open}
+      title={title}
+      width={width}
+      onClose={onCancel}
+    >
+      <Spin spinning={loading}>
+        <div className={styles.layout}>
+          <nav className={styles.nav}>
+            {sections.map((section) => (
+              <button
+                className={cx(
+                  styles.navItem,
+                  activeKey === section.key && styles.navItemActive,
+                )}
+                key={section.key}
+                type="button"
+                onClick={() => onActiveKeyChange(section.key)}
+              >
+                <span className={styles.navIcon}>{section.icon}</span>
+                <span>{section.title}</span>
+              </button>
+            ))}
+          </nav>
+          <div className={styles.content}>
+            {sections.map((section) => (
+              <section
+                className={cx(
+                  styles.section,
+                  activeKey === section.key && styles.sectionActive,
+                )}
+                key={section.key}
+              >
+                <div className={styles.sectionCard}>
+                  <div className={styles.sectionHeader}>
+                    <DownOutlined className={styles.sectionArrow} />
+                    <div>
+                      <div className={styles.sectionTitle}>{section.title}</div>
+                      <div className={styles.sectionDescription}>
+                        {section.description}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.sectionBody}>{section.content}</div>
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </Spin>
+    </Drawer>
+  );
+};
+
+export type { SettingsNavDrawerProps, SettingsNavDrawerSection };
+export default SettingsNavDrawer;

@@ -18,10 +18,12 @@ import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import SectionTitle from './SectionTitle';
 import SegmentedTabs from './SegmentedTabs';
 import SelectValueEditor from './SelectValueEditor';
+import SettingsNavDrawer from './SettingsNavDrawer';
 import TaintEditor from './TaintEditor';
 import UnitInputNumber from './UnitInputNumber';
 import YamlEditor from './YamlEditor';
 
+export type { SettingsNavDrawerSection } from './SettingsNavDrawer';
 export {
   AvatarDropdown,
   AvatarName,
@@ -39,6 +41,7 @@ export {
   SegmentedTabs,
   SelectLang,
   SelectValueEditor,
+  SettingsNavDrawer,
   TaintEditor,
   UnitInputNumber,
   YamlEditor,

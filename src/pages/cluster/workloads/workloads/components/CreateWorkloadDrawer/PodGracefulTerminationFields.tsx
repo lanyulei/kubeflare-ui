@@ -56,35 +56,78 @@ const useStyles = createStyles(({ token }) => ({
     border: `1px solid ${token.colorBorderSecondary}`,
     background: token.colorFillQuaternary,
   },
+  embedded: {
+    '.ant-form-item': {
+      marginBottom: 0,
+    },
+  },
+  embeddedEnable: {
+    marginBottom: token.marginMD,
+  },
 }));
 
-const PodGracefulTerminationFields = () => {
+type PodGracefulTerminationFieldsProps = {
+  embedded?: boolean;
+};
+
+const PodGracefulTerminationFields = ({
+  embedded = false,
+}: PodGracefulTerminationFieldsProps) => {
   const { styles } = useStyles();
   const form = Form.useFormInstance();
   const enabled = Form.useWatch('enablePodGracefulTermination', form);
   const terminationTip = '设置容器终止前等待的时间，超时后容器将强制终止。';
+  const enableCheckbox = (
+    <Form.Item name="enablePodGracefulTermination" valuePropName="checked">
+      <Checkbox
+        aria-label="启用容器组优雅终止"
+        onChange={(event) => {
+          if (
+            event.target.checked &&
+            form.getFieldValue('terminationGracePeriodSeconds') == null
+          ) {
+            form.setFieldValue('terminationGracePeriodSeconds', 30);
+          }
+        }}
+      >
+        {embedded ? '启用容器组优雅终止' : undefined}
+      </Checkbox>
+    </Form.Item>
+  );
+
+  const terminationConfig = enabled ? (
+    <>
+      <div className={styles.terminationGroupTitle}>终止配置</div>
+      <div className={styles.terminationGroup}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label="终止宽限时间 (s)"
+              name="terminationGracePeriodSeconds"
+              rules={[{ required: true, message: '请输入终止宽限时间' }]}
+            >
+              <InputNumber min={0} precision={0} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+        </Row>
+      </div>
+    </>
+  ) : null;
+
+  if (embedded) {
+    return (
+      <div className={styles.embedded}>
+        <div className={styles.embeddedEnable}>{enableCheckbox}</div>
+        {terminationConfig}
+      </div>
+    );
+  }
 
   return (
     <div className={styles.terminationWrapper}>
       <div className={styles.termination}>
         <div className={styles.terminationHeader}>
-          <Form.Item
-            className={styles.terminationCheckbox}
-            name="enablePodGracefulTermination"
-            valuePropName="checked"
-          >
-            <Checkbox
-              aria-label="启用容器组优雅终止"
-              onChange={(event) => {
-                if (
-                  event.target.checked &&
-                  form.getFieldValue('terminationGracePeriodSeconds') == null
-                ) {
-                  form.setFieldValue('terminationGracePeriodSeconds', 30);
-                }
-              }}
-            />
-          </Form.Item>
+          <div className={styles.terminationCheckbox}>{enableCheckbox}</div>
           <span>
             <div className={styles.terminationTitle}>
               <span>容器组优雅终止</span>
@@ -100,28 +143,7 @@ const PodGracefulTerminationFields = () => {
           </span>
         </div>
 
-        {enabled && (
-          <>
-            <div className={styles.terminationGroupTitle}>终止配置</div>
-            <div className={styles.terminationGroup}>
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    label="终止宽限时间 (s)"
-                    name="terminationGracePeriodSeconds"
-                    rules={[{ required: true, message: '请输入终止宽限时间' }]}
-                  >
-                    <InputNumber
-                      min={0}
-                      precision={0}
-                      style={{ width: '100%' }}
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </div>
-          </>
-        )}
+        {terminationConfig}
       </div>
     </div>
   );
