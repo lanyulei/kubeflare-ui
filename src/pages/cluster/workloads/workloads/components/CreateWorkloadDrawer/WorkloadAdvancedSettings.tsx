@@ -14,6 +14,12 @@ const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     gap: token.marginSM,
   },
+  sectionTitle: {
+    marginBottom: `8px`,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
   option: {
     padding: `12px 16px`,
     border: `1px solid ${token.colorBorder}`,
@@ -142,88 +148,98 @@ const WorkloadAdvancedSettings = ({
   return (
     <div className={styles.stack}>
       {showNodeSelector && (
-        <div className={styles.option}>
-          <div className={styles.optionHeader}>
-            <Form.Item
-              className={styles.checkbox}
-              name="enableNodeSelector"
-              valuePropName="checked"
-            >
-              <Checkbox aria-label="选择节点" />
-            </Form.Item>
-            <span>
-              <div className={styles.title}>选择节点</div>
-              <div className={styles.description}>
-                将容器组副本分配给特定的节点。您可以使用标签选择节点或手动指定节点
-              </div>
-            </span>
-          </div>
-          {enableNodeSelector && (
-            <div className={styles.body}>
-              <Form.Item name="nodeSelectors">
-                <KeyValueEditor
-                  addIcon={false}
-                  addText="添加节点选择器"
-                  deleteAriaLabel="删除节点选择器"
-                  footerExtra={
-                    <Button onClick={() => setNodeModalOpen(true)}>
-                      指定节点
-                    </Button>
-                  }
-                  footerJustify="space-between"
-                  onAddBlocked={() =>
-                    message.warning('请先填写已有节点选择器的键。')
-                  }
-                  onCreateItem={() => createKeyValueItem()}
-                />
+        <div>
+          <div className={styles.sectionTitle}>选择节点</div>
+          <div className={styles.option}>
+            <div className={styles.optionHeader}>
+              <Form.Item
+                className={styles.checkbox}
+                name="enableNodeSelector"
+                valuePropName="checked"
+              >
+                <Checkbox aria-label="选择节点" />
               </Form.Item>
+              <span>
+                <div className={styles.title}>选择节点</div>
+                <div className={styles.description}>
+                  将容器组副本分配给特定的节点。您可以使用标签选择节点或手动指定节点
+                </div>
+              </span>
             </div>
-          )}
+            {enableNodeSelector && (
+              <div className={styles.body}>
+                <Form.Item name="nodeSelectors">
+                  <KeyValueEditor
+                    addIcon={false}
+                    addText="添加节点选择器"
+                    deleteAriaLabel="删除节点选择器"
+                    footerExtra={
+                      <Button onClick={() => setNodeModalOpen(true)}>
+                        指定节点
+                      </Button>
+                    }
+                    footerJustify="space-between"
+                    onAddBlocked={() =>
+                      message.warning('请先填写已有节点选择器的键。')
+                    }
+                    onCreateItem={() => createKeyValueItem()}
+                  />
+                </Form.Item>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      <div className={styles.option}>
-        <button
-          className={styles.optionHeaderButton}
-          type="button"
-          onClick={() => setMetadataOpen((open) => !open)}
-        >
-          <span className={styles.headerIcon}>
-            {metadataOpen ? <UpOutlined /> : <DownOutlined />}
-          </span>
-          <span>
-            <div className={styles.title}>添加元数据</div>
-            <div className={styles.description}>为资源添加元数据</div>
-          </span>
-        </button>
-        {metadataOpen && (
-          <div className={styles.metadataBody}>
-            <div>
-              <div className={styles.fieldLabel}>标签</div>
-              <Form.Item name="labels">
-                <KeyValueEditor
-                  addIcon={false}
-                  addText="添加"
-                  deleteAriaLabel="删除标签"
-                  onAddBlocked={() => message.warning('请先填写已有标签的键。')}
-                  onCreateItem={() => createKeyValueItem()}
-                />
-              </Form.Item>
+      <div>
+        <div className={styles.sectionTitle}>元数据</div>
+        <div className={styles.option}>
+          <button
+            className={styles.optionHeaderButton}
+            type="button"
+            onClick={() => setMetadataOpen((open) => !open)}
+          >
+            <span className={styles.headerIcon}>
+              {metadataOpen ? <UpOutlined /> : <DownOutlined />}
+            </span>
+            <span>
+              <div className={styles.title}>添加元数据</div>
+              <div className={styles.description}>为资源添加元数据</div>
+            </span>
+          </button>
+          {metadataOpen && (
+            <div className={styles.metadataBody}>
+              <div>
+                <div className={styles.fieldLabel}>标签</div>
+                <Form.Item name="labels">
+                  <KeyValueEditor
+                    addIcon={false}
+                    addText="添加"
+                    deleteAriaLabel="删除标签"
+                    onAddBlocked={() =>
+                      message.warning('请先填写已有标签的键。')
+                    }
+                    onCreateItem={() => createKeyValueItem()}
+                  />
+                </Form.Item>
+              </div>
+              <div>
+                <div className={styles.fieldLabel}>注解</div>
+                <Form.Item name="annotations">
+                  <KeyValueEditor
+                    addIcon={false}
+                    addText="添加"
+                    deleteAriaLabel="删除注解"
+                    onAddBlocked={() =>
+                      message.warning('请先填写已有注解的键。')
+                    }
+                    onCreateItem={() => createKeyValueItem()}
+                  />
+                </Form.Item>
+              </div>
             </div>
-            <div>
-              <div className={styles.fieldLabel}>注解</div>
-              <Form.Item name="annotations">
-                <KeyValueEditor
-                  addIcon={false}
-                  addText="添加"
-                  deleteAriaLabel="删除注解"
-                  onAddBlocked={() => message.warning('请先填写已有注解的键。')}
-                  onCreateItem={() => createKeyValueItem()}
-                />
-              </Form.Item>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {showNodeSelector && (
