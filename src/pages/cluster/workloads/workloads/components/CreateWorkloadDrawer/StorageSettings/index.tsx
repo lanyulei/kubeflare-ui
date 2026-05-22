@@ -53,6 +53,7 @@ import {
   getAvailableKeyOptions,
   getMountModeOptions,
   isRelativeVolumeItemPath,
+  isVolumeItemPath,
   KUBERNETES_NAME_PATTERN,
   normalizeContainerMounts,
   STORAGE_QUANTITY_PATTERN,
@@ -340,10 +341,10 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
 
     const nextValue = subPathEditor.value.trim();
 
-    if (nextValue && !isRelativeVolumeItemPath(nextValue)) {
+    if (nextValue && !isVolumeItemPath(nextValue)) {
       setSubPathEditor({
         ...subPathEditor,
-        error: '请使用相对路径，且不能包含 ..',
+        error: '请输入绝对路径或相对路径，且不能包含 ..',
       });
       return;
     }
@@ -637,8 +638,76 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
     setStorageModalOpen(false);
   };
 
+  const validateContainerMountFields = async () => {
+    const mounts =
+      (form.getFieldValue('containerMounts') as WorkloadContainerMountItem[]) ||
+      [];
+    const fieldErrors = mounts.flatMap((mount, index) => {
+      const mountMode = mount.mountMode || 'none';
+
+      if (mountMode === 'none') {
+        return [
+          {
+            errors: [],
+            name: ['containerMounts', index, 'mountPath'],
+          },
+          {
+            errors: [],
+            name: ['containerMounts', index, 'subPath'],
+          },
+        ];
+      }
+
+      const mountPath = mount.mountPath?.trim();
+      const subPath = mount.subPath?.trim();
+      const errors: { errors: string[]; name: (number | string)[] }[] = [];
+
+      if (!mountPath) {
+        errors.push({
+          errors: ['请输入挂载路径'],
+          name: ['containerMounts', index, 'mountPath'],
+        });
+      } else if (!ABSOLUTE_PATH_PATTERN.test(mountPath)) {
+        errors.push({
+          errors: ['请输入以 / 开头的绝对路径'],
+          name: ['containerMounts', index, 'mountPath'],
+        });
+      } else {
+        errors.push({
+          errors: [],
+          name: ['containerMounts', index, 'mountPath'],
+        });
+      }
+
+      if (subPath && !isVolumeItemPath(subPath)) {
+        errors.push({
+          errors: ['请输入绝对路径或相对路径，且不能包含 ..'],
+          name: ['containerMounts', index, 'subPath'],
+        });
+      } else {
+        errors.push({
+          errors: [],
+          name: ['containerMounts', index, 'subPath'],
+        });
+      }
+
+      return errors;
+    });
+    const hasErrors = fieldErrors.some((field) => field.errors.length > 0);
+
+    if (!hasErrors) {
+      form.setFields(fieldErrors as Parameters<typeof form.setFields>[0]);
+      return;
+    }
+
+    form.setFields(fieldErrors as Parameters<typeof form.setFields>[0]);
+    message.warning('请完善挂载路径设置');
+    throw new Error('请完善挂载路径设置');
+  };
+
   const confirmStorageModal = async () => {
     await form.validateFields(storageFieldNames);
+    await validateContainerMountFields();
     const selectedPvc = pvcs.find(
       (item) => item.name === form.getFieldValue('claimName'),
     );
@@ -1170,6 +1239,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
               </Form.Item>
               <Form.Item
                 name={['containerMounts', index, 'mountPath']}
+                dependencies={[['containerMounts', index, 'mountMode']]}
                 rules={
                   disabled
                     ? []
@@ -1218,6 +1288,24 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
                     </Popover>
                   }
                 />
+              </Form.Item>
+              <Form.Item
+                hidden
+                name={['containerMounts', index, 'subPath']}
+                rules={[
+                  {
+                    validator: (_, value) =>
+                      !value || isVolumeItemPath(value)
+                        ? Promise.resolve()
+                        : Promise.reject(
+                            new Error(
+                              '请输入绝对路径或相对路径，且不能包含 ..',
+                            ),
+                          ),
+                  },
+                ]}
+              >
+                <Input />
               </Form.Item>
             </div>
           );

@@ -165,6 +165,17 @@ const isRelativeVolumeItemPath = (value?: string) => {
   );
 };
 
+const isVolumeItemPath = (value?: string) => {
+  const nextValue = value?.trim();
+
+  return Boolean(
+    nextValue &&
+      !nextValue.includes('..') &&
+      (ABSOLUTE_PATH_PATTERN.test(nextValue) ||
+        isRelativeVolumeItemPath(nextValue)),
+  );
+};
+
 const sanitizeVolumeName = (value?: string, fallback = 'storage-volume') => {
   const normalized = (value || fallback)
     .trim()
@@ -189,6 +200,7 @@ export {
   getStorageCategoryFromType,
   isConfigResourceStorage,
   isRelativeVolumeItemPath,
+  isVolumeItemPath,
   isVolumeStorage,
   KUBERNETES_NAME_PATTERN,
   normalizeContainerMounts,
