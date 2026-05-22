@@ -1,10 +1,9 @@
-import { SearchOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Link, useIntl } from '@umijs/max';
-import { Input } from 'antd';
 import { createStyles } from 'antd-style';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { ClusterTableSearch } from '@/components';
 import { getClusterNodeList } from '@/services/kubeflare/cluster/node';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
@@ -145,7 +144,6 @@ const ClusterNodes = () => {
   const keywordRef = useRef('');
   const continueTokenRef = useRef<Record<number, string>>({ 1: '' });
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
-  const [keywordDraft, setKeywordDraft] = useState('');
   const statusDotClassNames = {
     default: styles.statusDotDefault,
     error: styles.statusDotError,
@@ -297,20 +295,14 @@ const ClusterNodes = () => {
           };
         }}
         headerTitle={
-          <Input
-            allowClear
-            value={keywordDraft}
-            suffix={<SearchOutlined />}
+          <ClusterTableSearch
             style={{ width: 260 }}
             placeholder={intl.formatMessage({
               id: 'pages.cluster.nodes.search.placeholder',
               defaultMessage: '搜索节点名称 / IP 地址',
             })}
-            onChange={(event) => {
-              setKeywordDraft(event.target.value);
-            }}
-            onPressEnter={(event) => {
-              keywordRef.current = event.currentTarget.value.trim();
+            onSearch={(value) => {
+              keywordRef.current = value;
               continueTokenRef.current = { 1: '' };
               actionRef.current?.reloadAndRest?.();
             }}

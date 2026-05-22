@@ -75,64 +75,6 @@ export const formatCreateTime = (value?: string) => {
   return time.isValid() ? time.format('YYYY-MM-DD HH:mm:ss') : value;
 };
 
-export const formatRelativeTime = (value?: string) => {
-  if (!value) {
-    return '-';
-  }
-  const time = dayjs(value);
-  if (!time.isValid()) {
-    return value;
-  }
-
-  const diffSeconds = Math.max(0, dayjs().diff(time, 'second'));
-  const diffDays = Math.floor(diffSeconds / 86400);
-  if (diffDays > 0) {
-    return `${diffDays} 天前`;
-  }
-  const diffHours = Math.floor(diffSeconds / 3600);
-  if (diffHours > 0) {
-    return `${diffHours} 小时前`;
-  }
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes > 0) {
-    return `${diffMinutes} 分钟前`;
-  }
-  return '刚刚';
-};
-
-export const getEventTypeLabel = (type?: string) => {
-  const normalizedType = type?.toLowerCase();
-
-  if (normalizedType === 'normal') {
-    return '正常';
-  }
-  if (normalizedType === 'warning') {
-    return '警告';
-  }
-  return type || '-';
-};
-
-export const matchEventKeyword = (
-  event: API.ClusterNodeEventItem,
-  keyword?: string,
-) => {
-  const normalizedKeyword = keyword?.trim().toLowerCase();
-
-  if (!normalizedKeyword) {
-    return true;
-  }
-
-  return [
-    event.type,
-    getEventTypeLabel(event.type),
-    event.reason,
-    event.source,
-    event.message,
-  ]
-    .filter(Boolean)
-    .some((value) => value?.toLowerCase().includes(normalizedKeyword));
-};
-
 export const getTaintEffect = (effect?: string): TaintEffect => {
   if (
     effect === 'NoSchedule' ||

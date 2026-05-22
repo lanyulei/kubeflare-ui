@@ -75,28 +75,6 @@ const useStyles = createStyles(({ token }) => ({
       margin: `${token.marginSM}px 0 0`,
     },
   },
-  eventType: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: token.marginXS,
-    color: token.colorText,
-    whiteSpace: 'nowrap',
-  },
-  eventTypeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    flex: '0 0 auto',
-  },
-  eventTypeNormal: {
-    backgroundColor: token.colorSuccess,
-  },
-  eventTypeWarning: {
-    backgroundColor: token.colorWarning,
-  },
-  eventTypeError: {
-    backgroundColor: token.colorError,
-  },
 }));
 
 export default useStyles;

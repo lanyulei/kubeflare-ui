@@ -1,10 +1,11 @@
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Link, useIntl } from '@umijs/max';
-import { Button, Input, message, Select, Space } from 'antd';
+import { Button, message, Select, Space } from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ClusterTableSearch } from '@/components';
 import { getClusterNamespaceList } from '@/services/kubeflare/cluster/namespace';
 import {
   createClusterWorkload,
@@ -168,7 +169,6 @@ const Workloads = () => {
   const keywordRef = useRef('');
   const namespaceRef = useRef<string | undefined>(undefined);
   const activeWorkloadTypeRef = useRef<API.ClusterWorkloadType>('Deployment');
-  const [keywordDraft, setKeywordDraft] = useState('');
   const [namespaceValue, setNamespaceValue] = useState(ALL_NAMESPACES_VALUE);
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
@@ -389,20 +389,14 @@ const Workloads = () => {
                 actionRef.current?.reloadAndRest?.();
               }}
             />
-            <Input
-              allowClear
-              value={keywordDraft}
-              suffix={<SearchOutlined />}
+            <ClusterTableSearch
               style={{ width: 260 }}
               placeholder={intl.formatMessage({
                 id: 'pages.cluster.workloads.search.placeholder',
                 defaultMessage: '搜索工作负载名称',
               })}
-              onChange={(event) => {
-                setKeywordDraft(event.target.value);
-              }}
-              onPressEnter={(event) => {
-                keywordRef.current = event.currentTarget.value.trim();
+              onSearch={(value) => {
+                keywordRef.current = value;
                 actionRef.current?.reloadAndRest?.();
               }}
             />

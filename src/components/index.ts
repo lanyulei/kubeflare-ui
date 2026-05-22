@@ -5,8 +5,10 @@
 /**
  * 布局组件
  */
+import ClusterEventTable from './ClusterEventTable';
 import ClusterMetadata from './ClusterMetadata';
 import ClusterPodList from './ClusterPodList';
+import ClusterTableSearch from './ClusterTableSearch';
 import ComputeQuotaFields from './ComputeQuotaFields';
 import Footer from './Footer';
 import KeyValueEditor from './KeyValueEditor';
@@ -22,9 +24,11 @@ import YamlEditor from './YamlEditor';
 export {
   AvatarDropdown,
   AvatarName,
+  ClusterEventTable,
   ClusterMetadata,
   ClusterPodList,
   ClusterSwitch,
+  ClusterTableSearch,
   ComputeQuotaFields,
   Footer,
   KeyValueEditor,

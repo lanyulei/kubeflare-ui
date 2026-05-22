@@ -1,8 +1,4 @@
-import {
-  DeleteOutlined,
-  PlusOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import {
   ModalForm,
@@ -11,9 +7,10 @@ import {
   ProTable,
 } from '@ant-design/pro-components';
 import { Link, useIntl } from '@umijs/max';
-import { App, Button, Input, Space } from 'antd';
+import { App, Button, Space } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useRef, useState } from 'react';
+import { ClusterTableSearch } from '@/components';
 import {
   createClusterNamespace,
   deleteClusterNamespace,
@@ -127,7 +124,6 @@ const Namespaces = () => {
   const keywordRef = useRef('');
   const continueTokenRef = useRef<Record<number, string>>({ 1: '' });
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
-  const [keywordDraft, setKeywordDraft] = useState('');
   const [createVisible, setCreateVisible] = useState(false);
   const statusDotClassNames = {
     default: styles.statusDotDefault,
@@ -321,20 +317,14 @@ const Namespaces = () => {
                 defaultMessage: '新建',
               })}
             </Button>
-            <Input
-              allowClear
-              value={keywordDraft}
-              suffix={<SearchOutlined />}
+            <ClusterTableSearch
               style={{ width: 260 }}
               placeholder={intl.formatMessage({
                 id: 'pages.cluster.namespaces.search.placeholder',
                 defaultMessage: '搜索命名空间名称',
               })}
-              onChange={(event) => {
-                setKeywordDraft(event.target.value);
-              }}
-              onPressEnter={(event) => {
-                keywordRef.current = event.currentTarget.value.trim();
+              onSearch={(value) => {
+                keywordRef.current = value;
                 continueTokenRef.current = { 1: '' };
                 actionRef.current?.reloadAndRest?.();
               }}
