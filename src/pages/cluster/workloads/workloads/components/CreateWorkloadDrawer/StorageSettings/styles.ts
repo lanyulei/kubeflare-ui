@@ -100,10 +100,6 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: 15,
-    padding: 14,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusSM,
-    background: token.colorFillQuaternary,
   },
   storageCard: {
     padding: `12px 16px 16px`,

@@ -792,20 +792,21 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
         {isEntry && action.icon && (
           <span className={styles.entryIcon}>{action.icon}</span>
         )}
-        <span className={isEntry ? styles.entryContent : undefined}>
-          <span
-            className={isEntry ? styles.entryTitle : styles.addStorageTitle}
-          >
-            {action.title}
+        {isEntry ? (
+          <span className={styles.entryContent}>
+            <span className={styles.entryTitle}>{action.title}</span>
+            <span className={styles.entryDescription}>
+              {action.description}
+            </span>
           </span>
-          <span
-            className={
-              isEntry ? styles.entryDescription : styles.addStorageDescription
-            }
-          >
-            {action.description}
-          </span>
-        </span>
+        ) : (
+          <>
+            <span className={styles.addStorageTitle}>{action.title}</span>
+            <span className={styles.addStorageDescription}>
+              {action.description}
+            </span>
+          </>
+        )}
       </button>
     );
   };
