@@ -80,6 +80,7 @@ const WorkloadSettingsDrawer = ({
           <WorkloadUpdateStrategySelector
             form={form as FormInstance}
             label="策略类型"
+            marginTop={0}
             type={type}
           />
         ),
@@ -105,7 +106,7 @@ const WorkloadSettingsDrawer = ({
         icon: <ClusterOutlined />,
         title: '容器组调度规则',
         description: '设置容器组副本调度到节点的规则。',
-        content: <PodSchedulingRuleSelector label="规则类型" />,
+        content: <PodSchedulingRuleSelector label="规则类型" marginTop={0} />,
       },
       {
         key: 'termination',

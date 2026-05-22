@@ -1,4 +1,3 @@
-import { DownOutlined } from '@ant-design/icons';
 import type { DrawerProps } from 'antd';
 import { Button, Drawer, Spin } from 'antd';
 import { createStyles } from 'antd-style';
@@ -127,41 +126,9 @@ const useStyles = createStyles(({ token }) => ({
   },
   sectionCard: {
     minHeight: 'calc(100vh - 164px)',
-    padding: `${token.paddingMD}px`,
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: token.borderRadiusSM,
-    background: token.colorBgContainer,
-  },
-  sectionHeader: {
-    display: 'grid',
-    gridTemplateColumns: '24px minmax(0, 1fr)',
-    alignItems: 'start',
-    gap: token.marginSM,
-    marginBottom: token.marginMD,
-    padding: `${token.paddingSM}px ${token.paddingMD}px`,
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: token.borderRadiusSM,
-    background: token.colorBgContainer,
-  },
-  sectionArrow: {
-    marginTop: 2,
-    color: token.colorText,
-    fontSize: 13,
-  },
-  sectionTitle: {
-    color: token.colorText,
-    fontSize: token.fontSizeSM,
-    fontWeight: 600,
-    lineHeight: token.lineHeight,
-  },
-  sectionDescription: {
-    marginTop: token.marginXXS,
-    color: token.colorTextTertiary,
-    fontSize: token.fontSizeSM,
-    lineHeight: token.lineHeight,
   },
   sectionBody: {
-    padding: `0 ${token.paddingXS}px`,
+    minWidth: 0,
   },
   footer: {
     display: 'flex',
@@ -241,15 +208,6 @@ const SettingsNavDrawer = <Value extends string>({
                 key={section.key}
               >
                 <div className={styles.sectionCard}>
-                  <div className={styles.sectionHeader}>
-                    <DownOutlined className={styles.sectionArrow} />
-                    <div>
-                      <div className={styles.sectionTitle}>{section.title}</div>
-                      <div className={styles.sectionDescription}>
-                        {section.description}
-                      </div>
-                    </div>
-                  </div>
                   <div className={styles.sectionBody}>{section.content}</div>
                 </div>
               </section>

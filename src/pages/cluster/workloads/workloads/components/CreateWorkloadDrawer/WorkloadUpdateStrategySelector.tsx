@@ -7,6 +7,7 @@ import type { FormInstance } from 'antd';
 import { Col, Form, Input, InputNumber, Row, Tooltip } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
+import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { WorkloadUpdateStrategyType } from './types';
 
@@ -131,6 +132,7 @@ type WorkloadUpdateStrategySelectorProps = {
   maxUnavailableName?: NamePath;
   maxSurgeName?: NamePath;
   minReadySecondsName?: NamePath;
+  marginTop?: CSSProperties['marginTop'];
   updatePartitionName?: NamePath;
 };
 
@@ -161,6 +163,7 @@ const WorkloadUpdateStrategySelector = ({
   maxUnavailableName = 'maxUnavailable',
   maxSurgeName = 'maxSurge',
   minReadySecondsName = 'minReadySeconds',
+  marginTop,
   updatePartitionName = 'updatePartition',
 }: WorkloadUpdateStrategySelectorProps) => {
   const { styles } = useStyles();
@@ -221,7 +224,10 @@ const WorkloadUpdateStrategySelector = ({
   );
 
   return (
-    <div className={styles.updateStrategy}>
+    <div
+      className={styles.updateStrategy}
+      style={marginTop !== undefined ? { marginTop } : undefined}
+    >
       <div className={styles.updateStrategyLabel}>
         <span>{label}</span>
         <Tooltip title="配置工作负载更新容器组副本时采用的策略">

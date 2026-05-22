@@ -7,7 +7,7 @@ import {
 import { Button, Form, Input, message, Select, Tooltip } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
 import type { WorkloadSchedulingCustomRule } from './types';
@@ -16,6 +16,7 @@ type PodSchedulingRuleType = 'default' | 'spread' | 'centralized' | 'custom';
 
 type PodSchedulingRuleSelectorProps = {
   label?: string;
+  marginTop?: CSSProperties['marginTop'];
   name?: NamePath;
 };
 
@@ -219,6 +220,7 @@ const customStrategyOptions = [
 
 const PodSchedulingRuleSelector = ({
   label = '容器组调度规则',
+  marginTop,
   name = 'podSchedulingRule',
 }: PodSchedulingRuleSelectorProps) => {
   const { styles } = useStyles();
@@ -379,7 +381,10 @@ const PodSchedulingRuleSelector = ({
   );
 
   return (
-    <div className={styles.schedulingRules}>
+    <div
+      className={styles.schedulingRules}
+      style={marginTop !== undefined ? { marginTop } : undefined}
+    >
       <div className={styles.schedulingLabel}>
         <span>{label}</span>
         <Tooltip title="设置容器组副本调度到节点的规则">
