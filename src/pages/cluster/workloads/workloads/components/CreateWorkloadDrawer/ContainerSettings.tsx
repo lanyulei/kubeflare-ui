@@ -229,18 +229,16 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
     await containerForm.validateFields(
       containerPorts.flatMap((_: unknown, index: number) => [
         ['containerPorts', index, 'containerPort'],
+        ...(type === 'StatefulSet'
+          ? [['containerPorts', index, 'servicePort']]
+          : []),
       ]),
     );
     const rawContainerValues = {
       ...containerForm.getFieldsValue(true),
       id: containers[editingContainerIndex ?? -1]?.id || createContainerId(),
     } as CreateWorkloadContainerValues;
-    const containerValues = {
-      ...rawContainerValues,
-      containerPorts: rawContainerValues.containerPorts?.map(
-        ({ servicePort: _servicePort, ...port }) => port,
-      ),
-    };
+    const containerValues = rawContainerValues;
     const nextContainers = [...containers];
     if (editingContainerIndex === null) {
       nextContainers.push(containerValues);
@@ -307,6 +305,7 @@ const ContainerSettings = ({ form, type }: ContainerSettingsProps) => {
       <ContainerConfigModal
         form={containerForm}
         open={containerModalOpen}
+        type={type}
         onCancel={cancelContainerModal}
         onOk={saveContainerModal}
       />

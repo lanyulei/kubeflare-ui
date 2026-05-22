@@ -36,7 +36,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'grid',
     minHeight: 46,
     gridTemplateColumns:
-      'minmax(192px, 0.9fr) minmax(148px, 1fr) minmax(148px, 0.9fr) 40px',
+      'minmax(180px, 0.9fr) minmax(136px, 1fr) minmax(136px, 0.8fr) minmax(136px, 0.8fr) 40px',
     alignItems: 'center',
     gap: token.marginSM,
     padding: `${token.paddingXS}px ${token.paddingMD}px`,
@@ -145,13 +145,20 @@ const useStyles = createStyles(({ token }) => ({
   },
 }));
 
+const getPortRowColumns = (showServicePort: boolean) =>
+  showServicePort
+    ? 'minmax(180px, 0.9fr) minmax(136px, 1fr) minmax(136px, 0.8fr) minmax(136px, 0.8fr) 40px'
+    : 'minmax(192px, 0.9fr) minmax(148px, 1fr) minmax(148px, 0.9fr) 40px';
+
 const getDefaultPort = (index: number) => ({
   protocol: 'HTTP',
   name: `http-${index}`,
 });
 
-const isPortItemIncomplete = (item: ContainerPortItem | undefined) =>
-  !item?.containerPort;
+const isPortItemIncomplete = (
+  item: ContainerPortItem | undefined,
+  showServicePort: boolean,
+) => !item?.containerPort || (showServicePort && !item?.servicePort);
 
 type CompactFieldProps = {
   addonClassName: string;
@@ -174,7 +181,13 @@ const CompactField = ({
   );
 };
 
-const ContainerPortFields = () => {
+type ContainerPortFieldsProps = {
+  showServicePort?: boolean;
+};
+
+const ContainerPortFields = ({
+  showServicePort = false,
+}: ContainerPortFieldsProps) => {
   const { styles } = useStyles();
   const form = Form.useFormInstance();
   const containerPorts =
@@ -182,7 +195,9 @@ const ContainerPortFields = () => {
       form,
       preserve: true,
     }) as ContainerPortItem[]) || [];
-  const addDisabled = containerPorts.some(isPortItemIncomplete);
+  const addDisabled = containerPorts.some((item) =>
+    isPortItemIncomplete(item, showServicePort),
+  );
 
   return (
     <div className={styles.ports}>
@@ -193,7 +208,13 @@ const ContainerPortFields = () => {
               style={{ display: 'flex', flexDirection: 'column', gap: `12px` }}
             >
               {fields.map((field) => (
-                <div className={styles.portRow} key={field.key}>
+                <div
+                  className={styles.portRow}
+                  key={field.key}
+                  style={{
+                    gridTemplateColumns: getPortRowColumns(showServicePort),
+                  }}
+                >
                   <div className={styles.formItem}>
                     <CompactField
                       addonClassName={styles.addon}
@@ -259,6 +280,31 @@ const ContainerPortFields = () => {
                       </Form.Item>
                     </CompactField>
                   </Form.Item>
+                  {showServicePort && (
+                    <Form.Item className={styles.formItem}>
+                      <CompactField
+                        addonClassName={styles.addon}
+                        compactFieldClassName={styles.compactField}
+                        label="服务端口"
+                      >
+                        <Form.Item
+                          name={[field.name, 'servicePort']}
+                          noStyle
+                          rules={[
+                            { required: true, message: '请输入服务端口' },
+                            ...PORT_NUMBER_RULES,
+                          ]}
+                        >
+                          <InputNumber
+                            min={1}
+                            max={65535}
+                            placeholder="必填"
+                            precision={0}
+                          />
+                        </Form.Item>
+                      </CompactField>
+                    </Form.Item>
+                  )}
                   <Button
                     aria-label="删除端口"
                     className={styles.deleteButton}
@@ -276,10 +322,11 @@ const ContainerPortFields = () => {
                 onClick={async () => {
                   try {
                     await form.validateFields(
-                      fields.map((field) => [
-                        'containerPorts',
-                        field.name,
-                        'containerPort',
+                      fields.flatMap((field) => [
+                        ['containerPorts', field.name, 'containerPort'],
+                        ...(showServicePort
+                          ? [['containerPorts', field.name, 'servicePort']]
+                          : []),
                       ]),
                     );
                     add(getDefaultPort(fields.length));
