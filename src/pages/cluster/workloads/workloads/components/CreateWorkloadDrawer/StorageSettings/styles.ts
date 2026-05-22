@@ -102,7 +102,7 @@ const useStyles = createStyles(({ token }) => ({
     gap: 15,
   },
   storageCard: {
-    padding: `12px 16px 16px`,
+    padding: `5px 16px 0px`,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,

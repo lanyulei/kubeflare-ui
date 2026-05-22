@@ -1629,7 +1629,9 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
           />
         </div>
       </div>
-      {renderStorageMounts(item)}
+      <div style={{marginBottom: 15}}>
+        {renderStorageMounts(item)}
+      </div>
     </div>
   );
 
