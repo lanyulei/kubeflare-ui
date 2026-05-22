@@ -53,16 +53,13 @@ const useStyles = createStyles(({ token }) => ({
     },
   },
   nav: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.marginXS,
     padding: token.paddingLG,
     borderRight: `1px solid ${token.colorBorderSecondary}`,
     background: token.colorBgContainer,
 
     '@media (max-width: 768px)': {
       display: 'grid',
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gridTemplateColumns: '1fr',
       gap: token.marginXS,
       borderRight: 0,
       borderBottom: `1px solid ${token.colorBorderSecondary}`,
@@ -72,22 +69,24 @@ const useStyles = createStyles(({ token }) => ({
   navItem: {
     display: 'grid',
     width: '100%',
-    minHeight: 64,
+    minHeight: 48,
     gridTemplateColumns: '34px minmax(0, 1fr)',
     alignItems: 'center',
     gap: token.marginSM,
+    marginBottom: token.marginSM,
     padding: `0 ${token.padding}px`,
     border: 0,
     borderRadius: token.borderRadiusSM,
     background: 'transparent',
-    color: token.colorText,
+    color: token.colorTextSecondary,
     cursor: 'pointer',
-    textAlign: 'left',
     font: 'inherit',
-    transition: `background ${token.motionDurationMid}, box-shadow ${token.motionDurationMid}`,
+    textAlign: 'left',
+    transition: `background ${token.motionDurationMid}, color ${token.motionDurationMid}, box-shadow ${token.motionDurationMid}`,
 
     '&:hover': {
       background: token.colorFillQuaternary,
+      color: token.colorText,
     },
 
     '&:focus-visible': {
@@ -96,17 +95,15 @@ const useStyles = createStyles(({ token }) => ({
     },
 
     '@media (max-width: 768px)': {
-      minHeight: 58,
+      marginBottom: 0,
+      borderRadius: token.borderRadiusSM,
     },
   },
   navItemActive: {
     '&&': {
       background: token.colorFillAlter,
+      color: token.colorText,
       boxShadow: `inset 3px 0 0 ${token.colorPrimary}`,
-    },
-
-    '&&:hover': {
-      background: token.colorFillAlter,
     },
   },
   navIcon: {
@@ -117,27 +114,18 @@ const useStyles = createStyles(({ token }) => ({
     height: 34,
     borderRadius: token.borderRadiusLG,
     color: token.colorTextSecondary,
-    background: token.colorFillSecondary,
+    backgroundColor: token.colorFillSecondary,
     fontSize: 18,
   },
   navText: {
     display: 'flex',
     minWidth: 0,
-    flexDirection: 'column',
   },
   navTitle: {
     overflow: 'hidden',
     color: token.colorText,
     fontSize: token.fontSize,
     fontWeight: 600,
-    lineHeight: 1.5,
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  navDescription: {
-    overflow: 'hidden',
-    color: token.colorTextTertiary,
-    fontSize: token.fontSizeSM,
     lineHeight: 1.5,
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -214,7 +202,6 @@ const SettingsNavDrawer = <Value extends string>({
           <nav className={styles.nav}>
             {sections.map((section) => (
               <button
-                aria-pressed={activeKey === section.key}
                 className={cx(
                   styles.navItem,
                   activeKey === section.key && styles.navItemActive,
@@ -226,9 +213,6 @@ const SettingsNavDrawer = <Value extends string>({
                 <span className={styles.navIcon}>{section.icon}</span>
                 <span className={styles.navText}>
                   <span className={styles.navTitle}>{section.title}</span>
-                  <span className={styles.navDescription}>
-                    {section.description}
-                  </span>
                 </span>
               </button>
             ))}
