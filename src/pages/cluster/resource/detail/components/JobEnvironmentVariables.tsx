@@ -14,17 +14,19 @@ const useStyles = createStyles(({ token }) => ({
   list: {
     display: 'flex',
     flexDirection: 'column',
-    gap: token.marginSM,
+    gap: 18,
   },
   item: {
     padding: 0,
+  },
+  itemWithSpacing: {
+    marginTop: 16,
   },
   header: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 40,
-    marginBottom: 0,
+    minHeight: 20,
   },
   toggle: {
     display: 'flex',
@@ -49,15 +51,16 @@ const useStyles = createStyles(({ token }) => ({
   title: {
     display: 'inline-flex',
     alignItems: 'center',
+    height: 20,
     minWidth: 0,
     gap: token.marginSM,
     color: token.colorText,
-    fontSize: 15,
-    fontWeight: 600,
+    fontSize: 14,
+    // fontWeight: 600,
   },
   icon: {
     color: token.colorTextSecondary,
-    fontSize: 18,
+    fontSize: 16,
   },
   content: {
     marginTop: token.marginSM,
@@ -145,13 +148,18 @@ const JobEnvironmentVariables = ({
 
   return (
     <div className={styles.list}>
-      {containers.map((container) => {
+      {containers.map((container, index) => {
         const expanded = expandedContainerName === container.name;
 
         return (
-          <div className={styles.item} key={container.name}>
+          <div
+            className={`${styles.item} ${
+              index > 0 ? styles.itemWithSpacing : ''
+            }`}
+            key={container.name}
+          >
             <div className={styles.header}>
-              <SectionTitle color={'#36435C'} fontSize={12}>
+              <SectionTitle color={'#36435C'} style={{ marginBottom: 0 }} fontSize={12}>
                 <button
                   aria-expanded={expanded}
                   className={styles.toggle}
