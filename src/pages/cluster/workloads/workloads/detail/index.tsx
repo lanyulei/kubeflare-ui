@@ -23,7 +23,7 @@ import {
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useState } from 'react';
 import { parse, stringify } from 'yaml';
-import { SectionTitle, YamlEditor } from '@/components';
+import { ReplicaSummary, SectionTitle, YamlEditor } from '@/components';
 import {
   deleteClusterWorkload,
   getClusterWorkloadDetail,
@@ -41,7 +41,6 @@ import {
 import ContainerReplicas from './components/ContainerReplicas';
 import ContainerStatusManagement from './components/ContainerStatusManagement';
 import EventTable from './components/EventTable';
-import ReplicaSummary from './components/ReplicaSummary';
 import useWorkloadPods from './components/useWorkloadPods';
 import WorkloadSettingsDrawer from './components/WorkloadSettingsDrawer';
 
@@ -566,7 +565,11 @@ const WorkloadDetail = () => {
               <div className={styles.basicInfoContent}>
                 <ReplicaSummary
                   loading={scaling}
-                  workload={descriptionData}
+                  data={{
+                    desiredReplicas: descriptionData.replicas,
+                    currentReplicas: descriptionData.ready_replicas,
+                    scalable: descriptionData.type !== 'DaemonSet',
+                  }}
                   onScale={handleScaleReplicas}
                 />
                 <ProDescriptions<API.ClusterWorkloadItem>

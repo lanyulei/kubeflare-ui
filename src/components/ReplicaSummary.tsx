@@ -2,9 +2,16 @@ import { MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Progress, Tooltip, theme } from 'antd';
 import { createStyles } from 'antd-style';
 
+export type ReplicaSummaryData = {
+  desiredReplicas?: number;
+  currentReplicas?: number;
+  scalable?: boolean;
+};
+
 type ReplicaSummaryProps = {
   loading?: boolean;
-  workload?: API.ClusterWorkloadItem;
+  data?: ReplicaSummaryData;
+  disabledReason?: string;
   onScale?: (replicas: number) => void;
 };
 
@@ -29,7 +36,6 @@ const useStyles = createStyles(({ token }) => ({
     right: 0,
     bottom: 0,
     width: 72,
-    // background: token.colorPrimaryBgHover,
     opacity: 0.32,
   },
   progress: {
@@ -110,14 +116,15 @@ const getReplicaPercent = (current: number, desired: number) => {
 
 const ReplicaSummary = ({
   loading = false,
-  workload,
+  data,
+  disabledReason = '该类型不支持手动调整副本',
   onScale,
 }: ReplicaSummaryProps) => {
   const { styles } = useStyles();
   const { token } = theme.useToken();
-  const desiredReplicas = workload?.replicas || 0;
-  const currentReplicas = workload?.ready_replicas || 0;
-  const canScale = Boolean(workload && workload.type !== 'DaemonSet');
+  const desiredReplicas = data?.desiredReplicas || 0;
+  const currentReplicas = data?.currentReplicas || 0;
+  const canScale = Boolean(data?.scalable && onScale);
   const canScaleDown = canScale && desiredReplicas > 0;
 
   return (
@@ -141,7 +148,7 @@ const ReplicaSummary = ({
         </div>
       </div>
       <div className={styles.actions}>
-        <Tooltip title={canScale ? '增加副本' : '该类型不支持手动调整副本'}>
+        <Tooltip title={canScale ? '增加副本' : disabledReason}>
           <Button
             className={styles.actionButton}
             disabled={!canScale}
@@ -152,7 +159,7 @@ const ReplicaSummary = ({
             type="text"
           />
         </Tooltip>
-        <Tooltip title={canScale ? '减少副本' : '该类型不支持手动调整副本'}>
+        <Tooltip title={canScale ? '减少副本' : disabledReason}>
           <Button
             className={styles.actionButton}
             disabled={!canScaleDown}

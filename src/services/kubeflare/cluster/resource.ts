@@ -57,6 +57,9 @@ type KubernetesPod = {
 
 type KubernetesJob = {
   metadata?: KubernetesMetadata
+  spec?: {
+    parallelism?: number
+  }
   status?: {
     active?: number
     succeeded?: number
@@ -893,6 +896,37 @@ export async function getClusterResourceManifest(
     method: 'GET',
     ...(options || {}),
     headers: getClusterHeaders(clusterId, options),
+  })
+}
+
+export async function updateClusterJobReplicas(
+  params: API.UpdateClusterJobReplicasParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, name, replicas } = params
+  const url = getDetailResourcePath('Job', name, namespace)
+
+  if (!clusterId || !namespace || !url) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(url, {
+    method: 'PATCH',
+    data: {
+      spec: {
+        parallelism: replicas,
+      },
+    },
+    ...(options || {}),
+    headers: {
+      ...getClusterHeaders(clusterId, options),
+      'Content-Type': 'application/merge-patch+json',
+    },
   })
 }
 

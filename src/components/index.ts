@@ -13,6 +13,7 @@ import ComputeQuotaFields from './ComputeQuotaFields';
 import Footer from './Footer';
 import KeyValueEditor from './KeyValueEditor';
 import KeyValueList from './KeyValueList';
+import ReplicaSummary from './ReplicaSummary';
 import { ClusterSwitch, Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import SectionTitle from './SectionTitle';
@@ -37,6 +38,7 @@ export {
   KeyValueEditor,
   KeyValueList,
   Question,
+  ReplicaSummary,
   SectionTitle,
   SegmentedTabs,
   SelectLang,

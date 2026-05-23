@@ -793,8 +793,13 @@ export async function getClusterNodePodList(
     } as API.ApiResponse<API.ClusterNodePodListData>
   }
 
-  const { nodeName, ...restParams } = params || {}
-  const fieldSelector = nodeName ? `spec.nodeName=${nodeName}` : undefined
+  const { nodeName, namespace, ...restParams } = params || {}
+  const fieldSelectors = [
+    nodeName ? `spec.nodeName=${nodeName}` : undefined,
+    namespace ? `metadata.namespace=${namespace}` : undefined,
+  ].filter(Boolean)
+  const fieldSelector =
+    fieldSelectors.length > 0 ? fieldSelectors.join(',') : undefined
 
   const res = await request<API.ApiResponse<KubernetesPodList>>(
     '/kapi/v1/pods',

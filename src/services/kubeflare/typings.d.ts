@@ -301,6 +301,8 @@ declare namespace API {
 
   type ClusterNodePodListParams = {
     nodeName?: string
+    namespace?: string
+    labelSelector?: string
     limit?: number
     continue?: string
   }
@@ -667,6 +669,12 @@ declare namespace API {
     type: ClusterResourceCreateType
     namespace?: string
     name: string
+  }
+
+  type UpdateClusterJobReplicasParams = {
+    namespace: string
+    name: string
+    replicas: number
   }
 
   type ClusterServiceItem = {
