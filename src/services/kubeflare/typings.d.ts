@@ -538,6 +538,10 @@ declare namespace API {
   type ClusterStorageClassItem = {
     name: string
     provisioner?: string
+    storage_type?: string
+    persistent_volume_claim_count?: number
+    allow_volume_clone?: boolean
+    allow_volume_expansion?: boolean
   }
 
   type ClusterStorageClassListData = {
@@ -558,7 +562,9 @@ declare namespace API {
     storageClassName?: string
     capacity?: string
     accessModes?: string[]
+    volume_name?: string
     status?: string
+    mounted?: boolean
     create_time?: string
   }
 
@@ -595,6 +601,101 @@ declare namespace API {
     keyword?: string
     limit?: number
     continue?: string
+  }
+
+  type ClusterResourceListData<T> = {
+    items: T[]
+    continue?: string
+    remainingItemCount?: number
+  }
+
+  type ClusterResourceListParams = {
+    keyword?: string
+    namespace?: string
+    limit?: number
+    continue?: string
+  }
+
+  type ClusterJobItem = {
+    id?: string
+    name: string
+    namespace?: string
+    status?: string
+    last_run_time?: string
+  }
+
+  type ClusterCronJobItem = {
+    id?: string
+    name: string
+    namespace?: string
+    status?: string
+    schedule?: string
+    create_time?: string
+  }
+
+  type ClusterPodItem = {
+    id?: string
+    name: string
+    namespace?: string
+    status?: string
+    node_name?: string
+    pod_ip?: string
+    create_time?: string
+    update_time?: string
+  }
+
+  type ClusterResourceCreateType =
+    | 'Job'
+    | 'CronJob'
+    | 'Pod'
+    | 'Service'
+    | 'Ingress'
+    | 'Secret'
+    | 'ConfigMap'
+    | 'ServiceAccount'
+    | 'CustomResourceDefinition'
+    | 'PersistentVolumeClaim'
+    | 'StorageClass'
+
+  type CreateClusterResourceParams = {
+    type: ClusterResourceCreateType
+    namespace?: string
+    manifest: Record<string, unknown>
+  }
+
+  type ClusterServiceItem = {
+    id?: string
+    name: string
+    namespace?: string
+    internal_access?: string
+    external_access?: string
+    create_time?: string
+  }
+
+  type ClusterIngressItem = {
+    id?: string
+    name: string
+    namespace?: string
+    gateway_address?: string
+    ingress_class?: string
+    create_time?: string
+  }
+
+  type ClusterServiceAccountItem = {
+    id?: string
+    name: string
+    namespace?: string
+    roles: string[]
+    secrets: string[]
+    create_time?: string
+  }
+
+  type ClusterCustomResourceDefinitionItem = {
+    id?: string
+    category?: string
+    name: string
+    scope?: string
+    create_time?: string
   }
 
   type CreateUserParams = {
