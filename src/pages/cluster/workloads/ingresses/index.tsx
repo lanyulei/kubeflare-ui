@@ -1,5 +1,7 @@
 import { getClusterIngressList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage from '../../resource';
+import ClusterResourceListPage, {
+  createResourceNameColumn,
+} from '../../resource';
 import { createIngressConfig } from '../../resource/createConfigs';
 
 const Ingresses = () => (
@@ -11,11 +13,7 @@ const Ingresses = () => (
     createConfig={createIngressConfig}
     request={getClusterIngressList}
     columns={[
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterIngressItem>('Ingress'),
       {
         title: '命名空间',
         dataIndex: 'namespace',

@@ -117,7 +117,11 @@ const ContainerHttpTargetFields = ({
         <div className={styles.compactField}>
           <span className={styles.addon}>协议</span>
           <Form.Item name={schemeName} noStyle>
-            <Select aria-label="请求协议" options={SCHEME_OPTIONS} />
+            <Select
+              aria-label="请求协议"
+              options={SCHEME_OPTIONS}
+              placeholder="请选择协议"
+            />
           </Form.Item>
         </div>
         <div className={styles.compactField}>

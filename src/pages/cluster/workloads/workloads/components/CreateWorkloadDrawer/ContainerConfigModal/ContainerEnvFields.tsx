@@ -310,7 +310,9 @@ const ContainerEnvFields = () => {
       <Form.List name="containerEnv">
         {(fields, { add, remove }) => (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: `12px` }}>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: `12px` }}
+            >
               {fields.map((field) => {
                 const item = envItems[field.name] || {};
                 const sourceType = item.sourceType || 'custom';
@@ -332,6 +334,7 @@ const ContainerEnvFields = () => {
                       <Select
                         className={styles.control}
                         options={envSourceOptions}
+                        placeholder="请选择来源"
                         onChange={(nextSourceType) =>
                           updateEnvItem(field.name, {
                             sourceType: nextSourceType,

@@ -1,7 +1,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { useIntl } from '@umijs/max';
+import { Link, useIntl } from '@umijs/max';
 import { App, Button, Select, Space, Tag } from 'antd';
 import { createStyles } from 'antd-style';
 import {
@@ -80,6 +80,18 @@ type ClusterResourceListPageProps<T extends { id?: string; name: string }> = {
   rowKey?: string | ((record: T) => string);
   createButtonText?: string;
   createConfig?: CreateResourceConfig;
+  renderCreateDrawer?: (props: {
+    defaultNamespace?: string;
+    loading: boolean;
+    namespaceOptions: { label: string; value: string }[];
+    open: boolean;
+    onCancel: () => void;
+    onSubmit: (values: {
+      type: API.ClusterResourceCreateType;
+      namespace?: string;
+      manifest: Record<string, unknown>;
+    }) => Promise<void>;
+  }) => ReactNode;
   reloadKey?: string | number;
   searchPlaceholder?: string;
   showNamespaceFilter?: boolean;
@@ -180,6 +192,33 @@ export const createStatusColumn = <T extends { status?: string }>(
   render: (_, record) => <ResourceStatus status={record.status} />,
 });
 
+export const getClusterResourceDetailPath = (
+  type: API.ClusterResourceCreateType,
+  name?: string,
+  namespace?: string,
+) =>
+  `/cluster/resource/detail/${encodeURIComponent(type)}/${encodeURIComponent(
+    namespace || '-',
+  )}/${encodeURIComponent(name || '-')}`;
+
+export const createResourceNameColumn = <
+  T extends { name: string; namespace?: string },
+>(
+  type: API.ClusterResourceCreateType,
+  title = '名称',
+): ProColumns<T> => ({
+  title,
+  dataIndex: 'name',
+  ellipsis: true,
+  render: (_, record) => (
+    <Link
+      to={getClusterResourceDetailPath(type, record.name, record.namespace)}
+    >
+      {record.name || '-'}
+    </Link>
+  ),
+});
+
 const ResourceStatus = ({ status }: { status?: string }) => {
   const { styles } = useStyles();
   const statusType = getStatusType(status);
@@ -209,6 +248,7 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
   rowKey = (record) => record.id || record.name,
   createButtonText = '新建',
   createConfig,
+  renderCreateDrawer,
   reloadKey,
   searchPlaceholder,
   showNamespaceFilter = false,
@@ -322,7 +362,7 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
         }}
         headerTitle={
           <Space className={styles.toolbar}>
-            {(onCreate || createConfig) && (
+            {(onCreate || createConfig || renderCreateDrawer) && (
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -369,14 +409,25 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
           </Space>
         }
       />
-      <CreateResourceYamlDrawer
-        config={createConfig}
-        defaultNamespace={namespaceRef.current}
-        loading={createLoading}
-        open={createOpen}
-        onCancel={() => setCreateOpen(false)}
-        onSubmit={handleCreateResource}
-      />
+      {renderCreateDrawer ? (
+        renderCreateDrawer({
+          defaultNamespace: namespaceRef.current,
+          loading: createLoading,
+          namespaceOptions,
+          open: createOpen,
+          onCancel: () => setCreateOpen(false),
+          onSubmit: handleCreateResource,
+        })
+      ) : (
+        <CreateResourceYamlDrawer
+          config={createConfig}
+          defaultNamespace={namespaceRef.current}
+          loading={createLoading}
+          open={createOpen}
+          onCancel={() => setCreateOpen(false)}
+          onSubmit={handleCreateResource}
+        />
+      )}
     </PageContainer>
   );
 };

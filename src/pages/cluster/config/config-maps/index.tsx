@@ -1,5 +1,8 @@
 import { getClusterConfigMapList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage, { renderTextList } from '../../resource';
+import ClusterResourceListPage, {
+  createResourceNameColumn,
+  renderTextList,
+} from '../../resource';
 import { createConfigMapConfig } from '../../resource/createConfigs';
 
 const ConfigMaps = () => (
@@ -11,11 +14,7 @@ const ConfigMaps = () => (
     createConfig={createConfigMapConfig}
     request={getClusterConfigMapList}
     columns={[
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterConfigResourceItem>('ConfigMap'),
       {
         title: '命名空间',
         dataIndex: 'namespace',

@@ -1,5 +1,8 @@
 import { getClusterStorageClassList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage, { renderBooleanText } from '../../resource';
+import ClusterResourceListPage, {
+  createResourceNameColumn,
+  renderBooleanText,
+} from '../../resource';
 import { createStorageClassConfig } from '../../resource/createConfigs';
 
 const StorageClasses = () => (
@@ -10,11 +13,7 @@ const StorageClasses = () => (
     createConfig={createStorageClassConfig}
     request={getClusterStorageClassList}
     columns={[
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterStorageClassItem>('StorageClass'),
       {
         title: '存储类型',
         dataIndex: 'storage_type',

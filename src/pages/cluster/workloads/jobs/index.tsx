@@ -1,6 +1,9 @@
 import { getClusterJobList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage, { createStatusColumn } from '../../resource';
-import { createJobConfig } from '../../resource/createConfigs';
+import ClusterResourceListPage, {
+  createResourceNameColumn,
+  createStatusColumn,
+} from '../../resource';
+import CreateJobDrawer from './components/CreateJobDrawer';
 
 const Jobs = () => {
   return (
@@ -9,14 +12,10 @@ const Jobs = () => {
       defaultTitle="任务"
       searchPlaceholder="搜索任务名称 / 命名空间"
       showNamespaceFilter
-      createConfig={createJobConfig}
       request={getClusterJobList}
+      renderCreateDrawer={(props) => <CreateJobDrawer {...props} />}
       columns={[
-        {
-          title: '名称',
-          dataIndex: 'name',
-          ellipsis: true,
-        },
+        createResourceNameColumn<API.ClusterJobItem>('Job'),
         {
           title: '命名空间',
           dataIndex: 'namespace',

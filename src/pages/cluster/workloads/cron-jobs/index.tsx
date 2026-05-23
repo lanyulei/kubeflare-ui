@@ -1,5 +1,8 @@
 import { getClusterCronJobList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage, { createStatusColumn } from '../../resource';
+import ClusterResourceListPage, {
+  createResourceNameColumn,
+  createStatusColumn,
+} from '../../resource';
 import { createCronJobConfig } from '../../resource/createConfigs';
 
 const CronJobs = () => (
@@ -11,11 +14,7 @@ const CronJobs = () => (
     createConfig={createCronJobConfig}
     request={getClusterCronJobList}
     columns={[
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterCronJobItem>('CronJob'),
       {
         title: '命名空间',
         dataIndex: 'namespace',

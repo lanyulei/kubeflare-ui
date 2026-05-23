@@ -663,6 +663,12 @@ declare namespace API {
     manifest: Record<string, unknown>
   }
 
+  type ClusterResourceDetailParams = {
+    type: ClusterResourceCreateType
+    namespace?: string
+    name: string
+  }
+
   type ClusterServiceItem = {
     id?: string
     name: string

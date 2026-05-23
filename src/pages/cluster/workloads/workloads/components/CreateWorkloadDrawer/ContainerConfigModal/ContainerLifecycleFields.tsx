@@ -248,7 +248,11 @@ const ContainerLifecycleFields = () => {
       required
       rules={[{ validator: validateCommand }]}
     >
-      <Input.TextArea className={styles.textarea} rows={3} />
+      <Input.TextArea
+        className={styles.textarea}
+        placeholder="请输入命令"
+        rows={3}
+      />
       <div className={styles.fieldHelp}>使用半角逗号（,）分隔多条命令。</div>
     </Form.Item>
   );
@@ -272,6 +276,7 @@ const ContainerLifecycleFields = () => {
           <InputNumber
             min={1}
             max={65535}
+            placeholder="请输入端口"
             precision={0}
             style={{ width: '100%' }}
           />

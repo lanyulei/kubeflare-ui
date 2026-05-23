@@ -299,6 +299,25 @@ const clusterResourceCreatePaths: Record<API.ClusterResourceCreateType, string> 
     StorageClass: '/kapis/storage.k8s.io/v1/storageclasses',
   }
 
+const clusterResourceDetailPaths: Record<API.ClusterResourceCreateType, string> =
+  {
+    Job: '/kapis/batch/v1/namespaces/:namespace/jobs/:name',
+    CronJob: '/kapis/batch/v1/namespaces/:namespace/cronjobs/:name',
+    Pod: '/kapi/v1/namespaces/:namespace/pods/:name',
+    Service: '/kapi/v1/namespaces/:namespace/services/:name',
+    Ingress:
+      '/kapis/networking.k8s.io/v1/namespaces/:namespace/ingresses/:name',
+    Secret: '/kapi/v1/namespaces/:namespace/secrets/:name',
+    ConfigMap: '/kapi/v1/namespaces/:namespace/configmaps/:name',
+    ServiceAccount:
+      '/kapi/v1/namespaces/:namespace/serviceaccounts/:name',
+    CustomResourceDefinition:
+      '/kapis/apiextensions.k8s.io/v1/customresourcedefinitions/:name',
+    PersistentVolumeClaim:
+      '/kapi/v1/namespaces/:namespace/persistentvolumeclaims/:name',
+    StorageClass: '/kapis/storage.k8s.io/v1/storageclasses/:name',
+  }
+
 const getNamespacedListPath = (
   type: API.ClusterResourceCreateType,
   namespace?: string,
@@ -330,6 +349,27 @@ const getCreateResourcePath = (
   }
 
   return path.replace(':namespace', encodeURIComponent(namespace.trim()))
+}
+
+const getDetailResourcePath = (
+  type: API.ClusterResourceCreateType,
+  name: string,
+  namespace?: string,
+) => {
+  let path = clusterResourceDetailPaths[type]
+
+  if (!path || !name?.trim()) {
+    return undefined
+  }
+
+  if (path.includes(':namespace')) {
+    if (!namespace?.trim()) {
+      return undefined
+    }
+    path = path.replace(':namespace', encodeURIComponent(namespace.trim()))
+  }
+
+  return path.replace(':name', encodeURIComponent(name.trim()))
 }
 
 const includeKeyword = (
@@ -828,6 +868,29 @@ export async function createClusterResource(
   return request<API.ApiResponse<Record<string, unknown>>>(url, {
     method: 'POST',
     data: manifest,
+    ...(options || {}),
+    headers: getClusterHeaders(clusterId, options),
+  })
+}
+
+export async function getClusterResourceManifest(
+  params: API.ClusterResourceDetailParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name } = params
+  const url = getDetailResourcePath(type, name, namespace)
+
+  if (!clusterId || !url) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(url, {
+    method: 'GET',
     ...(options || {}),
     headers: getClusterHeaders(clusterId, options),
   })

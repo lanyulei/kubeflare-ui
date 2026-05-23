@@ -1,5 +1,8 @@
 import { getClusterServiceAccountList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage, { renderTextList } from '../../resource';
+import ClusterResourceListPage, {
+  createResourceNameColumn,
+  renderTextList,
+} from '../../resource';
 import { createServiceAccountConfig } from '../../resource/createConfigs';
 
 const ServiceAccounts = () => (
@@ -11,11 +14,7 @@ const ServiceAccounts = () => (
     createConfig={createServiceAccountConfig}
     request={getClusterServiceAccountList}
     columns={[
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterServiceAccountItem>('ServiceAccount'),
       {
         title: '命名空间',
         dataIndex: 'namespace',

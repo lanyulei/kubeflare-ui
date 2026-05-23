@@ -1,5 +1,8 @@
 import { getClusterPodList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage, { createStatusColumn } from '../../resource';
+import ClusterResourceListPage, {
+  createResourceNameColumn,
+  createStatusColumn,
+} from '../../resource';
 import { createPodConfig } from '../../resource/createConfigs';
 
 const Pods = () => (
@@ -11,11 +14,7 @@ const Pods = () => (
     createConfig={createPodConfig}
     request={getClusterPodList}
     columns={[
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterPodItem>('Pod'),
       {
         title: '命名空间',
         dataIndex: 'namespace',

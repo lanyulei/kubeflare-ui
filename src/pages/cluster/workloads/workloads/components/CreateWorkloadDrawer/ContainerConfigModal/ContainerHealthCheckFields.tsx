@@ -301,7 +301,11 @@ const ContainerHealthCheckFields = () => {
         required
         rules={[{ validator: validateCommand }]}
       >
-        <Input.TextArea className={styles.textarea} rows={3} />
+        <Input.TextArea
+          className={styles.textarea}
+          placeholder="请输入命令"
+          rows={3}
+        />
       </Form.Item>
       <div className={styles.fieldHelp}>使用半角逗号（,）分隔多条命令。</div>
     </div>
@@ -326,6 +330,7 @@ const ContainerHealthCheckFields = () => {
           <InputNumber
             min={1}
             max={65535}
+            placeholder="请输入端口"
             precision={0}
             style={{ width: '100%' }}
           />
@@ -356,6 +361,7 @@ const ContainerHealthCheckFields = () => {
                   field.name === 'successThreshold' && probeName !== 'readiness'
                 }
                 min={field.min}
+                placeholder={`请输入${field.label}`}
                 precision={0}
                 style={{ width: '100%' }}
               />

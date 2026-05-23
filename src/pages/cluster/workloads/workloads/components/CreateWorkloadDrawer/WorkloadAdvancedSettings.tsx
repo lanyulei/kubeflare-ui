@@ -96,6 +96,7 @@ const useStyles = createStyles(({ token }) => ({
 }));
 
 type WorkloadAdvancedSettingsProps = {
+  defaultMetadataOpen?: boolean;
   form: FormInstance<CreateWorkloadFormValues>;
   type: API.ClusterWorkloadType;
 };
@@ -107,11 +108,12 @@ const createKeyValueItem = (keyName = '', value = ''): KeyValueEditorItem => ({
 });
 
 const WorkloadAdvancedSettings = ({
+  defaultMetadataOpen = true,
   form,
   type,
 }: WorkloadAdvancedSettingsProps) => {
   const { styles } = useStyles();
-  const [metadataOpen, setMetadataOpen] = useState(true);
+  const [metadataOpen, setMetadataOpen] = useState(defaultMetadataOpen);
   const [nodeModalOpen, setNodeModalOpen] = useState(false);
   const showNodeSelector = type !== 'DaemonSet';
   const enableNodeSelector = Form.useWatch('enableNodeSelector', form);

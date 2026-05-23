@@ -1051,7 +1051,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
                 },
               ]}
             >
-              <Input />
+              <Input placeholder="请输入卷名称" />
             </Form.Item>
             <Form.Item
               label="主机路径"
@@ -1064,7 +1064,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
                 },
               ]}
             >
-              <Input />
+              <Input placeholder="请输入主机路径" />
             </Form.Item>
           </div>
         </>
@@ -1086,7 +1086,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
             },
           ]}
         >
-          <Input />
+          <Input placeholder="请输入卷名称" />
         </Form.Item>
         <Form.Item
           label="容量上限"
@@ -1100,7 +1100,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
           ]}
           tooltip="设置当前存储卷的容量上限，默认值为 200Mi，最大值不能超过 2Gi"
         >
-          <Input />
+          <Input placeholder="例如 200Mi 或 2Gi" />
         </Form.Item>
       </div>
     );
@@ -1180,6 +1180,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
               controls={false}
               max={2048}
               min={1}
+              placeholder="请输入卷容量"
               suffix="Gi"
               value={pvcSizeGi ?? 10}
               onChange={(value) => form.setFieldValue('pvcSizeGi', value || 1)}
@@ -1261,6 +1262,7 @@ const StorageSettings = ({ form, type }: StorageSettingsProps) => {
                 <Select
                   className={styles.mountControl}
                   options={getMountModeOptions(storageCategory)}
+                  placeholder="请选择挂载方式"
                 />
               </Form.Item>
               <Form.Item

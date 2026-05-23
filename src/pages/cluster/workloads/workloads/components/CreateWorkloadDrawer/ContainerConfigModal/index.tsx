@@ -201,6 +201,7 @@ const ContainerConfigModal = ({
                             { label: '工作容器', value: 'worker' },
                             { label: '初始化容器', value: 'init' },
                           ]}
+                          placeholder="请选择容器类型"
                         />
                       </Form.Item>
                     </Col>

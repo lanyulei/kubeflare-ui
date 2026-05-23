@@ -1,5 +1,6 @@
 import { getClusterPersistentVolumeClaimList } from '@/services/kubeflare/cluster/resource';
 import ClusterResourceListPage, {
+  createResourceNameColumn,
   createStatusColumn,
   renderBooleanText,
 } from '../../resource';
@@ -14,11 +15,9 @@ const PersistentVolumeClaims = () => (
     createConfig={createPersistentVolumeClaimConfig}
     request={getClusterPersistentVolumeClaimList}
     columns={[
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterPersistentVolumeClaimItem>(
+        'PersistentVolumeClaim',
+      ),
       createStatusColumn<API.ClusterPersistentVolumeClaimItem>('状态'),
       {
         title: '持久卷',

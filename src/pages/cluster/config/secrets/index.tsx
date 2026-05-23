@@ -1,5 +1,7 @@
 import { getClusterSecretList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage from '../../resource';
+import ClusterResourceListPage, {
+  createResourceNameColumn,
+} from '../../resource';
 import { createSecretConfig } from '../../resource/createConfigs';
 
 const Secrets = () => (
@@ -11,11 +13,7 @@ const Secrets = () => (
     createConfig={createSecretConfig}
     request={getClusterSecretList}
     columns={[
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterConfigResourceItem>('Secret'),
       {
         title: '命名空间',
         dataIndex: 'namespace',

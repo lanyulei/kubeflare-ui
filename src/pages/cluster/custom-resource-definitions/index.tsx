@@ -1,5 +1,5 @@
 import { getClusterCustomResourceDefinitionList } from '@/services/kubeflare/cluster/resource';
-import ClusterResourceListPage from '../resource';
+import ClusterResourceListPage, { createResourceNameColumn } from '../resource';
 import { createCustomResourceDefinitionConfig } from '../resource/createConfigs';
 
 const CustomResourceDefinitions = () => (
@@ -16,11 +16,9 @@ const CustomResourceDefinitions = () => (
         ellipsis: true,
         renderText: (_, record) => record.category || '-',
       },
-      {
-        title: '名称',
-        dataIndex: 'name',
-        ellipsis: true,
-      },
+      createResourceNameColumn<API.ClusterCustomResourceDefinitionItem>(
+        'CustomResourceDefinition',
+      ),
       {
         title: '作用域',
         dataIndex: 'scope',

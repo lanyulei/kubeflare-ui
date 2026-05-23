@@ -231,7 +231,10 @@ const ContainerPortFields = ({
                       }
                     >
                       <Form.Item name={[field.name, 'protocol']} noStyle>
-                        <Select options={protocolOptions} />
+                        <Select
+                          options={protocolOptions}
+                          placeholder="请选择协议"
+                        />
                       </Form.Item>
                     </CompactField>
                   </div>
