@@ -406,7 +406,6 @@ const ServicePortEditor = ({ form }: ServicePortEditorProps) => {
             if ((value || []).some((item) => item.servicePort)) {
               return;
             }
-            throw new Error('请添加至少一个服务端口');
           },
         },
       ]}
