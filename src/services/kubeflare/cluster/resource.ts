@@ -108,6 +108,31 @@ type KubernetesService = {
   }
 }
 
+type KubernetesEndpoints = {
+  subsets?: {
+    addresses?: KubernetesEndpointAddress[]
+    notReadyAddresses?: KubernetesEndpointAddress[]
+    ports?: KubernetesEndpointPort[]
+  }[]
+}
+
+type KubernetesEndpointAddress = {
+  ip?: string
+  hostname?: string
+  nodeName?: string
+  targetRef?: {
+    kind?: string
+    name?: string
+    namespace?: string
+  }
+}
+
+type KubernetesEndpointPort = {
+  name?: string
+  port?: number
+  protocol?: string
+}
+
 type KubernetesIngress = {
   metadata?: KubernetesMetadata
   spec?: {
@@ -489,6 +514,26 @@ const getServiceExternalAccess = (service: KubernetesService) => {
 
   return uniqueText([...loadBalancer, ...nodePorts]).join('、') || undefined
 }
+
+const toServiceEndpointItem = (
+  address: KubernetesEndpointAddress,
+  ports: KubernetesEndpointPort[],
+  ready: boolean,
+  index: number,
+): API.ClusterServiceEndpointItem => ({
+  id: `${address.ip || address.hostname || '-'}-${index}`,
+  ip: address.ip || address.hostname,
+  nodeName: address.nodeName,
+  targetKind: address.targetRef?.kind,
+  targetName: address.targetRef?.name,
+  targetNamespace: address.targetRef?.namespace,
+  ready,
+  ports: ports.map((port) => ({
+    name: port.name,
+    port: port.port,
+    protocol: port.protocol,
+  })),
+})
 
 const getIngressGatewayAddress = (ingress: KubernetesIngress) =>
   uniqueText(
@@ -957,6 +1002,53 @@ export async function getClusterServiceList(
   )
 
   return buildResourceListResponse(res, items)
+}
+
+export async function getClusterServiceEndpoints(
+  params: API.ClusterServiceEndpointsParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, name } = params
+
+  if (!clusterId || !namespace || !name) {
+    return {
+      code: 20000,
+      message: '',
+      data: {
+        items: [],
+      },
+    } as API.ApiResponse<API.ClusterServiceEndpointsData>
+  }
+
+  const res = await request<API.ApiResponse<KubernetesEndpoints>>(
+    `/kapi/v1/namespaces/${encodeURIComponent(namespace)}/endpoints/${encodeURIComponent(name)}`,
+    {
+      method: 'GET',
+      ...(options || {}),
+      headers: getClusterHeaders(clusterId, options),
+    },
+  )
+
+  let index = 0
+  const items = (res.data?.subsets || []).flatMap((subset) => {
+    const ports = subset.ports || []
+    const readyItems = (subset.addresses || []).map((address) =>
+      toServiceEndpointItem(address, ports, true, index++),
+    )
+    const notReadyItems = (subset.notReadyAddresses || []).map((address) =>
+      toServiceEndpointItem(address, ports, false, index++),
+    )
+
+    return [...readyItems, ...notReadyItems]
+  })
+
+  return {
+    ...res,
+    data: {
+      items,
+    },
+  } as API.ApiResponse<API.ClusterServiceEndpointsData>
 }
 
 export async function getClusterIngressList(

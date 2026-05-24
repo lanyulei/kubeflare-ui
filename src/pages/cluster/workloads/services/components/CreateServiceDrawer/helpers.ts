@@ -106,9 +106,7 @@ const getServicePorts = (ports?: ServicePortItem[]) =>
       return servicePort;
     });
 
-export const buildCreateServiceManifest = (
-  values: CreateServiceFormValues,
-) => {
+export const buildCreateServiceManifest = (values: CreateServiceFormValues) => {
   const labels = toRecord(values.labels);
   const selectors = toRecord(values.selectors);
   const spec: Record<string, unknown> = {
@@ -117,7 +115,10 @@ export const buildCreateServiceManifest = (
     ports: getServicePorts(values.ports),
   };
 
-  if (values.internalAccessMode === 'Headless' && !values.enableExternalAccess) {
+  if (
+    values.internalAccessMode === 'Headless' &&
+    !values.enableExternalAccess
+  ) {
     spec.clusterIP = 'None';
   }
   if (values.enableSessionAffinity) {

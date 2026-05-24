@@ -686,6 +686,32 @@ declare namespace API {
     create_time?: string
   }
 
+  type ClusterServiceEndpointPort = {
+    name?: string
+    port?: number
+    protocol?: string
+  }
+
+  type ClusterServiceEndpointItem = {
+    id: string
+    ip?: string
+    nodeName?: string
+    targetKind?: string
+    targetName?: string
+    targetNamespace?: string
+    ready?: boolean
+    ports?: ClusterServiceEndpointPort[]
+  }
+
+  type ClusterServiceEndpointsParams = {
+    namespace: string
+    name: string
+  }
+
+  type ClusterServiceEndpointsData = {
+    items: ClusterServiceEndpointItem[]
+  }
+
   type ClusterIngressItem = {
     id?: string
     name: string

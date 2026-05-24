@@ -149,7 +149,10 @@ const WorkloadSelectorModal = ({
       <div className={styles.list}>
         <Spin spinning={loading}>
           {!items.length && !loading ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="暂无数据"
+            />
           ) : (
             items.map((item) => (
               <button

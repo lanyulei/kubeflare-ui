@@ -13,8 +13,10 @@ import {
 import { getClusterNodePodList } from '@/services/kubeflare/cluster/node';
 import {
   getClusterResourceManifest,
+  getClusterServiceEndpoints,
   updateClusterJobReplicas,
 } from '@/services/kubeflare/cluster/resource';
+import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
 import {
   formatValue,
   getArrayValue,
@@ -22,6 +24,12 @@ import {
   getRecordValue,
   getStringValue,
 } from './components/helpers';
+import IngressResourceStatus from './components/IngressResourceStatus';
+import {
+  buildIngressBasicInfo,
+  buildIngressRules,
+  type IngressBasicInfo,
+} from './components/ingressHelpers';
 import JobEnvironmentVariables from './components/JobEnvironmentVariables';
 import JobResourceStatus from './components/JobResourceStatus';
 import JobRunRecords from './components/JobRunRecords';
@@ -34,7 +42,16 @@ import {
   type PodBasicInfo,
 } from './components/podHelpers';
 import ResourceBasicInfo from './components/ResourceBasicInfo';
+import ServiceResourceStatus from './components/ServiceResourceStatus';
 import StatusText from './components/StatusText';
+import {
+  buildServiceBasicInfo,
+  buildServicePorts,
+  getServiceLabelSelector,
+  getServiceSelector,
+  matchServiceWorkload,
+  type ServiceBasicInfo,
+} from './components/serviceHelpers';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 
@@ -263,6 +280,75 @@ const getJobPodSelectors = (name?: string) =>
 type JobBasicInfo = ReturnType<typeof buildJobBasicInfo>;
 type CronJobBasicInfo = ReturnType<typeof buildCronJobBasicInfo>;
 
+const ingressBasicInfoColumns: ProDescriptionsItemProps<IngressBasicInfo>[] = [
+  {
+    title: '命名空间',
+    dataIndex: 'namespace',
+  },
+  {
+    title: '网关地址',
+    dataIndex: 'gateway_address',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: 'Ingress Class',
+    dataIndex: 'ingress_class',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '创建时间',
+    dataIndex: 'create_time',
+    valueType: 'dateTime',
+  },
+];
+
+const serviceBasicInfoColumns: ProDescriptionsItemProps<ServiceBasicInfo>[] = [
+  {
+    title: '命名空间',
+    dataIndex: 'namespace',
+  },
+  {
+    title: '类型',
+    dataIndex: 'type',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '虚拟 IP 地址',
+    dataIndex: 'cluster_ip',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '外部 IP 地址',
+    dataIndex: 'external_ip',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '会话亲和性',
+    dataIndex: 'session_affinity',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '选择器',
+    dataIndex: 'selector',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: 'DNS',
+    dataIndex: 'dns',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '端点',
+    dataIndex: 'endpoints',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '创建时间',
+    dataIndex: 'create_time',
+    valueType: 'dateTime',
+  },
+];
+
 const jobBasicInfoColumns: ProDescriptionsItemProps<JobBasicInfo>[] = [
   {
     title: '命名空间',
@@ -392,12 +478,19 @@ const ClusterResourceDetail = () => {
   const name = params.name;
   const [loading, setLoading] = useState(false);
   const [podLoading, setPodLoading] = useState(false);
+  const [workloadLoading, setWorkloadLoading] = useState(false);
   const [scaling, setScaling] = useState(false);
   const [manifest, setManifest] = useState<Record<string, unknown>>();
   const [detailType, setDetailType] = useState<
     API.ClusterResourceCreateType | undefined
   >(type);
   const [pods, setPods] = useState<API.ClusterNodePodItem[]>([]);
+  const [serviceEndpoints, setServiceEndpoints] = useState<
+    API.ClusterServiceEndpointItem[]
+  >([]);
+  const [serviceWorkloads, setServiceWorkloads] = useState<
+    API.ClusterWorkloadItem[]
+  >([]);
   const metadata = useMemo(
     () => getRecordValue(manifest?.metadata),
     [manifest],
@@ -410,10 +503,14 @@ const ClusterResourceDetail = () => {
     () =>
       detailType === 'Pod'
         ? buildPodBasicInfo(manifest, namespace)
-        : detailType === 'CronJob'
-          ? buildCronJobBasicInfo(manifest, namespace)
-          : buildJobBasicInfo(manifest, namespace),
-    [detailType, manifest, namespace],
+        : detailType === 'Service'
+          ? buildServiceBasicInfo(manifest, serviceEndpoints, namespace)
+          : detailType === 'Ingress'
+            ? buildIngressBasicInfo(manifest, namespace)
+            : detailType === 'CronJob'
+              ? buildCronJobBasicInfo(manifest, namespace)
+              : buildJobBasicInfo(manifest, namespace),
+    [detailType, manifest, namespace, serviceEndpoints],
   );
   const podDetail = useMemo(() => buildPodDetail(manifest), [manifest]);
   const podConditions = useMemo(() => buildPodConditions(manifest), [manifest]);
@@ -421,6 +518,8 @@ const ClusterResourceDetail = () => {
     () => buildJobReplicaSummary(manifest),
     [manifest],
   );
+  const servicePorts = useMemo(() => buildServicePorts(manifest), [manifest]);
+  const ingressRules = useMemo(() => buildIngressRules(manifest), [manifest]);
 
   const fetchManifest = useCallback(async () => {
     if (!type || !name) {
@@ -458,13 +557,30 @@ const ClusterResourceDetail = () => {
   }, [name, namespace, type]);
 
   const fetchPods = useCallback(async () => {
-    if (type !== 'Job' || !namespace || !name) {
+    if (!namespace || !name || (type !== 'Job' && type !== 'Service')) {
       setPods([]);
       return;
     }
 
     setPodLoading(true);
     try {
+      if (type === 'Service') {
+        const labelSelector = getServiceLabelSelector(manifest);
+
+        if (!labelSelector) {
+          setPods([]);
+          return;
+        }
+
+        const res = await getClusterNodePodList({
+          namespace,
+          labelSelector,
+          limit: 500,
+        });
+        setPods(res.data.items || []);
+        return;
+      }
+
       const selectors = getJobPodSelectors(name);
 
       for (const labelSelector of selectors) {
@@ -486,7 +602,47 @@ const ClusterResourceDetail = () => {
     } finally {
       setPodLoading(false);
     }
+  }, [manifest, name, namespace, type]);
+
+  const fetchServiceEndpoints = useCallback(async () => {
+    if (type !== 'Service' || !namespace || !name) {
+      setServiceEndpoints([]);
+      return;
+    }
+
+    try {
+      const res = await getClusterServiceEndpoints({ namespace, name });
+      setServiceEndpoints(res.data.items || []);
+    } catch {
+      setServiceEndpoints([]);
+    }
   }, [name, namespace, type]);
+
+  const fetchServiceWorkloads = useCallback(async () => {
+    if (type !== 'Service' || !namespace || !manifest) {
+      setServiceWorkloads([]);
+      return;
+    }
+
+    const serviceSelector = getServiceSelector(manifest);
+
+    if (!serviceSelector || Object.keys(serviceSelector).length === 0) {
+      setServiceWorkloads([]);
+      return;
+    }
+
+    setWorkloadLoading(true);
+    try {
+      const res = await getClusterWorkloadList({ namespace });
+      setServiceWorkloads(
+        (res.data.items || []).filter((workload) =>
+          matchServiceWorkload(workload, serviceSelector),
+        ),
+      );
+    } finally {
+      setWorkloadLoading(false);
+    }
+  }, [manifest, namespace, type]);
 
   useEffect(() => {
     fetchManifest();
@@ -497,16 +653,26 @@ const ClusterResourceDetail = () => {
   }, [fetchPods]);
 
   useEffect(() => {
+    fetchServiceEndpoints();
+  }, [fetchServiceEndpoints]);
+
+  useEffect(() => {
+    fetchServiceWorkloads();
+  }, [fetchServiceWorkloads]);
+
+  useEffect(() => {
     const refresh = () => {
       void fetchManifest();
       void fetchPods();
+      void fetchServiceEndpoints();
+      void fetchServiceWorkloads();
     };
 
     window.addEventListener(CURRENT_CLUSTER_CHANGE_EVENT, refresh);
     return () => {
       window.removeEventListener(CURRENT_CLUSTER_CHANGE_EVENT, refresh);
     };
-  }, [fetchManifest, fetchPods]);
+  }, [fetchManifest, fetchPods, fetchServiceEndpoints, fetchServiceWorkloads]);
 
   const handleScaleJobReplicas = async (replicas: number) => {
     if (type !== 'Job' || !namespace || !name) {
@@ -600,6 +766,38 @@ const ClusterResourceDetail = () => {
       ];
     }
 
+    if (detailType === 'Service') {
+      return [
+        {
+          key: 'resourceStatus',
+          label: '资源状态',
+          children: (
+            <ServiceResourceStatus
+              podLoading={podLoading || workloadLoading}
+              pods={pods}
+              ports={servicePorts}
+              workloads={serviceWorkloads}
+              onRefreshPods={fetchPods}
+            />
+          ),
+        },
+        metadataTab,
+        eventsTab,
+      ];
+    }
+
+    if (detailType === 'Ingress') {
+      return [
+        {
+          key: 'resourceStatus',
+          label: '资源状态',
+          children: <IngressResourceStatus rules={ingressRules} />,
+        },
+        metadataTab,
+        eventsTab,
+      ];
+    }
+
     return [
       {
         key: 'runs',
@@ -636,6 +834,11 @@ const ClusterResourceDetail = () => {
     podConditions,
     podDetail,
     pods,
+    serviceEndpoints,
+    ingressRules,
+    servicePorts,
+    serviceWorkloads,
+    workloadLoading,
     detailType,
   ]);
 
@@ -665,6 +868,20 @@ const ClusterResourceDetail = () => {
                     column={3}
                     columns={podBasicInfoColumns}
                     dataSource={basicInfo as PodBasicInfo}
+                  />
+                ) : detailType === 'Service' ? (
+                  <ResourceBasicInfo<ServiceBasicInfo>
+                    className={styles.description}
+                    column={3}
+                    columns={serviceBasicInfoColumns}
+                    dataSource={basicInfo as ServiceBasicInfo}
+                  />
+                ) : detailType === 'Ingress' ? (
+                  <ResourceBasicInfo<IngressBasicInfo>
+                    className={styles.description}
+                    column={2}
+                    columns={ingressBasicInfoColumns}
+                    dataSource={basicInfo as IngressBasicInfo}
                   />
                 ) : detailType === 'CronJob' ? (
                   <ResourceBasicInfo<CronJobBasicInfo>

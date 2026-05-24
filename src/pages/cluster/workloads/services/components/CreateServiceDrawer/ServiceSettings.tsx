@@ -4,16 +4,22 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import { Alert, Button, Form, Input, InputNumber, Select, Tooltip, message } from 'antd';
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  message,
+  Select,
+  Tooltip,
+} from 'antd';
 import { createStyles } from 'antd-style';
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyValueEditor } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
-import {
-  createKeyValueItem,
-  createServicePortItem,
-} from './helpers';
+import { createKeyValueItem, createServicePortItem } from './helpers';
 import type {
   CreateServiceFormValues,
   ServiceInternalAccessMode,
@@ -186,13 +192,15 @@ const ACCESS_MODES: {
   value: ServiceInternalAccessMode;
 }[] = [
   {
-    description: '为服务分配虚拟 IP 地址，可通过虚拟 IP 地址在集群内部访问服务。',
+    description:
+      '为服务分配虚拟 IP 地址，可通过虚拟 IP 地址在集群内部访问服务。',
     icon: <ClusterOutlined />,
     title: '虚拟 IP 地址',
     value: 'ClusterIP',
   },
   {
-    description: '不为服务分配 IP 地址，可通过集群的 DNS 机制在集群内部访问服务。',
+    description:
+      '不为服务分配 IP 地址，可通过集群的 DNS 机制在集群内部访问服务。',
     icon: <AppstoreOutlined />,
     title: '内部域名',
     value: 'Headless',
@@ -325,7 +333,9 @@ const ServicePortEditor = ({
               className={styles.deleteButton}
               icon={<DeleteOutlined />}
               type="text"
-              onClick={() => onChange?.(value.filter((port) => port.id !== item.id))}
+              onClick={() =>
+                onChange?.(value.filter((port) => port.id !== item.id))
+              }
             />
           </div>
         ))}
@@ -356,7 +366,8 @@ const ServiceSettings = ({ form }: ServiceSettingsProps) => {
   const { styles } = useStyles();
   const [workloadModalOpen, setWorkloadModalOpen] = useState(false);
   const namespace = Form.useWatch('namespace', form);
-  const selectors = (Form.useWatch('selectors', form) as KeyValueEditorItem[]) || [];
+  const selectors =
+    (Form.useWatch('selectors', form) as KeyValueEditorItem[]) || [];
   const ports = (Form.useWatch('ports', form) as ServicePortItem[]) || [];
 
   useEffect(() => {
@@ -422,9 +433,7 @@ const ServiceSettings = ({ form }: ServiceSettingsProps) => {
       <div>
         <div className={styles.sectionTitle}>端口</div>
         <div className={styles.portPanel}>
-          <div className={styles.portDescription}>
-            设置容器端口和服务端口。
-          </div>
+          <div className={styles.portDescription}>设置容器端口和服务端口。</div>
           <Form.Item
             name="ports"
             rules={[

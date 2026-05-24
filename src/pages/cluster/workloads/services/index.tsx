@@ -2,7 +2,7 @@ import { getClusterServiceList } from '@/services/kubeflare/cluster/resource';
 import ClusterResourceListPage, {
   createResourceNameColumn,
 } from '../../resource';
-import { createServiceConfig } from '../../resource/createConfigs';
+import CreateServiceDrawer from './components/CreateServiceDrawer';
 
 const Services = () => (
   <ClusterResourceListPage<API.ClusterServiceItem>
@@ -10,7 +10,7 @@ const Services = () => (
     defaultTitle="服务"
     searchPlaceholder="搜索服务名称 / 命名空间 / 访问地址"
     showNamespaceFilter
-    createConfig={createServiceConfig}
+    renderCreateDrawer={(props) => <CreateServiceDrawer {...props} />}
     request={getClusterServiceList}
     columns={[
       createResourceNameColumn<API.ClusterServiceItem>('Service'),

@@ -2,7 +2,7 @@ import { getClusterIngressList } from '@/services/kubeflare/cluster/resource';
 import ClusterResourceListPage, {
   createResourceNameColumn,
 } from '../../resource';
-import { createIngressConfig } from '../../resource/createConfigs';
+import CreateIngressDrawer from './components/CreateIngressDrawer';
 
 const Ingresses = () => (
   <ClusterResourceListPage<API.ClusterIngressItem>
@@ -10,7 +10,7 @@ const Ingresses = () => (
     defaultTitle="应用路由"
     searchPlaceholder="搜索应用路由名称 / 命名空间 / 网关地址"
     showNamespaceFilter
-    createConfig={createIngressConfig}
+    renderCreateDrawer={(props) => <CreateIngressDrawer {...props} />}
     request={getClusterIngressList}
     columns={[
       createResourceNameColumn<API.ClusterIngressItem>('Ingress'),
