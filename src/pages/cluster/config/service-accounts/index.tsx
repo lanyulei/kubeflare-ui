@@ -3,7 +3,7 @@ import ClusterResourceListPage, {
   createResourceNameColumn,
   renderTextList,
 } from '../../resource';
-import { createServiceAccountConfig } from '../../resource/createConfigs';
+import CreateServiceAccountModal from './components/CreateServiceAccountModal';
 
 const ServiceAccounts = () => (
   <ClusterResourceListPage<API.ClusterServiceAccountItem>
@@ -11,7 +11,7 @@ const ServiceAccounts = () => (
     defaultTitle="服务账户"
     searchPlaceholder="搜索服务账户名称 / 命名空间 / 角色"
     showNamespaceFilter
-    createConfig={createServiceAccountConfig}
+    renderCreateDrawer={(props) => <CreateServiceAccountModal {...props} />}
     request={getClusterServiceAccountList}
     columns={[
       createResourceNameColumn<API.ClusterServiceAccountItem>('ServiceAccount'),

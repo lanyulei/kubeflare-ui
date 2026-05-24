@@ -3,7 +3,7 @@ import ClusterResourceListPage, {
   createResourceNameColumn,
   renderTextList,
 } from '../../resource';
-import { createConfigMapConfig } from '../../resource/createConfigs';
+import CreateConfigMapDrawer from './components/CreateConfigMapDrawer';
 
 const ConfigMaps = () => (
   <ClusterResourceListPage<API.ClusterConfigResourceItem>
@@ -11,7 +11,7 @@ const ConfigMaps = () => (
     defaultTitle="配置字典"
     searchPlaceholder="搜索配置字典名称 / 命名空间 / 字段"
     showNamespaceFilter
-    createConfig={createConfigMapConfig}
+    renderCreateDrawer={(props) => <CreateConfigMapDrawer {...props} />}
     request={getClusterConfigMapList}
     columns={[
       createResourceNameColumn<API.ClusterConfigResourceItem>('ConfigMap'),

@@ -2,7 +2,7 @@ import { getClusterSecretList } from '@/services/kubeflare/cluster/resource';
 import ClusterResourceListPage, {
   createResourceNameColumn,
 } from '../../resource';
-import { createSecretConfig } from '../../resource/createConfigs';
+import CreateSecretDrawer from './components/CreateSecretDrawer';
 
 const Secrets = () => (
   <ClusterResourceListPage<API.ClusterConfigResourceItem>
@@ -10,7 +10,7 @@ const Secrets = () => (
     defaultTitle="保密字典"
     searchPlaceholder="搜索保密字典名称 / 命名空间 / 类型"
     showNamespaceFilter
-    createConfig={createSecretConfig}
+    renderCreateDrawer={(props) => <CreateSecretDrawer {...props} />}
     request={getClusterSecretList}
     columns={[
       createResourceNameColumn<API.ClusterConfigResourceItem>('Secret'),
