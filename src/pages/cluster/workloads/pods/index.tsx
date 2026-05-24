@@ -3,7 +3,6 @@ import ClusterResourceListPage, {
   createResourceNameColumn,
   createStatusColumn,
 } from '../../resource';
-import { createPodConfig } from '../../resource/createConfigs';
 
 const Pods = () => (
   <ClusterResourceListPage<API.ClusterPodItem>
@@ -11,7 +10,6 @@ const Pods = () => (
     defaultTitle="容器组"
     searchPlaceholder="搜索容器组名称 / 命名空间 / 节点 / IP 地址"
     showNamespaceFilter
-    createConfig={createPodConfig}
     request={getClusterPodList}
     columns={[
       createResourceNameColumn<API.ClusterPodItem>('Pod'),
@@ -21,7 +19,10 @@ const Pods = () => (
         ellipsis: true,
         renderText: (_, record) => record.namespace || '-',
       },
-      createStatusColumn<API.ClusterPodItem>('状态'),
+      createStatusColumn<API.ClusterPodItem>('状态', {
+        ellipsis: true,
+        width: 160,
+      }),
       {
         title: '节点',
         dataIndex: 'node_name',

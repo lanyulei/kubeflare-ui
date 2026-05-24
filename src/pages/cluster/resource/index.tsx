@@ -2,7 +2,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Link, useIntl } from '@umijs/max';
-import { App, Button, Select, Space, Tag } from 'antd';
+import { App, Button, Select, Space, Tag, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import {
   type ReactNode,
@@ -42,10 +42,19 @@ const useStyles = createStyles(({ token }) => ({
     display: 'inline-flex',
     alignItems: 'center',
     gap: token.marginXS,
+    maxWidth: '100%',
     color: token.colorText,
     fontSize: token.fontSize,
     lineHeight: token.lineHeight,
     whiteSpace: 'nowrap',
+  },
+  statusEllipsis: {
+    minWidth: 0,
+  },
+  statusTextEllipsis: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   statusDot: {
     width: 8,
@@ -184,12 +193,22 @@ export const renderBooleanText = (value?: boolean) => {
   return value ? '是' : '否';
 };
 
+type CreateStatusColumnOptions = {
+  ellipsis?: boolean;
+  width?: number;
+};
+
 export const createStatusColumn = <T extends { status?: string }>(
   title: string,
+  options?: CreateStatusColumnOptions,
 ): ProColumns<T> => ({
   title,
   dataIndex: 'status',
-  render: (_, record) => <ResourceStatus status={record.status} />,
+  ellipsis: options?.ellipsis,
+  width: options?.width,
+  render: (_, record) => (
+    <ResourceStatus ellipsis={options?.ellipsis} status={record.status} />
+  ),
 });
 
 export const getClusterResourceDetailPath = (
@@ -219,26 +238,44 @@ export const createResourceNameColumn = <
   ),
 });
 
-const ResourceStatus = ({ status }: { status?: string }) => {
+const ResourceStatus = ({
+  ellipsis,
+  status,
+}: {
+  ellipsis?: boolean;
+  status?: string;
+}) => {
   const { styles } = useStyles();
   const statusType = getStatusType(status);
+  const statusLabel = getStatusLabel(status);
   const statusDotClassNames = {
     default: styles.statusDotDefault,
     error: styles.statusDotError,
     success: styles.statusDotSuccess,
     warning: styles.statusDotWarning,
   };
-
-  return (
-    <span className={styles.status}>
+  const content = (
+    <span
+      className={[styles.status, ellipsis ? styles.statusEllipsis : ''].join(
+        ' ',
+      )}
+    >
       <span
         className={[styles.statusDot, statusDotClassNames[statusType]].join(
           ' ',
         )}
       />
-      <span>{getStatusLabel(status)}</span>
+      <span className={ellipsis ? styles.statusTextEllipsis : undefined}>
+        {statusLabel}
+      </span>
     </span>
   );
+
+  if (ellipsis) {
+    return <Tooltip title={statusLabel}>{content}</Tooltip>;
+  }
+
+  return content;
 };
 
 const ClusterResourceListPage = <T extends { id?: string; name: string }>({

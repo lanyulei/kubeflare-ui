@@ -3,7 +3,7 @@ import ClusterResourceListPage, {
   createResourceNameColumn,
   createStatusColumn,
 } from '../../resource';
-import { createCronJobConfig } from '../../resource/createConfigs';
+import CreateCronJobDrawer from './components/CreateCronJobDrawer';
 
 const CronJobs = () => (
   <ClusterResourceListPage<API.ClusterCronJobItem>
@@ -11,8 +11,8 @@ const CronJobs = () => (
     defaultTitle="定时任务"
     searchPlaceholder="搜索定时任务名称 / 命名空间"
     showNamespaceFilter
-    createConfig={createCronJobConfig}
     request={getClusterCronJobList}
+    renderCreateDrawer={(props) => <CreateCronJobDrawer {...props} />}
     columns={[
       createResourceNameColumn<API.ClusterCronJobItem>('CronJob'),
       {

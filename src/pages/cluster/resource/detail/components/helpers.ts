@@ -29,7 +29,10 @@ const getJobStatusLabel = (status?: string) => {
     return '已完成';
   }
   if (normalizedStatus === 'running' || normalizedStatus === 'active') {
-    return '运行中';
+    return normalizedStatus === 'active' ? '活跃' : '运行中';
+  }
+  if (normalizedStatus === 'suspended') {
+    return '已暂停';
   }
   if (normalizedStatus === 'failed') {
     return '失败';
@@ -48,7 +51,10 @@ const getJobStatusType = (
   if (normalizedStatus === 'completed' || normalizedStatus === 'succeeded') {
     return 'success';
   }
-  if (normalizedStatus === 'running' || normalizedStatus === 'active') {
+  if (normalizedStatus === 'active') {
+    return 'success';
+  }
+  if (normalizedStatus === 'running' || normalizedStatus === 'suspended') {
     return 'warning';
   }
   if (normalizedStatus === 'failed') {
