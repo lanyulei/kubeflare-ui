@@ -159,19 +159,38 @@ const buildJobBasicInfo = (
   };
 };
 
-const buildJobReplicaSummary = (
-  manifest?: Record<string, unknown>,
-  pods: API.ClusterNodePodItem[] = [],
-) => {
+const buildJobReplicaSummary = (manifest?: Record<string, unknown>) => {
   const spec = getRecordValue(manifest?.spec);
   const status = getRecordValue(manifest?.status);
+  const conditions = getArrayValue(status?.conditions)
+    .map((item) => getRecordValue(item))
+    .filter(Boolean);
+  const completions = getNumberValue(spec?.completions);
   const parallelism = getNumberValue(spec?.parallelism);
-  const activePods = getNumberValue(status?.active);
+  const activePods = getNumberValue(status?.active) ?? 0;
+  const succeededPods = getNumberValue(status?.succeeded) ?? 0;
+  const isSuspended = spec?.suspend === true;
+  const isTerminal = conditions.some((condition) => {
+    const type = getStringValue(condition?.type);
+    const conditionStatus = getStringValue(condition?.status);
+
+    return (
+      conditionStatus === 'True' && (type === 'Complete' || type === 'Failed')
+    );
+  });
+  const desiredActivePods =
+    isSuspended || isTerminal
+      ? 0
+      : completions === undefined
+        ? succeededPods > 0
+          ? activePods
+          : (parallelism ?? 1)
+        : Math.max(0, Math.min(completions - succeededPods, parallelism ?? 1));
 
   return {
-    desiredReplicas: parallelism ?? 1,
-    currentReplicas: activePods ?? pods.length,
-    scalable: Boolean(manifest),
+    desiredReplicas: desiredActivePods,
+    currentReplicas: activePods,
+    scalable: Boolean(manifest && !isSuspended && !isTerminal),
   };
 };
 
@@ -207,8 +226,8 @@ const ClusterResourceDetail = () => {
     [manifest, namespace],
   );
   const replicaSummary = useMemo(
-    () => buildJobReplicaSummary(manifest, pods),
-    [manifest, pods],
+    () => buildJobReplicaSummary(manifest),
+    [manifest],
   );
 
   const fetchManifest = useCallback(async () => {

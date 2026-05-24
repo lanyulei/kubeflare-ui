@@ -301,7 +301,7 @@ const WorkloadDetail = () => {
     }
   }, [name, namespace, type]);
 
-  const handleScaleReplicas = async (replicas: number) => {
+  const updateReplicas = async (replicas: number) => {
     if (!type || !namespace || !name) {
       return;
     }
@@ -320,6 +320,24 @@ const WorkloadDetail = () => {
     } finally {
       setScaling(false);
     }
+  };
+
+  const handleScaleReplicas = (replicas: number) => {
+    if (!type || !namespace || !name) {
+      return;
+    }
+
+    const currentReplicas = descriptionData?.replicas ?? 0;
+
+    modal.confirm({
+      title: '确认调整副本数量吗？',
+      content: `当前期望副本数为 ${currentReplicas}，确认调整为 ${replicas} 吗？`,
+      okText: '确认调整',
+      cancelText: '取消',
+      onOk: async () => {
+        await updateReplicas(replicas);
+      },
+    });
   };
 
   const refreshDetail = async () => {
