@@ -25,6 +25,14 @@ import {
 import JobEnvironmentVariables from './components/JobEnvironmentVariables';
 import JobResourceStatus from './components/JobResourceStatus';
 import JobRunRecords from './components/JobRunRecords';
+import PodResourceStatus from './components/PodResourceStatus';
+import PodSchedulingInfo from './components/PodSchedulingInfo';
+import {
+  buildPodBasicInfo,
+  buildPodConditions,
+  buildPodDetail,
+  type PodBasicInfo,
+} from './components/podHelpers';
 import ResourceBasicInfo from './components/ResourceBasicInfo';
 import StatusText from './components/StatusText';
 
@@ -329,6 +337,48 @@ const cronJobBasicInfoColumns: ProDescriptionsItemProps<CronJobBasicInfo>[] = [
   },
 ];
 
+const podBasicInfoColumns: ProDescriptionsItemProps<PodBasicInfo>[] = [
+  {
+    title: '命名空间',
+    dataIndex: 'namespace',
+  },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    render: (_, record) => <StatusText status={record.status} />,
+  },
+  {
+    title: '容器组 IP 地址',
+    dataIndex: 'pod_ip',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '节点名称',
+    dataIndex: 'node_name',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '节点 IP 地址',
+    dataIndex: 'node_ip',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '重启次数',
+    dataIndex: 'restart_count',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: 'QoS 类别',
+    dataIndex: 'qos_class',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '创建时间',
+    dataIndex: 'create_time',
+    valueType: 'dateTime',
+  },
+];
+
 const ClusterResourceDetail = () => {
   const { message } = App.useApp();
   const { styles } = useStyles();
@@ -344,6 +394,9 @@ const ClusterResourceDetail = () => {
   const [podLoading, setPodLoading] = useState(false);
   const [scaling, setScaling] = useState(false);
   const [manifest, setManifest] = useState<Record<string, unknown>>();
+  const [detailType, setDetailType] = useState<
+    API.ClusterResourceCreateType | undefined
+  >(type);
   const [pods, setPods] = useState<API.ClusterNodePodItem[]>([]);
   const metadata = useMemo(
     () => getRecordValue(manifest?.metadata),
@@ -355,11 +408,15 @@ const ClusterResourceDetail = () => {
   );
   const basicInfo = useMemo(
     () =>
-      type === 'CronJob'
-        ? buildCronJobBasicInfo(manifest, namespace)
-        : buildJobBasicInfo(manifest, namespace),
-    [manifest, namespace, type],
+      detailType === 'Pod'
+        ? buildPodBasicInfo(manifest, namespace)
+        : detailType === 'CronJob'
+          ? buildCronJobBasicInfo(manifest, namespace)
+          : buildJobBasicInfo(manifest, namespace),
+    [detailType, manifest, namespace],
   );
+  const podDetail = useMemo(() => buildPodDetail(manifest), [manifest]);
+  const podConditions = useMemo(() => buildPodConditions(manifest), [manifest]);
   const replicaSummary = useMemo(
     () => buildJobReplicaSummary(manifest),
     [manifest],
@@ -368,17 +425,33 @@ const ClusterResourceDetail = () => {
   const fetchManifest = useCallback(async () => {
     if (!type || !name) {
       setManifest(undefined);
+      setDetailType(undefined);
       return;
     }
 
     setLoading(true);
     try {
-      const res = await getClusterResourceManifest({
-        type,
-        namespace,
-        name,
-      });
-      setManifest(res.data);
+      try {
+        const res = await getClusterResourceManifest({
+          type,
+          namespace,
+          name,
+        });
+        setManifest(res.data);
+        setDetailType(type);
+      } catch (error) {
+        if (type !== 'CronJob' || !namespace) {
+          throw error;
+        }
+
+        const res = await getClusterResourceManifest({
+          type: 'Pod',
+          namespace,
+          name,
+        });
+        setManifest(res.data);
+        setDetailType('Pod');
+      }
     } finally {
       setLoading(false);
     }
@@ -483,7 +556,7 @@ const ClusterResourceDetail = () => {
         <ClusterEventTable
           disabled={!name || !namespace}
           params={{
-            objectKind: type,
+            objectKind: detailType,
             objectName: name,
             namespace,
           }}
@@ -491,7 +564,7 @@ const ClusterResourceDetail = () => {
       ),
     };
 
-    if (type === 'CronJob') {
+    if (detailType === 'CronJob') {
       return [
         {
           key: 'runs',
@@ -499,6 +572,30 @@ const ClusterResourceDetail = () => {
           children: <JobRunRecords revisions={annotations?.revisions} />,
         },
         metadataTab,
+        eventsTab,
+      ];
+    }
+
+    if (detailType === 'Pod') {
+      return [
+        {
+          key: 'resourceStatus',
+          label: '资源状态',
+          children: <PodResourceStatus pod={podDetail} />,
+        },
+        {
+          key: 'scheduling',
+          label: '调度信息',
+          children: (
+            <PodSchedulingInfo conditions={podConditions} pod={podDetail} />
+          ),
+        },
+        metadataTab,
+        {
+          key: 'env',
+          label: '环境变量',
+          children: <JobEnvironmentVariables manifest={manifest} />,
+        },
         eventsTab,
       ];
     }
@@ -536,8 +633,10 @@ const ClusterResourceDetail = () => {
     name,
     namespace,
     podLoading,
+    podConditions,
+    podDetail,
     pods,
-    type,
+    detailType,
   ]);
 
   return (
@@ -553,14 +652,21 @@ const ClusterResourceDetail = () => {
           <Spin spinning={loading}>
             {manifest ? (
               <div className={styles.basicInfoContent}>
-                {type === 'Job' && (
+                {detailType === 'Job' && (
                   <ReplicaSummary
                     loading={scaling}
                     data={replicaSummary}
                     onScale={handleScaleJobReplicas}
                   />
                 )}
-                {type === 'CronJob' ? (
+                {detailType === 'Pod' ? (
+                  <ResourceBasicInfo<PodBasicInfo>
+                    className={styles.description}
+                    column={3}
+                    columns={podBasicInfoColumns}
+                    dataSource={basicInfo as PodBasicInfo}
+                  />
+                ) : detailType === 'CronJob' ? (
                   <ResourceBasicInfo<CronJobBasicInfo>
                     className={styles.description}
                     column={3}

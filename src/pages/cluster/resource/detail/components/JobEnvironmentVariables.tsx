@@ -3,12 +3,7 @@ import { Empty } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
 import { KeyValueList, SectionTitle } from '@/components';
-import {
-  formatValue,
-  getArrayValue,
-  getRecordValue,
-  getStringValue,
-} from './helpers';
+import { buildPodContainers } from './podHelpers';
 
 const useStyles = createStyles(({ token }) => ({
   list: {
@@ -71,60 +66,16 @@ type JobEnvironmentVariablesProps = {
   manifest?: Record<string, unknown>;
 };
 
-const getEnvValueFrom = (env: Record<string, unknown>) => {
-  const valueFrom = getRecordValue(env.valueFrom);
-
-  if (!valueFrom) {
-    return undefined;
-  }
-
-  const configMapKeyRef = getRecordValue(valueFrom.configMapKeyRef);
-  if (configMapKeyRef) {
-    return `ConfigMap: ${formatValue(configMapKeyRef.name)}/${formatValue(
-      configMapKeyRef.key,
-    )}`;
-  }
-
-  const secretKeyRef = getRecordValue(valueFrom.secretKeyRef);
-  if (secretKeyRef) {
-    return `Secret: ${formatValue(secretKeyRef.name)}/${formatValue(
-      secretKeyRef.key,
-    )}`;
-  }
-
-  const fieldRef = getRecordValue(valueFrom.fieldRef);
-  if (fieldRef) {
-    return `字段引用: ${formatValue(fieldRef.fieldPath)}`;
-  }
-
-  const resourceFieldRef = getRecordValue(valueFrom.resourceFieldRef);
-  if (resourceFieldRef) {
-    return `资源引用: ${formatValue(resourceFieldRef.resource)}`;
-  }
-
-  return JSON.stringify(valueFrom);
-};
-
 const getContainers = (manifest?: Record<string, unknown>) => {
-  const spec = getRecordValue(manifest?.spec);
-  const template = getRecordValue(spec?.template);
-  const podSpec = getRecordValue(template?.spec);
-
-  return getArrayValue(podSpec?.containers).map((container) => {
-    const containerRecord = getRecordValue(container) || {};
-
-    return {
-      name: getStringValue(containerRecord.name) || '-',
-      env: getArrayValue(containerRecord.env)
-        .map((item) => getRecordValue(item))
-        .filter(Boolean)
-        .map((env) => ({
-          key: getStringValue(env?.name) || '',
-          value: getStringValue(env?.value) || getEnvValueFrom(env || {}),
-        }))
-        .filter((item) => item.key),
-    };
-  });
+  return buildPodContainers(manifest).map((container) => ({
+    name: container.name || '-',
+    env: (container.env || [])
+      .map((env) => ({
+        key: env.name || '',
+        value: env.value || env.value_from,
+      }))
+      .filter((item) => item.key),
+  }));
 };
 
 const JobEnvironmentVariables = ({
@@ -159,7 +110,11 @@ const JobEnvironmentVariables = ({
             key={container.name}
           >
             <div className={styles.header}>
-              <SectionTitle color={'#36435C'} style={{ marginBottom: 0 }} fontSize={12}>
+              <SectionTitle
+                color={'#36435C'}
+                style={{ marginBottom: 0 }}
+                fontSize={12}
+              >
                 <button
                   aria-expanded={expanded}
                   className={styles.toggle}

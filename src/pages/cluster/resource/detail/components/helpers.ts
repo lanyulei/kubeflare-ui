@@ -40,6 +40,21 @@ const getJobStatusLabel = (status?: string) => {
   if (normalizedStatus === 'terminating') {
     return '删除中';
   }
+  if (normalizedStatus === 'pending') {
+    return '等待中';
+  }
+  if (normalizedStatus === 'containercreating') {
+    return '容器创建中';
+  }
+  if (normalizedStatus === 'imagepullbackoff') {
+    return '镜像拉取失败';
+  }
+  if (normalizedStatus === 'crashloopbackoff') {
+    return '崩溃循环';
+  }
+  if (normalizedStatus === 'unknown') {
+    return '未知';
+  }
   return status || '-';
 };
 
@@ -54,10 +69,27 @@ const getJobStatusType = (
   if (normalizedStatus === 'active') {
     return 'success';
   }
-  if (normalizedStatus === 'running' || normalizedStatus === 'suspended') {
+  if (normalizedStatus === 'running') {
+    return 'success';
+  }
+  if (normalizedStatus === 'suspended') {
     return 'warning';
   }
   if (normalizedStatus === 'failed') {
+    return 'error';
+  }
+  if (
+    normalizedStatus === 'pending' ||
+    normalizedStatus === 'containercreating' ||
+    normalizedStatus === 'terminating'
+  ) {
+    return 'warning';
+  }
+  if (
+    normalizedStatus === 'imagepullbackoff' ||
+    normalizedStatus === 'crashloopbackoff' ||
+    normalizedStatus === 'unknown'
+  ) {
     return 'error';
   }
   return 'default';
