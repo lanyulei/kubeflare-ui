@@ -9,8 +9,19 @@ import { createKeyValueItem } from './helpers';
 import type { CreateIngressFormValues } from './types';
 
 const useStyles = createStyles(({ token }) => ({
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+  },
+  sectionTitle: {
+    marginBottom: 8,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
   option: {
-    padding: `${token.paddingSM}px ${token.paddingMD}px`,
+    padding: `12px 16px`,
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -53,24 +64,17 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   metadataBody: {
-    marginTop: '14px',
-    padding: token.paddingSM,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginLG,
+    marginTop: 14,
     borderRadius: token.borderRadiusSM,
-    background: token.colorFillQuaternary,
-  },
-  fieldBlock: {
-    '& + &': {
-      marginTop: token.marginLG,
-    },
   },
   fieldLabel: {
     marginBottom: token.marginSM,
     color: token.colorText,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeight,
-  },
-  requiredMark: {
-    color: token.colorError,
   },
 }));
 
@@ -90,9 +94,7 @@ const IngressAdvancedSettings = ({ form }: IngressAdvancedSettingsProps) => {
       return;
     }
     if (annotations.length === 0) {
-      form.setFieldValue('annotations', [
-        createKeyValueItem('nginx.ingress.kubernetes.io/use-regex', 'true'),
-      ]);
+      form.setFieldValue('annotations', [createKeyValueItem()]);
     }
     if (labels.length === 0) {
       form.setFieldValue('labels', [createKeyValueItem()]);
@@ -100,50 +102,57 @@ const IngressAdvancedSettings = ({ form }: IngressAdvancedSettingsProps) => {
   }, [annotations.length, form, labels.length, metadataOpen]);
 
   return (
-    <div className={styles.option}>
-      <button
-        className={styles.optionHeaderButton}
-        type="button"
-        onClick={() => setMetadataOpen((open) => !open)}
-      >
-        <span className={styles.headerIcon}>
-          {metadataOpen ? <UpOutlined /> : <DownOutlined />}
-        </span>
-        <span>
-          <div className={styles.title}>添加元数据</div>
-          <div className={styles.description}>为路由添加元数据。</div>
-        </span>
-      </button>
-      {metadataOpen && (
-        <div className={styles.metadataBody}>
-          <div className={styles.fieldBlock}>
-            <div className={styles.fieldLabel}>注解</div>
-            <Form.Item name="annotations">
-              <KeyValueEditor
-                addIcon={false}
-                addText="添加"
-                deleteAriaLabel="删除注解"
-                onAddBlocked={() => message.warning('请先填写已有注解的键。')}
-                onCreateItem={() => createKeyValueItem()}
-              />
-            </Form.Item>
-          </div>
-          <div className={styles.fieldBlock}>
-            <div className={styles.fieldLabel}>
-              标签 <span className={styles.requiredMark}>*</span>
+    <div className={styles.stack}>
+      <div>
+        <div className={styles.sectionTitle}>元数据</div>
+        <div className={styles.option}>
+          <button
+            className={styles.optionHeaderButton}
+            type="button"
+            onClick={() => setMetadataOpen((open) => !open)}
+          >
+            <span className={styles.headerIcon}>
+              {metadataOpen ? <UpOutlined /> : <DownOutlined />}
+            </span>
+            <span>
+              <div className={styles.title}>添加元数据</div>
+              <div className={styles.description}>为应用路由添加元数据。</div>
+            </span>
+          </button>
+          {metadataOpen && (
+            <div className={styles.metadataBody}>
+              <div>
+                <div className={styles.fieldLabel}>注解</div>
+                <Form.Item name="annotations">
+                  <KeyValueEditor
+                    addIcon={false}
+                    addText="添加"
+                    deleteAriaLabel="删除注解"
+                    onAddBlocked={() =>
+                      message.warning('请先填写已有注解的键。')
+                    }
+                    onCreateItem={() => createKeyValueItem()}
+                  />
+                </Form.Item>
+              </div>
+              <div>
+                <div className={styles.fieldLabel}>标签</div>
+                <Form.Item name="labels">
+                  <KeyValueEditor
+                    addIcon={false}
+                    addText="添加"
+                    deleteAriaLabel="删除标签"
+                    onAddBlocked={() =>
+                      message.warning('请先填写已有标签的键。')
+                    }
+                    onCreateItem={() => createKeyValueItem()}
+                  />
+                </Form.Item>
+              </div>
             </div>
-            <Form.Item name="labels">
-              <KeyValueEditor
-                addIcon={false}
-                addText="添加"
-                deleteAriaLabel="删除标签"
-                onAddBlocked={() => message.warning('请先填写已有标签的键。')}
-                onCreateItem={() => createKeyValueItem()}
-              />
-            </Form.Item>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

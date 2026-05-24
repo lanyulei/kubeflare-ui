@@ -35,7 +35,7 @@ import {
 } from './helpers';
 import IngressAdvancedSettings from './IngressAdvancedSettings';
 import IngressRuleSettings from './IngressRuleSettings';
-import type { CreateIngressFormValues } from './types';
+import type { CreateIngressFormValues, IngressServiceOption } from './types';
 
 const useStyles = createStyles(({ token }) => ({
   drawer: {
@@ -166,11 +166,11 @@ const CreateIngressDrawer = ({
   const [current, setCurrent] = useState(0);
   const [yamlMode, setYamlMode] = useState(false);
   const [yamlValue, setYamlValue] = useState('');
-  const [serviceOptions, setServiceOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
+  const [serviceOptions, setServiceOptions] = useState<IngressServiceOption[]>(
+    [],
+  );
   const values = Form.useWatch([], { form, preserve: true }) || {};
-  const namespace = Form.useWatch('namespace', form);
+  const namespace = Form.useWatch('namespace', { form, preserve: true });
   const steps = useMemo(
     () => [
       {
@@ -199,7 +199,15 @@ const CreateIngressDrawer = ({
     setServiceOptions(
       (res.data.items || []).flatMap((item) =>
         item.name && item.name !== '-'
-          ? [{ label: item.name, value: item.name }]
+          ? [
+              {
+                label: item.name,
+                ports: (item.ports || []).flatMap((port) =>
+                  port.port ? [port.port] : [],
+                ),
+                value: item.name,
+              },
+            ]
           : [],
       ),
     );

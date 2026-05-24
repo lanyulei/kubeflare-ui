@@ -4,14 +4,27 @@ export type IngressRuleProtocol = 'HTTP' | 'HTTPS';
 
 export type IngressPathType = 'Exact' | 'Prefix' | 'ImplementationSpecific';
 
+export type IngressRoutePathItem = {
+  id: string;
+  path?: string;
+  pathType: IngressPathType;
+  serviceName?: string;
+  servicePort?: number;
+};
+
 export type IngressRouteRuleItem = {
   id: string;
   host?: string;
-  path?: string;
-  pathType: IngressPathType;
   protocol: IngressRuleProtocol;
-  serviceName?: string;
-  servicePort?: number;
+  paths: IngressRoutePathItem[];
+  enableMetadata?: boolean;
+  metadata?: string;
+};
+
+export type IngressServiceOption = {
+  label: string;
+  ports?: number[];
+  value: string;
 };
 
 export type CreateIngressFormValues = {

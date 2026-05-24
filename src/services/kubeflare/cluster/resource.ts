@@ -93,6 +93,7 @@ type KubernetesService = {
     type?: string
     clusterIP?: string
     ports?: {
+      name?: string
       port?: number
       nodePort?: number
       protocol?: string
@@ -690,6 +691,17 @@ const toServiceItem = (
   namespace: service.metadata?.namespace,
   internal_access: getServiceInternalAccess(service),
   external_access: getServiceExternalAccess(service),
+  ports: (service.spec?.ports || []).flatMap((port) =>
+    port.port
+      ? [
+          {
+            name: port.name,
+            port: port.port,
+            protocol: port.protocol,
+          },
+        ]
+      : [],
+  ),
   create_time: service.metadata?.creationTimestamp,
 })
 

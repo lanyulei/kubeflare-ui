@@ -3,20 +3,40 @@ import {
   EditOutlined,
   GlobalOutlined,
   PlusOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import { Button, Checkbox, Form, Input, message, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
-import { useEffect, useMemo, useState } from 'react';
-import { createIngressRuleItem, isValidIngressRule } from './helpers';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import {
+  createIngressRuleItem,
+  isValidIngressPath,
+  isValidIngressRule,
+} from './helpers';
 import IngressRuleModal from './IngressRuleModal';
-import type { CreateIngressFormValues, IngressRouteRuleItem } from './types';
+import type {
+  CreateIngressFormValues,
+  IngressRouteRuleItem,
+  IngressServiceOption,
+} from './types';
 
 const useStyles = createStyles(({ token }) => ({
   stack: {
     display: 'flex',
     flexDirection: 'column',
-    gap: token.marginLG,
+    gap: 16,
+  },
+  section: {
+    '.ant-form-item': {
+      marginBottom: 0,
+    },
+  },
+  sectionTitle: {
+    marginBottom: 8,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
   },
   list: {
     display: 'flex',
@@ -24,7 +44,7 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginSM,
   },
   card: {
-    padding: `${token.paddingMD}px ${token.paddingLG}px`,
+    padding: '12px 16px',
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -66,8 +86,9 @@ const useStyles = createStyles(({ token }) => ({
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 160px',
     gap: token.marginMD,
-    marginTop: token.marginMD,
+    marginTop: 12,
     padding: `${token.paddingXS}px ${token.paddingMD}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorFillQuaternary,
     color: token.colorTextTertiary,
@@ -90,7 +111,7 @@ const useStyles = createStyles(({ token }) => ({
     minHeight: 64,
     alignItems: 'center',
     gap: token.marginSM,
-    padding: `${token.paddingMD}px ${token.paddingLG}px`,
+    padding: '12px 20px',
     border: `1px dashed ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
@@ -120,16 +141,23 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeightSM,
   },
   rewrite: {
-    padding: `${token.paddingSM}px ${token.paddingMD}px`,
+    padding: '12px 16px',
     border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
+
+    '.ant-form-item': {
+      marginBottom: 0,
+    },
   },
   rewriteHeader: {
     display: 'grid',
     gridTemplateColumns: '24px minmax(0, 1fr)',
     alignItems: 'start',
     gap: token.marginSM,
+  },
+  rewriteCheckbox: {
+    marginTop: 2,
   },
   rewriteTitle: {
     color: token.colorText,
@@ -144,19 +172,73 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   rewriteBody: {
-    marginTop: token.marginMD,
+    marginTop: 14,
     padding: token.paddingSM,
+    border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorFillQuaternary,
   },
-  rewriteInput: {
-    width: 'min(420px, 100%)',
+  rewriteFieldLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: token.marginXXS,
+    marginBottom: token.marginSM,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+  },
+  helpIcon: {
+    color: token.colorTextTertiary,
+    cursor: 'help',
+    fontSize: 12,
+  },
+  rewriteTextArea: {
+    width: 'min(456px, 100%)',
+    background: token.colorBgContainer,
+  },
+  rewriteTooltip: {
+    width: 336,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  tooltipIntro: {
+    marginBottom: token.marginSM,
+    color: 'rgba(255,255,255,0.92)',
+  },
+  tooltipTable: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: `${token.marginXS}px ${token.marginLG}px`,
+    padding: token.paddingSM,
+    borderRadius: token.borderRadiusSM,
+    background: 'rgba(0,0,0,0.22)',
+  },
+  tooltipHeader: {
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: 600,
+  },
+  tooltipCell: {
+    color: 'rgba(255,255,255,0.94)',
+    whiteSpace: 'nowrap',
+  },
+  tooltipNote: {
+    marginTop: token.marginSM,
+    color: 'rgba(255,255,255,0.55)',
   },
 }));
 
+const REWRITE_EXAMPLES = [
+  ['匹配所有路径', '.*'],
+  ['匹配 /api开头', '^/api.*'],
+  ['匹配 /html结尾', '.*\\.html$'],
+  ['匹配 /user/{id}', '^/user/(\\d+)$'],
+  ['匹配 /old 为 /new', '^/old(.*) → /new$1'],
+];
+
 type IngressRuleSettingsProps = {
   form: FormInstance<CreateIngressFormValues>;
-  serviceOptions: { label: string; value: string }[];
+  serviceOptions: IngressServiceOption[];
 };
 
 const IngressRuleSettings = ({
@@ -169,7 +251,13 @@ const IngressRuleSettings = ({
   const [editingIndex, setEditingIndex] = useState<number | undefined>();
   const rules = (Form.useWatch('rules', form) as IngressRouteRuleItem[]) || [];
   const enablePathRewrite = Form.useWatch('enablePathRewrite', form);
-  const validRules = useMemo(() => rules.filter(isValidIngressRule), [rules]);
+  const validRules = useMemo(
+    () =>
+      rules
+        .map((rule, index) => ({ index, rule }))
+        .filter(({ rule }) => isValidIngressRule(rule)),
+    [rules],
+  );
 
   useEffect(() => {
     if (!enablePathRewrite) {
@@ -179,6 +267,28 @@ const IngressRuleSettings = ({
       form.setFieldValue('rewriteTarget', '/');
     }
   }, [enablePathRewrite, form]);
+
+  const rewriteTooltip = (
+    <div className={styles.rewriteTooltip}>
+      <div className={styles.tooltipIntro}>
+        用于重写客户端请求的路径，支持静态路径（如 /new-path）、动态路径（如
+        /$1、/$2等），组合路径（如 /v1/$1）和正则表达式
+      </div>
+      <div className={styles.tooltipTable}>
+        <div className={styles.tooltipHeader}>用途示例</div>
+        <div className={styles.tooltipHeader}>正则表达式</div>
+        {REWRITE_EXAMPLES.map(([label, value]) => (
+          <Fragment key={label}>
+            <div className={styles.tooltipCell}>{label}</div>
+            <div className={styles.tooltipCell}>{value}</div>
+          </Fragment>
+        ))}
+      </div>
+      <div className={styles.tooltipNote}>
+        注：正则表达式需要于 path 字段的正则表达式匹配
+      </div>
+    </div>
+  );
 
   const openModal = (index?: number) => {
     setEditingIndex(index);
@@ -193,6 +303,7 @@ const IngressRuleSettings = ({
     const values = await ruleForm.validateFields();
     const nextRule = createIngressRuleItem({
       ...values,
+      metadata: values.enableMetadata ? values.metadata : undefined,
       id:
         editingIndex === undefined
           ? values.id
@@ -218,102 +329,136 @@ const IngressRuleSettings = ({
 
   return (
     <div className={styles.stack}>
-      <Form.Item
-        name="rules"
-        required
-        rules={[
-          {
-            validator: async (_, value?: IngressRouteRuleItem[]) => {
-              if ((value || []).some(isValidIngressRule)) {
-                return;
-              }
-              throw new Error('请添加至少一个路由规则');
+      <div className={styles.section}>
+        <div className={styles.sectionTitle}>路由规则</div>
+        <Form.Item
+          name="rules"
+          required
+          rules={[
+            {
+              validator: async (_, value?: IngressRouteRuleItem[]) => {
+                if ((value || []).some(isValidIngressRule)) {
+                  return;
+                }
+                throw new Error('请添加至少一个路由规则');
+              },
             },
-          },
-        ]}
-      >
-        <div className={styles.list}>
-          {validRules.map((rule, index) => (
-            <div className={styles.card} key={rule.id}>
-              <div className={styles.cardHeader}>
-                <GlobalOutlined className={styles.icon} />
-                <div>
-                  <div className={styles.title}>{rule.host}</div>
-                  <div className={styles.protocol}>协议： {rule.protocol}</div>
-                </div>
-                <div className={styles.actions}>
-                  <Tooltip title="删除路由规则">
-                    <Button
-                      aria-label="删除路由规则"
-                      className={styles.actionButton}
-                      icon={<DeleteOutlined />}
-                      type="text"
-                      onClick={() => deleteRule(index)}
-                    />
-                  </Tooltip>
-                  <Tooltip title="编辑路由规则">
-                    <Button
-                      aria-label="编辑路由规则"
-                      className={styles.actionButton}
-                      icon={<EditOutlined />}
-                      type="text"
-                      onClick={() => openModal(index)}
-                    />
-                  </Tooltip>
-                </div>
-              </div>
-              <div className={styles.summary}>
-                <span className={styles.summaryItem}>
-                  路径： {rule.path || '-'}
-                </span>
-                <span className={styles.summaryItem}>
-                  服务： {rule.serviceName || '-'}
-                </span>
-                <span className={styles.summaryItem}>
-                  端口： {rule.servicePort || '-'}
-                </span>
-              </div>
-            </div>
-          ))}
-          <button
-            className={styles.add}
-            type="button"
-            onClick={() => openModal()}
-          >
-            <PlusOutlined />
-            <span className={styles.addText}>
-              <span className={styles.addTitle}>添加路由规则</span>
-              <span className={styles.addDescription}>
-                添加一个路由规则将域名路径映射至服务。
-              </span>
-            </span>
-          </button>
-        </div>
-      </Form.Item>
+          ]}
+        >
+          <div className={styles.list}>
+            {validRules.map(({ index, rule }) => {
+              const paths = (rule.paths || []).filter(isValidIngressPath);
+              const pathSummary = paths
+                .map((path) => path.path || '-')
+                .join('、');
+              const serviceSummary = paths
+                .map(
+                  (path) =>
+                    `${path.serviceName || '-'}:${path.servicePort || '-'}`,
+                )
+                .join('、');
 
-      <div className={styles.rewrite}>
-        <div className={styles.rewriteHeader}>
-          <Form.Item name="enablePathRewrite" valuePropName="checked">
-            <Checkbox aria-label="路径重写" />
-          </Form.Item>
-          <span>
-            <div className={styles.rewriteTitle}>路径重写</div>
-            <div className={styles.rewriteDescription}>
-              通过正则表达式去配置应用在当前路由规则的重写路径
-            </div>
-          </span>
-        </div>
-        {enablePathRewrite && (
-          <div className={styles.rewriteBody}>
-            <Form.Item
-              label="重写目标"
-              name="rewriteTarget"
-              rules={[{ required: true, message: '请输入重写目标' }]}
+              return (
+                <div className={styles.card} key={rule.id}>
+                  <div className={styles.cardHeader}>
+                    <GlobalOutlined className={styles.icon} />
+                    <div>
+                      <div className={styles.title}>{rule.host}</div>
+                      <div className={styles.protocol}>
+                        协议： {rule.protocol}
+                      </div>
+                    </div>
+                    <div className={styles.actions}>
+                      <Tooltip title="删除路由规则">
+                        <Button
+                          aria-label="删除路由规则"
+                          className={styles.actionButton}
+                          icon={<DeleteOutlined />}
+                          type="text"
+                          onClick={() => deleteRule(index)}
+                        />
+                      </Tooltip>
+                      <Tooltip title="编辑路由规则">
+                        <Button
+                          aria-label="编辑路由规则"
+                          className={styles.actionButton}
+                          icon={<EditOutlined />}
+                          type="text"
+                          onClick={() => openModal(index)}
+                        />
+                      </Tooltip>
+                    </div>
+                  </div>
+                  <div className={styles.summary}>
+                    <span className={styles.summaryItem}>
+                      路径： {pathSummary || '-'}
+                    </span>
+                    <span className={styles.summaryItem}>
+                      服务： {serviceSummary || '-'}
+                    </span>
+                    <span className={styles.summaryItem}>
+                      数量： {paths.length}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+            <button
+              className={styles.add}
+              type="button"
+              onClick={() => openModal()}
             >
-              <Input className={styles.rewriteInput} placeholder="/" />
-            </Form.Item>
+              <PlusOutlined />
+              <span className={styles.addText}>
+                <span className={styles.addTitle}>添加路由规则</span>
+                <span className={styles.addDescription}>
+                  添加一个路由规则将域名路径映射至服务。
+                </span>
+              </span>
+            </button>
           </div>
-        )}
+        </Form.Item>
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionTitle}>路径重写</div>
+        <div className={styles.rewrite}>
+          <div className={styles.rewriteHeader}>
+            <Form.Item
+              className={styles.rewriteCheckbox}
+              name="enablePathRewrite"
+              valuePropName="checked"
+            >
+              <Checkbox aria-label="路径重写" />
+            </Form.Item>
+            <span>
+              <div className={styles.rewriteTitle}>路径重写</div>
+              <div className={styles.rewriteDescription}>
+                通过正则表达式去配置应用在当前路由规则的重写路径
+              </div>
+            </span>
+          </div>
+          {enablePathRewrite && (
+            <div className={styles.rewriteBody}>
+              <div className={styles.rewriteFieldLabel}>
+                重写路径
+                <Tooltip placement="right" title={rewriteTooltip}>
+                  <QuestionCircleOutlined className={styles.helpIcon} />
+                </Tooltip>
+              </div>
+              <Form.Item
+                name="rewriteTarget"
+                rules={[{ required: true, message: '请输入重写路径' }]}
+              >
+                <Input.TextArea
+                  autoSize={{ minRows: 2, maxRows: 4 }}
+                  className={styles.rewriteTextArea}
+                  placeholder="/"
+                />
+              </Form.Item>
+            </div>
+          )}
+        </div>
       </div>
 
       <IngressRuleModal

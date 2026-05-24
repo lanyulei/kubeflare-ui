@@ -75,7 +75,7 @@ const useStyles = createStyles(({ token }) => ({
   stack: {
     display: 'flex',
     flexDirection: 'column',
-    gap: token.marginLG,
+    gap: `16px`,
   },
   section: {
     '.ant-form-item': {

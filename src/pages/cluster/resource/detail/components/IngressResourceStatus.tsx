@@ -1,5 +1,5 @@
 import { GlobalOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import { Button, Empty, Tooltip } from 'antd';
+import { Empty, Tooltip, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import { SectionTitle } from '@/components';
 import { formatIngressRuleValue, type IngressRuleItem } from './ingressHelpers';
@@ -16,14 +16,10 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginSM,
   },
   ruleItem: {
-    padding: `${token.paddingLG}px ${token.paddingXL}px`,
+    padding: token.paddingSM,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     backgroundColor: token.colorFillQuaternary,
-
-    '@media (max-width: 768px)': {
-      padding: token.paddingMD,
-    },
   },
   ruleHeader: {
     display: 'flex',
@@ -86,8 +82,8 @@ const useStyles = createStyles(({ token }) => ({
       'minmax(180px, 1fr) minmax(160px, 1fr) minmax(120px, 180px) auto',
     alignItems: 'center',
     gap: token.marginLG,
-    marginTop: token.marginLG,
-    padding: `${token.paddingSM}px ${token.paddingLG}px`,
+    marginTop: token.marginSM,
+    padding: `${token.paddingXS + token.paddingXXS / 2}px ${token.padding + token.paddingXXS}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: 32,
     backgroundColor: token.colorBgContainer,
@@ -168,14 +164,14 @@ const IngressResourceStatus = ({ rules }: IngressResourceStatusProps) => {
                       {formatIngressRuleValue(rule.service_port)}
                     </div>
                   </div>
-                  <Button
+                  <Typography.Link
                     disabled={!rule.accessible_url}
                     href={rule.accessible_url}
                     target="_blank"
                     rel="noreferrer"
                   >
                     访问服务
-                  </Button>
+                  </Typography.Link>
                 </div>
               </div>
             ))}

@@ -3,6 +3,7 @@ import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 import type {
   CreateIngressFormValues,
   IngressPathType,
+  IngressRoutePathItem,
   IngressRouteRuleItem,
   IngressRuleProtocol,
 } from './types';
@@ -23,16 +24,28 @@ export const createKeyValueItem = (
   value,
 });
 
+export const createIngressPathItem = (
+  values?: Partial<IngressRoutePathItem>,
+): IngressRoutePathItem => ({
+  id: values?.id || createId(),
+  path: values?.path || '/',
+  pathType: values?.pathType || 'Prefix',
+  serviceName: values?.serviceName,
+  servicePort: values?.servicePort,
+});
+
 export const createIngressRuleItem = (
   values?: Partial<IngressRouteRuleItem>,
 ): IngressRouteRuleItem => ({
-  id: createId(),
+  id: values?.id || createId(),
   host: values?.host,
-  path: values?.path || '/',
-  pathType: values?.pathType || 'Prefix',
   protocol: values?.protocol || 'HTTP',
-  serviceName: values?.serviceName,
-  servicePort: values?.servicePort,
+  enableMetadata: values?.enableMetadata || false,
+  metadata: values?.enableMetadata ? values.metadata : undefined,
+  paths:
+    values?.paths && values.paths.length > 0
+      ? values.paths.map((path) => createIngressPathItem(path))
+      : [createIngressPathItem()],
 });
 
 export const getInitialCreateIngressValues = (
@@ -43,9 +56,7 @@ export const getInitialCreateIngressValues = (
   rules: [],
   enablePathRewrite: false,
   rewriteTarget: '/',
-  annotations: [
-    createKeyValueItem('nginx.ingress.kubernetes.io/use-regex', 'true'),
-  ],
+  annotations: [createKeyValueItem()],
   labels: [createKeyValueItem()],
 });
 
@@ -68,17 +79,31 @@ export const toRecord = (items?: KeyValueEditorItem[]) =>
     return record;
   }, {});
 
+export const isValidIngressPath = (path?: IngressRoutePathItem) =>
+  Boolean(
+    path?.path?.trim()?.startsWith('/') &&
+      path.pathType &&
+      path.serviceName?.trim() &&
+      path.servicePort &&
+      path.servicePort >= 1 &&
+      path.servicePort <= 65535,
+  );
+
+export const isValidIngressRule = (rule?: IngressRouteRuleItem) =>
+  Boolean(rule?.host?.trim() && (rule.paths || []).some(isValidIngressPath));
+
 const groupRulesByHost = (rules: IngressRouteRuleItem[]) =>
-  rules.reduce<Record<string, IngressRouteRuleItem[]>>((record, rule) => {
+  rules.reduce<Record<string, IngressRoutePathItem[]>>((record, rule) => {
     const host = rule.host?.trim();
-    if (!host || !rule.serviceName?.trim() || !rule.servicePort) {
+    const paths = (rule.paths || []).filter(isValidIngressPath);
+    if (!host || paths.length === 0) {
       return record;
     }
 
     if (!record[host]) {
       record[host] = [];
     }
-    record[host].push(rule);
+    record[host].push(...paths);
     return record;
   }, {});
 
@@ -86,35 +111,31 @@ const getTlsHosts = (rules: IngressRouteRuleItem[]) =>
   Array.from(
     new Set(
       rules
-        .filter((rule) => rule.protocol === 'HTTPS' && rule.host?.trim())
+        .filter(
+          (rule) =>
+            rule.protocol === 'HTTPS' &&
+            rule.host?.trim() &&
+            (rule.paths || []).some(isValidIngressPath),
+        )
         .map((rule) => rule.host?.trim() || ''),
     ),
-  );
-
-export const isValidIngressRule = (rule?: IngressRouteRuleItem) =>
-  Boolean(
-    rule?.host?.trim() &&
-      rule.path?.trim() &&
-      rule.pathType &&
-      rule.serviceName?.trim() &&
-      rule.servicePort,
   );
 
 export const buildCreateIngressManifest = (values: CreateIngressFormValues) => {
   const annotations = toRecord(values.annotations);
   const labels = toRecord(values.labels);
   const groupedRules = groupRulesByHost(values.rules || []);
-  const specRules = Object.entries(groupedRules).map(([host, rules]) => ({
+  const specRules = Object.entries(groupedRules).map(([host, paths]) => ({
     host,
     http: {
-      paths: rules.map((rule) => ({
-        path: rule.path || '/',
-        pathType: rule.pathType,
+      paths: paths.map((path) => ({
+        path: path.path || '/',
+        pathType: path.pathType,
         backend: {
           service: {
-            name: rule.serviceName,
+            name: path.serviceName,
             port: {
-              number: rule.servicePort,
+              number: path.servicePort,
             },
           },
         },
@@ -124,6 +145,7 @@ export const buildCreateIngressManifest = (values: CreateIngressFormValues) => {
   const tlsHosts = getTlsHosts(values.rules || []);
 
   if (values.enablePathRewrite) {
+    annotations['nginx.ingress.kubernetes.io/use-regex'] ||= 'true';
     annotations['nginx.ingress.kubernetes.io/rewrite-target'] =
       values.rewriteTarget?.trim() || '/';
   }

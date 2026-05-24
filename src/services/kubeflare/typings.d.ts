@@ -683,7 +683,14 @@ declare namespace API {
     namespace?: string
     internal_access?: string
     external_access?: string
+    ports?: ClusterServicePortItem[]
     create_time?: string
+  }
+
+  type ClusterServicePortItem = {
+    name?: string
+    port?: number
+    protocol?: string
   }
 
   type ClusterServiceEndpointPort = {
