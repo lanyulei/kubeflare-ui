@@ -49,6 +49,17 @@ export default {
   'pages.404.subTitle':
     '申し訳ありませんが、アクセスしたページは存在しません。',
   'pages.404.buttonText': 'ホームに戻る',
+  'pages.home.greeting': 'Good morning, {name}. Have a great day!',
+  'pages.home.stats.projects': 'Projects',
+  'pages.home.stats.rank': 'Team Rank',
+  'pages.home.stats.visits': 'Project Visits',
+  'pages.home.projects.all': 'All Projects',
+  'pages.home.projects.title': 'Active Projects',
+  'pages.home.activities.title': 'Activities',
+  'pages.home.quickLinks.title': 'Quick Start / Shortcuts',
+  'pages.home.quickLinks.add': 'Add',
+  'pages.home.radar.title': 'XX Index',
+  'pages.home.team.title': 'Team',
   'pages.system.subPage.title': 'Kubeflare システムコンソール',
   'pages.system.subPage.alertMessage':
     'Umi uiがリリースされました。npm run uiを使用して体験してください。',

@@ -10,15 +10,15 @@ const CustomResourceDefinitions = () => (
     createConfig={createCustomResourceDefinitionConfig}
     request={getClusterCustomResourceDefinitionList}
     columns={[
+      createResourceNameColumn<API.ClusterCustomResourceDefinitionItem>(
+        'CustomResourceDefinition',
+      ),
       {
         title: '类别',
         dataIndex: 'category',
         ellipsis: true,
         renderText: (_, record) => record.category || '-',
       },
-      createResourceNameColumn<API.ClusterCustomResourceDefinitionItem>(
-        'CustomResourceDefinition',
-      ),
       {
         title: '作用域',
         dataIndex: 'scope',

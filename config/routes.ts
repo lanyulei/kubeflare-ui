@@ -145,11 +145,6 @@ export default [
         ],
       },
       {
-        path: '/cluster/custom-resource-definitions',
-        name: 'clusterCustomResourceDefinitions',
-        component: './cluster/custom-resource-definitions',
-      },
-      {
         path: '/cluster/storage',
         name: 'clusterStorage',
         routes: [
@@ -168,6 +163,11 @@ export default [
             component: './cluster/storage/storage-classes',
           },
         ],
+      },
+      {
+        path: '/cluster/custom-resource-definitions',
+        name: 'clusterCustomResourceDefinitions',
+        component: './cluster/custom-resource-definitions',
       },
     ],
   },
