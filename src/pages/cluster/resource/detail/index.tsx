@@ -48,6 +48,12 @@ import {
 } from './components/podHelpers';
 import ResourceBasicInfo from './components/ResourceBasicInfo';
 import ResourceDataFields from './components/ResourceDataFields';
+import SecretResourceData from './components/SecretResourceData';
+import {
+  buildSecretBasicInfo,
+  buildSecretDataView,
+  type SecretBasicInfo,
+} from './components/secretHelpers';
 import ServiceResourceStatus from './components/ServiceResourceStatus';
 import StatusText from './components/StatusText';
 import {
@@ -245,6 +251,18 @@ const buildCronJobBasicInfo = (
   };
 };
 
+const buildServiceAccountBasicInfo = (
+  manifest?: Record<string, unknown>,
+  fallbackNamespace?: string,
+) => {
+  const metadata = getRecordValue(manifest?.metadata);
+
+  return {
+    namespace: getStringValue(metadata?.namespace) || fallbackNamespace || '-',
+    create_time: getStringValue(metadata?.creationTimestamp),
+  };
+};
+
 const buildJobReplicaSummary = (manifest?: Record<string, unknown>) => {
   const spec = getRecordValue(manifest?.spec);
   const status = getRecordValue(manifest?.status);
@@ -285,6 +303,24 @@ const getJobPodSelectors = (name?: string) =>
 
 type JobBasicInfo = ReturnType<typeof buildJobBasicInfo>;
 type CronJobBasicInfo = ReturnType<typeof buildCronJobBasicInfo>;
+type ServiceAccountBasicInfo = ReturnType<typeof buildServiceAccountBasicInfo>;
+
+const secretBasicInfoColumns: ProDescriptionsItemProps<SecretBasicInfo>[] = [
+  {
+    title: '命名空间',
+    dataIndex: 'namespace',
+  },
+  {
+    title: '类型',
+    dataIndex: 'type',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '创建时间',
+    dataIndex: 'create_time',
+    valueType: 'dateTime',
+  },
+];
 
 const configMapBasicInfoColumns: ProDescriptionsItemProps<ConfigMapBasicInfo>[] =
   [
@@ -367,6 +403,19 @@ const serviceBasicInfoColumns: ProDescriptionsItemProps<ServiceBasicInfo>[] = [
     valueType: 'dateTime',
   },
 ];
+
+const serviceAccountBasicInfoColumns: ProDescriptionsItemProps<ServiceAccountBasicInfo>[] =
+  [
+    {
+      title: '命名空间',
+      dataIndex: 'namespace',
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'create_time',
+      valueType: 'dateTime',
+    },
+  ];
 
 const jobBasicInfoColumns: ProDescriptionsItemProps<JobBasicInfo>[] = [
   {
@@ -524,13 +573,17 @@ const ClusterResourceDetail = () => {
         ? buildPodBasicInfo(manifest, namespace)
         : detailType === 'Service'
           ? buildServiceBasicInfo(manifest, serviceEndpoints, namespace)
-          : detailType === 'ConfigMap'
-            ? buildConfigMapBasicInfo(manifest, namespace)
-            : detailType === 'Ingress'
-              ? buildIngressBasicInfo(manifest, namespace)
-              : detailType === 'CronJob'
-                ? buildCronJobBasicInfo(manifest, namespace)
-                : buildJobBasicInfo(manifest, namespace),
+          : detailType === 'ServiceAccount'
+            ? buildServiceAccountBasicInfo(manifest, namespace)
+            : detailType === 'Secret'
+              ? buildSecretBasicInfo(manifest, namespace)
+              : detailType === 'ConfigMap'
+                ? buildConfigMapBasicInfo(manifest, namespace)
+                : detailType === 'Ingress'
+                  ? buildIngressBasicInfo(manifest, namespace)
+                  : detailType === 'CronJob'
+                    ? buildCronJobBasicInfo(manifest, namespace)
+                    : buildJobBasicInfo(manifest, namespace),
     [detailType, manifest, namespace, serviceEndpoints],
   );
   const podDetail = useMemo(() => buildPodDetail(manifest), [manifest]);
@@ -545,6 +598,7 @@ const ClusterResourceDetail = () => {
     () => buildConfigMapDataItems(manifest),
     [manifest],
   );
+  const secretData = useMemo(() => buildSecretDataView(manifest), [manifest]);
 
   const fetchManifest = useCallback(async () => {
     if (!type || !name) {
@@ -833,6 +887,16 @@ const ClusterResourceDetail = () => {
       ];
     }
 
+    if (detailType === 'Secret') {
+      return [
+        {
+          key: 'data',
+          label: '数据',
+          children: <SecretResourceData data={secretData} />,
+        },
+      ];
+    }
+
     return [
       {
         key: 'runs',
@@ -871,6 +935,7 @@ const ClusterResourceDetail = () => {
     pods,
     serviceEndpoints,
     configMapDataItems,
+    secretData,
     ingressRules,
     servicePorts,
     serviceWorkloads,
@@ -912,6 +977,20 @@ const ClusterResourceDetail = () => {
                     columns={serviceBasicInfoColumns}
                     dataSource={basicInfo as ServiceBasicInfo}
                   />
+                ) : detailType === 'ServiceAccount' ? (
+                  <ResourceBasicInfo<ServiceAccountBasicInfo>
+                    className={styles.description}
+                    column={2}
+                    columns={serviceAccountBasicInfoColumns}
+                    dataSource={basicInfo as ServiceAccountBasicInfo}
+                  />
+                ) : detailType === 'Secret' ? (
+                  <ResourceBasicInfo<SecretBasicInfo>
+                    className={styles.description}
+                    column={3}
+                    columns={secretBasicInfoColumns}
+                    dataSource={basicInfo as SecretBasicInfo}
+                  />
                 ) : detailType === 'Ingress' ? (
                   <ResourceBasicInfo<IngressBasicInfo>
                     className={styles.description}
@@ -947,11 +1026,13 @@ const ClusterResourceDetail = () => {
           </Spin>
         </div>
       </div>
-      <div className={styles.moreInfo}>
-        <Card className={`${styles.moreInfoCard} ${styles.tabBody}`}>
-          <Tabs items={tabItems} />
-        </Card>
-      </div>
+      {detailType !== 'ServiceAccount' && (
+        <div className={styles.moreInfo}>
+          <Card className={`${styles.moreInfoCard} ${styles.tabBody}`}>
+            <Tabs items={tabItems} />
+          </Card>
+        </div>
+      )}
     </PageContainer>
   );
 };
