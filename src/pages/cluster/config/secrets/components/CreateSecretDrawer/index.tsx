@@ -30,6 +30,7 @@ import {
   SECRET_API_VERSION,
   SECRET_KIND,
   SECRET_RESOURCE_TYPE,
+  validateSecretDataItems,
 } from './helpers';
 import SecretDataSettings from './SecretDataSettings';
 import type { CreateSecretFormValues } from './types';
@@ -203,6 +204,14 @@ const CreateSecretDrawer = ({
 
   const validateCurrentStep = async () => {
     await form.validateFields(getSecretStepFields(current, secretType));
+    if (current === 1 && secretType === 'Opaque') {
+      const error = validateSecretDataItems(form.getFieldValue('dataItems'));
+
+      if (error) {
+        form.setFields([{ name: 'dataItems', errors: [error] }]);
+        throw new Error(error);
+      }
+    }
     return true;
   };
 
@@ -273,6 +282,15 @@ const CreateSecretDrawer = ({
       ...getSecretStepFields(1, secretType),
     ]);
     const formValues = form.getFieldsValue(true);
+    if (formValues.type === 'Opaque') {
+      const error = validateSecretDataItems(formValues.dataItems);
+
+      if (error) {
+        form.setFields([{ name: 'dataItems', errors: [error] }]);
+        message.warning(error);
+        return;
+      }
+    }
 
     await onSubmit({
       type: SECRET_RESOURCE_TYPE,

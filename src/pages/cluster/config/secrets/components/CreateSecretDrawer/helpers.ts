@@ -114,7 +114,7 @@ const normalizeRegistryServer = (
   return `${protocol}${trimmedAddress}`;
 };
 
-const getDockerConfigJson = (values: CreateSecretFormValues) => {
+export const getDockerConfigJson = (values: CreateSecretFormValues) => {
   const server = normalizeRegistryServer(
     values.registryProtocol,
     values.registryAddress,
@@ -191,6 +191,21 @@ export const buildCreateSecretManifest = (
 
 export const buildCreateSecretYaml = (values: CreateSecretFormValues) =>
   stringify(buildCreateSecretManifest(values), { indent: 2 });
+
+export const validateSecretDataItems = (items?: SecretDataItem[]) => {
+  const normalizedKeys = (items || [])
+    .map((item) => normalizeText(item.keyName))
+    .filter(Boolean);
+
+  if (normalizedKeys.length === 0) {
+    return '请添加至少一条数据';
+  }
+  if (new Set(normalizedKeys).size !== normalizedKeys.length) {
+    return '数据键不能重复';
+  }
+
+  return undefined;
+};
 
 export const getSecretStepFields = (
   step: number,

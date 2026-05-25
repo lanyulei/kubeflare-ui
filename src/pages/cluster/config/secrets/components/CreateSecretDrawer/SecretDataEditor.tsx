@@ -1,5 +1,10 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Modal, Tooltip, Typography } from 'antd';
+import {
+  DeleteOutlined,
+  EditOutlined,
+  KeyOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
+import { Button, Form, Input, Modal, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
 import { createSecretDataItem } from './helpers';
@@ -14,24 +19,83 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginSM,
     width: '100%',
   },
-  addCard: {
+  list: {
     display: 'flex',
-    alignItems: 'center',
-    width: '100%',
+    flexDirection: 'column',
+    gap: token.marginSM,
+  },
+  card: {
     minHeight: 64,
     padding: `${token.paddingSM}px ${token.paddingMD}px`,
+    border: `1px solid color-mix(in srgb, ${token.colorBorder} 72%, ${token.colorBgContainer})`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+    transition: `border-color ${token.motionDurationMid} ${token.motionEaseOut}, box-shadow ${token.motionDurationMid} ${token.motionEaseOut}`,
+
+    '&:hover': {
+      borderColor: token.colorBorder,
+      boxShadow: token.boxShadowTertiary,
+    },
+  },
+  cardHeader: {
+    display: 'grid',
+    gridTemplateColumns: '40px minmax(0, 1fr) max-content',
+    alignItems: 'center',
+    gap: token.marginLG,
+    minHeight: 40,
+  },
+  icon: {
+    color: token.colorTextDescription,
+    fontSize: 32,
+  },
+  title: {
+    overflow: 'hidden',
+    color: token.colorText,
+    fontSize: token.fontSize,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  description: {
+    marginTop: 2,
+    overflow: 'hidden',
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeightSM,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginXL,
+  },
+  actionButton: {
+    color: token.colorTextTertiary,
+
+    '&:hover': {
+      color: token.colorPrimary,
+    },
+  },
+  add: {
+    display: 'flex',
+    width: '100%',
+    alignItems: 'center',
+    gap: token.marginSM,
+    minHeight: 64,
+    padding: '12px 20px',
     border: `1px dashed ${token.colorBorder}`,
-    borderRadius: token.borderRadius,
-    background: token.colorFillQuaternary,
-    color: 'inherit',
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+    color: token.colorText,
     cursor: 'pointer',
     font: 'inherit',
     textAlign: 'left',
-    transition: `all ${token.motionDurationMid}`,
 
     '&:hover': {
       borderColor: token.colorPrimary,
-      background: token.colorPrimaryBg,
+      background: token.colorFillQuaternary,
     },
 
     '&:focus-visible': {
@@ -39,66 +103,26 @@ const useStyles = createStyles(({ token }) => ({
       outlineOffset: 2,
     },
   },
-  addIcon: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 32,
-    height: 32,
-    marginRight: token.marginSM,
-    borderRadius: token.borderRadiusLG,
-    color: token.colorPrimary,
-    background: token.colorPrimaryBg,
+  addText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginXXS,
   },
   addTitle: {
     color: token.colorText,
-    fontWeight: 500,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
     lineHeight: token.lineHeight,
   },
   addDescription: {
-    marginTop: 2,
     color: token.colorTextTertiary,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeightSM,
   },
-  item: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(120px, 0.7fr) minmax(160px, 1fr) auto',
-    alignItems: 'center',
-    gap: token.marginMD,
-    minHeight: 48,
-    padding: `${token.paddingXS}px ${token.paddingSM}px ${token.paddingXS}px ${token.paddingMD}px`,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadius,
-    background: token.colorFillQuaternary,
-
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: 'minmax(0, 1fr) auto',
-      alignItems: 'start',
+  modal: {
+    '.ant-modal-body': {
+      paddingTop: token.paddingMD,
     },
-  },
-  itemField: {
-    minWidth: 0,
-  },
-  itemLabel: {
-    marginRight: token.marginXS,
-    color: token.colorTextTertiary,
-    fontSize: token.fontSizeSM,
-  },
-  itemValue: {
-    color: token.colorText,
-  },
-  itemValueCell: {
-    minWidth: 0,
-
-    '@media (max-width: 768px)': {
-      gridColumn: '1 / -1',
-    },
-  },
-  actions: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: token.marginXXS,
   },
 }));
 
@@ -175,60 +199,61 @@ const SecretDataEditor = ({
   return (
     <>
       <div className={styles.editor}>
-        {value.map((item) => (
-          <div className={styles.item} key={item.id}>
-            <div className={styles.itemField}>
-              <span className={styles.itemLabel}>键</span>
-              <Tooltip title={item.keyName} placement="topLeft">
-                <Typography.Text
-                  className={styles.itemValue}
-                  ellipsis
-                  title={undefined}
-                >
-                  {item.keyName}
-                </Typography.Text>
-              </Tooltip>
-            </div>
-            <div className={styles.itemValueCell}>
-              <span className={styles.itemLabel}>值</span>
-              <Tooltip title={item.value} placement="topLeft">
-                <Typography.Text ellipsis title={undefined}>
-                  {item.value || '-'}
-                </Typography.Text>
-              </Tooltip>
-            </div>
-            <div className={styles.actions}>
-              <Button
-                aria-label="编辑数据"
-                icon={<EditOutlined />}
-                type="text"
-                onClick={() => openEditModal(item)}
-              />
-              <Button
-                aria-label="删除数据"
-                icon={<DeleteOutlined />}
-                type="text"
-                onClick={() => deleteItem(item.id)}
-              />
-            </div>
+        {value.length > 0 && (
+          <div className={styles.list}>
+            {value.map((item) => (
+              <div className={styles.card} key={item.id}>
+                <div className={styles.cardHeader}>
+                  <KeyOutlined className={styles.icon} />
+                  <div>
+                    <Tooltip title={item.keyName} placement="topLeft">
+                      <div className={styles.title}>{item.keyName || '-'}</div>
+                    </Tooltip>
+                    <Tooltip title={item.value || '空'} placement="topLeft">
+                      <div className={styles.description}>
+                        {item.value || '空'}
+                      </div>
+                    </Tooltip>
+                  </div>
+                  {!reservedKeys.includes(item.keyName) && (
+                    <div className={styles.actions}>
+                      <Tooltip title="删除数据">
+                        <Button
+                          aria-label="删除数据"
+                          className={styles.actionButton}
+                          icon={<DeleteOutlined />}
+                          type="text"
+                          onClick={() => deleteItem(item.id)}
+                        />
+                      </Tooltip>
+                      <Tooltip title="编辑数据">
+                        <Button
+                          aria-label="编辑数据"
+                          className={styles.actionButton}
+                          icon={<EditOutlined />}
+                          type="text"
+                          onClick={() => openEditModal(item)}
+                        />
+                      </Tooltip>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-        <button
-          className={styles.addCard}
-          type="button"
-          onClick={openCreateModal}
-        >
-          <span className={styles.addIcon}>
-            <PlusOutlined />
+        )}
+        <button className={styles.add} type="button" onClick={openCreateModal}>
+          <PlusOutlined />
+          <span className={styles.addText}>
+            <span className={styles.addTitle}>添加数据</span>
+            <span className={styles.addDescription}>添加键值对数据。</span>
           </span>
-          <div>
-            <div className={styles.addTitle}>添加数据</div>
-            <div className={styles.addDescription}>添加键值对数据。</div>
-          </div>
         </button>
       </div>
       <Modal
+        className={styles.modal}
         destroyOnHidden
+        maskClosable={false}
         okText={editingItem ? '保存' : '添加'}
         open={open}
         title={editingItem ? '编辑数据' : '添加数据'}
