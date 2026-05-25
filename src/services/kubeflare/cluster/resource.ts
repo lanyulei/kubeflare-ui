@@ -917,12 +917,16 @@ export async function createClusterResource(
   const { type, namespace, manifest } = params
   const url = getCreateResourcePath(type, namespace)
 
-  if (!clusterId || !type || !url || !manifest) {
-    return {
-      code: 20000,
-      message: '',
-      data: {},
-    } as API.ApiResponse<Record<string, unknown>>
+  if (!clusterId) {
+    throw new Error('请先选择集群')
+  }
+
+  if (!type || !url) {
+    throw new Error('资源创建参数不完整')
+  }
+
+  if (!manifest) {
+    throw new Error('资源对象不能为空')
   }
 
   return request<API.ApiResponse<Record<string, unknown>>>(url, {

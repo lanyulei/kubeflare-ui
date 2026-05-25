@@ -303,7 +303,11 @@ const CreateConfigMapDrawer = ({
       return;
     }
 
-    const formValues = await form.validateFields();
+    await form.validateFields([
+      ...getConfigMapStepFields(0),
+      ...getConfigMapStepFields(1),
+    ]);
+    const formValues = form.getFieldsValue(true);
     const error = validateConfigMapDataItems(formValues.dataItems);
 
     if (error) {
@@ -313,7 +317,7 @@ const CreateConfigMapDrawer = ({
 
     await onSubmit({
       type: CONFIG_MAP_RESOURCE_TYPE,
-      namespace: formValues.namespace,
+      namespace: formValues.namespace?.trim(),
       manifest: buildCreateConfigMapManifest(formValues),
     });
   };

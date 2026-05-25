@@ -9,10 +9,13 @@ const CONFIG_MAP_NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 
 const createId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-const createConfigMapDataItem = (): ConfigMapDataItem => ({
+const createConfigMapDataItem = (
+  keyName = '',
+  value = '',
+): ConfigMapDataItem => ({
   id: createId(),
-  keyName: '',
-  value: '',
+  keyName,
+  value,
 });
 
 const getInitialCreateConfigMapValues = (

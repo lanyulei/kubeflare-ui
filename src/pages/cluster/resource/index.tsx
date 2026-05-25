@@ -115,6 +115,26 @@ const normalizeOptionalText = (value?: string) => {
   return nextValue || undefined;
 };
 
+const getCreateErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  const errorRecord =
+    error && typeof error === 'object'
+      ? (error as {
+          info?: { message?: string };
+          response?: { data?: { message?: string } };
+        })
+      : undefined;
+
+  return (
+    errorRecord?.info?.message ||
+    errorRecord?.response?.data?.message ||
+    '创建失败，请稍后重试'
+  );
+};
+
 const getStatusLabel = (status?: string) => {
   const normalizedStatus = status?.toLowerCase();
 
@@ -304,7 +324,6 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
   >([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
-  const [internalReloadKey, setInternalReloadKey] = useState(0);
   const title = intl.formatMessage({
     id: titleId,
     defaultMessage: defaultTitle,
@@ -353,7 +372,7 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
     }
 
     actionRef.current?.reloadAndRest?.();
-  }, [reloadKey, internalReloadKey]);
+  }, [reloadKey]);
 
   const handleCreateResource = async (values: {
     type: API.ClusterResourceCreateType;
@@ -362,10 +381,14 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
   }) => {
     setCreateLoading(true);
     try {
-      await createClusterResource(values);
+      await createClusterResource(values, {
+        skipErrorHandler: true,
+      });
       message.success(`${createConfig?.title || title}已创建`);
       setCreateOpen(false);
-      setInternalReloadKey((key) => key + 1);
+      actionRef.current?.reloadAndRest?.();
+    } catch (error) {
+      message.error(getCreateErrorMessage(error));
     } finally {
       setCreateLoading(false);
     }
