@@ -18,6 +18,11 @@ import {
 } from '@/services/kubeflare/cluster/resource';
 import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
 import {
+  buildConfigMapBasicInfo,
+  buildConfigMapDataItems,
+  type ConfigMapBasicInfo,
+} from './components/configMapHelpers';
+import {
   formatValue,
   getArrayValue,
   getNumberValue,
@@ -42,6 +47,7 @@ import {
   type PodBasicInfo,
 } from './components/podHelpers';
 import ResourceBasicInfo from './components/ResourceBasicInfo';
+import ResourceDataFields from './components/ResourceDataFields';
 import ServiceResourceStatus from './components/ServiceResourceStatus';
 import StatusText from './components/StatusText';
 import {
@@ -280,6 +286,19 @@ const getJobPodSelectors = (name?: string) =>
 type JobBasicInfo = ReturnType<typeof buildJobBasicInfo>;
 type CronJobBasicInfo = ReturnType<typeof buildCronJobBasicInfo>;
 
+const configMapBasicInfoColumns: ProDescriptionsItemProps<ConfigMapBasicInfo>[] =
+  [
+    {
+      title: '命名空间',
+      dataIndex: 'namespace',
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'create_time',
+      valueType: 'dateTime',
+    },
+  ];
+
 const ingressBasicInfoColumns: ProDescriptionsItemProps<IngressBasicInfo>[] = [
   {
     title: '命名空间',
@@ -505,11 +524,13 @@ const ClusterResourceDetail = () => {
         ? buildPodBasicInfo(manifest, namespace)
         : detailType === 'Service'
           ? buildServiceBasicInfo(manifest, serviceEndpoints, namespace)
-          : detailType === 'Ingress'
-            ? buildIngressBasicInfo(manifest, namespace)
-            : detailType === 'CronJob'
-              ? buildCronJobBasicInfo(manifest, namespace)
-              : buildJobBasicInfo(manifest, namespace),
+          : detailType === 'ConfigMap'
+            ? buildConfigMapBasicInfo(manifest, namespace)
+            : detailType === 'Ingress'
+              ? buildIngressBasicInfo(manifest, namespace)
+              : detailType === 'CronJob'
+                ? buildCronJobBasicInfo(manifest, namespace)
+                : buildJobBasicInfo(manifest, namespace),
     [detailType, manifest, namespace, serviceEndpoints],
   );
   const podDetail = useMemo(() => buildPodDetail(manifest), [manifest]);
@@ -520,6 +541,10 @@ const ClusterResourceDetail = () => {
   );
   const servicePorts = useMemo(() => buildServicePorts(manifest), [manifest]);
   const ingressRules = useMemo(() => buildIngressRules(manifest), [manifest]);
+  const configMapDataItems = useMemo(
+    () => buildConfigMapDataItems(manifest),
+    [manifest],
+  );
 
   const fetchManifest = useCallback(async () => {
     if (!type || !name) {
@@ -798,6 +823,16 @@ const ClusterResourceDetail = () => {
       ];
     }
 
+    if (detailType === 'ConfigMap') {
+      return [
+        {
+          key: 'data',
+          label: '数据',
+          children: <ResourceDataFields items={configMapDataItems} />,
+        },
+      ];
+    }
+
     return [
       {
         key: 'runs',
@@ -835,6 +870,7 @@ const ClusterResourceDetail = () => {
     podDetail,
     pods,
     serviceEndpoints,
+    configMapDataItems,
     ingressRules,
     servicePorts,
     serviceWorkloads,
@@ -882,6 +918,13 @@ const ClusterResourceDetail = () => {
                     column={2}
                     columns={ingressBasicInfoColumns}
                     dataSource={basicInfo as IngressBasicInfo}
+                  />
+                ) : detailType === 'ConfigMap' ? (
+                  <ResourceBasicInfo<ConfigMapBasicInfo>
+                    className={styles.description}
+                    column={2}
+                    columns={configMapBasicInfoColumns}
+                    dataSource={basicInfo as ConfigMapBasicInfo}
                   />
                 ) : detailType === 'CronJob' ? (
                   <ResourceBasicInfo<CronJobBasicInfo>
