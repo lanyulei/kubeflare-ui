@@ -28,7 +28,7 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginLG,
     alignItems: 'center',
     minHeight: 64,
-    padding: `${token.paddingSM}px ${token.paddingLG}px`,
+    padding: `${token.paddingSM}px ${token.padding}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     backgroundColor: token.colorFillQuaternary,
@@ -125,7 +125,7 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: 1.5,
   },
   volumeItem: {
-    padding: `${token.paddingSM}px ${token.paddingLG}px`,
+    padding: `${token.paddingSM}px ${token.padding}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     backgroundColor: token.colorBgContainer,
@@ -155,7 +155,7 @@ const useStyles = createStyles(({ token }) => ({
   volumeMounts: {
     display: 'flex',
     flexDirection: 'column',
-    gap: token.marginXS,
+    gap: 10,
     marginTop: token.marginSM,
   },
   mountItem: {
@@ -165,6 +165,7 @@ const useStyles = createStyles(({ token }) => ({
     alignItems: 'center',
     minHeight: 36,
     padding: `0 ${token.paddingSM}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadius,
     backgroundColor: token.colorFillQuaternary,
 

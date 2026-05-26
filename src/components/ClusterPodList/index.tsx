@@ -81,7 +81,7 @@ const useStyles = createStyles(({ token }) => ({
     alignItems: 'center',
     columnGap: token.marginMD,
     minHeight: 62,
-    padding: `0 ${token.paddingMD}px`,
+    padding: `0 ${token.padding}px`,
 
     '@media (max-width: 768px)': {
       gridTemplateColumns: 'minmax(0, 1fr) 40px',
@@ -167,7 +167,7 @@ const useStyles = createStyles(({ token }) => ({
     alignItems: 'center',
     columnGap: token.marginMD,
     minHeight: 62,
-    padding: `0 ${token.paddingMD}px`,
+    padding: `0 ${token.padding}px`,
     backgroundColor: '#1f2937',
     color: '#fff',
 
