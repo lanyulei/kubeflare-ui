@@ -182,7 +182,6 @@ const useStyles = createStyles(({ token }) => ({
   },
   portTable: {
     backgroundColor: `#ffffff`,
-    border: `1px solid ${token.colorBorderSecondary}`,
     width: '100%',
   },
   portRow: {
@@ -211,7 +210,7 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginSM,
   },
   mountCard: {
-    border: `1px solid ${token.colorBorder}`,
+    border: `1px solid #f0f0f0`,
     borderRadius: token.borderRadiusSM,
     padding: `${token.padding}px`,
     backgroundColor: token.colorBgContainer,
@@ -263,6 +262,8 @@ const useStyles = createStyles(({ token }) => ({
     columnGap: token.marginXL,
     rowGap: token.marginXS,
     padding: `${token.paddingSM}px ${token.padding}px`,
+    border: `1px solid #f0f0f0`,
+    borderRadius: token.borderRadiusSM,
     backgroundColor: token.colorFillQuaternary,
 
     '@media (max-width: 768px)': {
