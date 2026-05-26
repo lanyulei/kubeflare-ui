@@ -59,6 +59,7 @@ type KeyValueListProps = {
   items?: KeyValueListItem[];
   itemBackgroundColor?: string;
   keyLabel?: ReactNode;
+  keyTextColor?: string;
   valueLabel?: ReactNode;
 };
 
@@ -78,15 +79,22 @@ const getItems = (
 const getTooltipTitle = (value?: ReactNode) =>
   typeof value === 'string' || typeof value === 'number' ? value : undefined;
 
+const hasLabel = (label?: ReactNode) =>
+  label !== undefined && label !== null && label !== '';
+
 const KeyValueList = ({
   data,
   items,
   itemBackgroundColor = defaultItemBackgroundColor,
   keyLabel = '键:',
+  keyTextColor,
   valueLabel = '值:',
 }: KeyValueListProps) => {
   const { styles } = useStyles();
   const list = getItems(data, items);
+  const showKeyLabel = hasLabel(keyLabel);
+  const showValueLabel = hasLabel(valueLabel);
+  const keyTextStyle = keyTextColor ? { color: keyTextColor } : undefined;
 
   if (list.length === 0) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
@@ -104,13 +112,19 @@ const KeyValueList = ({
             style={{ backgroundColor: itemBackgroundColor }}
           >
             <div className={styles.field}>
-              <span className={styles.label}>{keyLabel}</span>
+              {showKeyLabel ? (
+                <span className={styles.label}>{keyLabel}</span>
+              ) : null}
               <Tooltip title={item.key} placement="topLeft">
-                <span className={styles.value}>{item.key}</span>
+                <span className={styles.value} style={keyTextStyle}>
+                  {item.key}
+                </span>
               </Tooltip>
             </div>
             <div className={styles.field}>
-              <span className={styles.label}>{valueLabel}</span>
+              {showValueLabel ? (
+                <span className={styles.label}>{valueLabel}</span>
+              ) : null}
               <Tooltip title={getTooltipTitle(value)} placement="topLeft">
                 <span className={styles.value}>{value}</span>
               </Tooltip>
