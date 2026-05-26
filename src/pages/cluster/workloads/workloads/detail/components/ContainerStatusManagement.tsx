@@ -30,7 +30,6 @@ type ContainerConfigKey = 'env' | 'ports' | 'mounts';
 
 const useStyles = createStyles(({ token }) => ({
   container: {
-    border: `1px solid ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     overflow: 'visible',
     backgroundColor: token.colorBgContainer,
@@ -177,6 +176,8 @@ const useStyles = createStyles(({ token }) => ({
   tabContent: {
     minHeight: 160,
     padding: `12px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusSM,
     backgroundColor: token.colorFillQuaternary,
   },
   portTable: {

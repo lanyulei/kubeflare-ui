@@ -24,8 +24,8 @@ const useStyles = createStyles(
           : props.width || 'min(454px, 100%)',
       gridTemplateColumns: `repeat(var(--segmented-tabs-count), minmax(0, 1fr))`,
       gap: 2,
-      padding: 2,
-      border: `1px solid ${token.colorBorder}`,
+      // padding: 2,
+      border: `1px solid #f0f0f0`,
       borderRadius: 6,
       background: token.colorFillQuaternary,
 
@@ -65,7 +65,7 @@ const useStyles = createStyles(
       '&&': {
         background: token.colorPrimaryBg,
         color: token.colorPrimaryText,
-        boxShadow: `inset 0 0 0 1px ${token.colorPrimaryBorder}`,
+        // boxShadow: `inset 0 0 0 1px #c0e3f9`,
       },
 
       '&&:hover': {
