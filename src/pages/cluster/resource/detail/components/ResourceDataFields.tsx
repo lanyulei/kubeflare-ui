@@ -21,12 +21,12 @@ const useStyles = createStyles(({ token }) => ({
     whiteSpace: 'nowrap',
   },
   value: {
-    minHeight: 42,
+    minHeight: 46,
     padding: `${token.paddingSM}px ${token.padding}px`,
-    border: `1px solid ${token.colorBorder}`,
-    borderRadius: token.borderRadius,
+    border: '1px solid #f0f0f0',
+    borderRadius: token.borderRadiusSM,
     background: '#f9f9f9',
-    color: token.colorTextSecondary,
+    color: 'rgba(0,0,0,0.65)',
     fontFamily:
       'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
     fontSize: token.fontSize,

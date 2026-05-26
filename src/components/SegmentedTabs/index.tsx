@@ -26,7 +26,7 @@ const useStyles = createStyles(
       gap: 2,
       padding: 2,
       border: `1px solid ${token.colorBorder}`,
-      borderRadius: 999,
+      borderRadius: 6,
       background: token.colorFillQuaternary,
 
       '@media (max-width: 576px)': {
@@ -37,7 +37,7 @@ const useStyles = createStyles(
     tab: {
       height: 28,
       border: 0,
-      borderRadius: 999,
+      borderRadius: 6,
       background: 'transparent',
       color: token.colorText,
       cursor: 'pointer',

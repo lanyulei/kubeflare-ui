@@ -41,7 +41,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    minHeight: 48,
+    minHeight: 46,
     padding: `${token.paddingSM}px ${token.padding}px`,
     border: '1px solid #f0f0f0',
     borderRadius: token.borderRadiusSM,
@@ -51,6 +51,9 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
+  },
+  basicAuthFieldValue: {
+    padding: `0 ${token.padding}px`,
   },
   fieldValueText: {
     flex: 1,
@@ -214,8 +217,16 @@ const decodeSecretValue = (value?: string) => {
   }
 };
 
-const SecretField = ({ label, value }: { label: string; value?: string }) => {
-  const { styles } = useStyles();
+const SecretField = ({
+  compactValue,
+  label,
+  value,
+}: {
+  compactValue?: boolean;
+  label: string;
+  value?: string;
+}) => {
+  const { styles, cx } = useStyles();
   const [revealed, setRevealed] = useState(false);
   const decodedValue = useMemo(() => decodeSecretValue(value), [value]);
   const displayValue = revealed ? decodedValue || value : value;
@@ -223,7 +234,12 @@ const SecretField = ({ label, value }: { label: string; value?: string }) => {
   return (
     <div className={styles.field}>
       <div className={styles.fieldLabel}>{label}</div>
-      <div className={styles.fieldValue}>
+      <div
+        className={cx(
+          styles.fieldValue,
+          compactValue && styles.basicAuthFieldValue,
+        )}
+      >
         <span className={styles.fieldValueText}>
           {formatValue(displayValue)}
         </span>
@@ -378,8 +394,8 @@ const SecretResourceData = ({ data }: SecretResourceDataProps) => {
 
     return (
       <div className={styles.fieldPanel}>
-        <SecretField label="凭证：" value={data.tlsCertificate} />
-        <SecretField label="私钥：" value={data.tlsPrivateKey} />
+        <SecretField compactValue label="凭证：" value={data.tlsCertificate} />
+        <SecretField compactValue label="私钥：" value={data.tlsPrivateKey} />
       </div>
     );
   }
@@ -416,8 +432,16 @@ const SecretResourceData = ({ data }: SecretResourceDataProps) => {
 
     return (
       <div className={styles.fieldPanel}>
-        <SecretField label="密码：" value={data.basicAuthPassword} />
-        <SecretField label="用户名：" value={data.basicAuthUsername} />
+        <SecretField
+          compactValue
+          label="密码："
+          value={data.basicAuthPassword}
+        />
+        <SecretField
+          compactValue
+          label="用户名："
+          value={data.basicAuthUsername}
+        />
       </div>
     );
   }
