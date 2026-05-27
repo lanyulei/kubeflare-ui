@@ -1003,6 +1003,53 @@ export async function getClusterResourceManifest(
   })
 }
 
+export async function updateClusterResourceManifest(
+  params: API.UpdateClusterResourceManifestParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name, manifest } = params
+  const url = getDetailResourcePath(type, name, namespace)
+
+  if (!clusterId || !url) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(url, {
+    method: 'PUT',
+    data: manifest,
+    ...(options || {}),
+    headers: getClusterHeaders(clusterId, options),
+  })
+}
+
+export async function deleteClusterResource(
+  params: API.ClusterResourceDetailParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { type, namespace, name } = params
+  const url = getDetailResourcePath(type, name, namespace)
+
+  if (!clusterId || !url) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(url, {
+    method: 'DELETE',
+    ...(options || {}),
+    headers: getClusterHeaders(clusterId, options),
+  })
+}
+
 export async function updateClusterJobReplicas(
   params: API.UpdateClusterJobReplicasParams,
   options?: { [key: string]: any },

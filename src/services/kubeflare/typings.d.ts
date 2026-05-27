@@ -671,6 +671,10 @@ declare namespace API {
     name: string
   }
 
+  type UpdateClusterResourceManifestParams = ClusterResourceDetailParams & {
+    manifest: Record<string, unknown>
+  }
+
   type UpdateClusterJobReplicasParams = {
     namespace: string
     name: string

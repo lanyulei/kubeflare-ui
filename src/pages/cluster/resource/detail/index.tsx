@@ -1,20 +1,29 @@
+import {
+  DeleteOutlined,
+  DownOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
 import { history, useParams } from '@umijs/max';
-import { App, Card, Empty, Spin, Tabs } from 'antd';
+import { App, Button, Card, Drawer, Dropdown, Empty, Spin, Tabs } from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { parse, stringify } from 'yaml';
 import {
   ClusterEventTable,
   ClusterMetadata,
   ReplicaSummary,
   SectionTitle,
+  YamlEditor,
 } from '@/components';
 import { getClusterNodePodList } from '@/services/kubeflare/cluster/node';
 import {
+  deleteClusterResource,
   getClusterResourceManifest,
   getClusterServiceEndpoints,
   updateClusterJobReplicas,
+  updateClusterResourceManifest,
 } from '@/services/kubeflare/cluster/resource';
 import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
 import CustomResourceTable from './components/CustomResourceTable';
@@ -102,9 +111,37 @@ const resourceTypeLabels: Record<API.ClusterResourceCreateType, string> = {
   StorageClass: '存储类',
 };
 
+const resourceListPaths: Record<API.ClusterResourceCreateType, string> = {
+  Job: '/cluster/workloads/jobs',
+  CronJob: '/cluster/workloads/cron-jobs',
+  Pod: '/cluster/workloads/pods',
+  Service: '/cluster/workloads/services',
+  Ingress: '/cluster/workloads/ingresses',
+  Secret: '/cluster/config/secrets',
+  ConfigMap: '/cluster/config/config-maps',
+  ServiceAccount: '/cluster/config/service-accounts',
+  CustomResourceDefinition: '/cluster/custom-resource-definitions',
+  PersistentVolumeClaim: '/cluster/storage/persistent-volume-claims',
+  StorageClass: '/cluster/storage/storage-classes',
+};
+
+const namespacedResourceTypes = new Set<API.ClusterResourceCreateType>([
+  'Job',
+  'CronJob',
+  'Pod',
+  'Service',
+  'Ingress',
+  'Secret',
+  'ConfigMap',
+  'ServiceAccount',
+  'PersistentVolumeClaim',
+]);
+
 const resourceTypes = Object.keys(
   resourceTypeLabels,
 ) as API.ClusterResourceCreateType[];
+
+type ResourceActionKey = 'yaml' | 'delete';
 
 const useStyles = createStyles(({ token }) => ({
   content: {
@@ -156,6 +193,20 @@ const useStyles = createStyles(({ token }) => ({
     '.ant-tabs-content-holder .ant-pro-table-list-toolbar-container': {
       paddingTop: '0 !important',
     },
+  },
+  yamlDrawerBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  yamlDrawerEditor: {
+    flex: 1,
+    minHeight: 0,
+  },
+  yamlDrawerFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: token.marginSM,
   },
 }));
 
@@ -641,7 +692,7 @@ const podBasicInfoColumns: ProDescriptionsItemProps<PodBasicInfo>[] = [
 ];
 
 const ClusterResourceDetail = () => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const { styles } = useStyles();
   const params = useParams<{
     type?: string;
@@ -651,10 +702,21 @@ const ClusterResourceDetail = () => {
   const type = isResourceType(params.type) ? params.type : undefined;
   const namespace = params.namespace === '-' ? undefined : params.namespace;
   const name = params.name;
+  const detailParams =
+    type && name
+      ? {
+          type,
+          namespace,
+          name,
+        }
+      : undefined;
   const [loading, setLoading] = useState(false);
   const [podLoading, setPodLoading] = useState(false);
   const [workloadLoading, setWorkloadLoading] = useState(false);
   const [scaling, setScaling] = useState(false);
+  const [actionLoading, setActionLoading] = useState<ResourceActionKey>();
+  const [yamlDrawerOpen, setYamlDrawerOpen] = useState(false);
+  const [yamlValue, setYamlValue] = useState('');
   const [manifest, setManifest] = useState<Record<string, unknown>>();
   const [detailType, setDetailType] = useState<
     API.ClusterResourceCreateType | undefined
@@ -728,6 +790,19 @@ const ClusterResourceDetail = () => {
     () => buildCustomResourceDefinitionVersions(manifest),
     [manifest],
   );
+  const resourceActionItems = [
+    {
+      key: 'yaml',
+      icon: <FileTextOutlined />,
+      label: '编辑 YAML',
+    },
+    {
+      danger: true,
+      key: 'delete',
+      icon: <DeleteOutlined />,
+      label: '删除',
+    },
+  ];
 
   const fetchManifest = useCallback(async () => {
     if (!type || !name) {
@@ -957,6 +1032,108 @@ const ClusterResourceDetail = () => {
     }
   };
 
+  const openYamlDrawer = async () => {
+    if (!detailParams) {
+      return;
+    }
+
+    setYamlDrawerOpen(true);
+    setActionLoading('yaml');
+    try {
+      const res = await getClusterResourceManifest(detailParams);
+      setYamlValue(stringify(res.data || {}, { indent: 2 }));
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleSaveYaml = async () => {
+    if (!detailParams) {
+      return;
+    }
+
+    let nextManifest: unknown;
+
+    try {
+      nextManifest = parse(yamlValue);
+    } catch {
+      message.error('YAML 格式不正确，请检查后重试');
+      return;
+    }
+
+    if (
+      !nextManifest ||
+      typeof nextManifest !== 'object' ||
+      Array.isArray(nextManifest)
+    ) {
+      message.error('YAML 内容必须是有效的资源对象');
+      return;
+    }
+
+    const resource = nextManifest as Record<string, unknown>;
+    const metadataRecord = getRecordValue(resource.metadata);
+    const manifestName = getStringValue(metadataRecord?.name) || '';
+    const manifestNamespace = getStringValue(metadataRecord?.namespace) || '';
+    const kind = getStringValue(resource.kind) || '';
+    const expectedNamespaced = namespacedResourceTypes.has(detailParams.type);
+
+    if (manifestName !== detailParams.name) {
+      message.error('YAML metadata.name 必须与当前资源一致');
+      return;
+    }
+    if (
+      expectedNamespaced &&
+      manifestNamespace !== (detailParams.namespace || '')
+    ) {
+      message.error('YAML metadata.namespace 必须与当前资源一致');
+      return;
+    }
+    if (kind !== detailParams.type) {
+      message.error(`YAML kind 必须为 ${detailParams.type}`);
+      return;
+    }
+
+    setActionLoading('yaml');
+    try {
+      const res = await updateClusterResourceManifest({
+        ...detailParams,
+        manifest: resource,
+      });
+      message.success('资源 YAML 已更新');
+      setManifest(res.data);
+      setYamlDrawerOpen(false);
+      await fetchManifest();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!detailParams) {
+      return;
+    }
+
+    modal.confirm({
+      title: `确认删除该${resourceTypeLabels[detailParams.type]}吗？`,
+      content: '删除后资源将被移除，请谨慎操作。',
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: {
+        danger: true,
+      },
+      onOk: async () => {
+        setActionLoading('delete');
+        try {
+          await deleteClusterResource(detailParams);
+          message.success('资源已删除');
+          history.push(resourceListPaths[detailParams.type]);
+        } finally {
+          setActionLoading(undefined);
+        }
+      },
+    });
+  };
+
   const title = name || '资源详情';
   const tabItems = useMemo(() => {
     const metadataTab = {
@@ -1172,6 +1349,29 @@ const ClusterResourceDetail = () => {
   return (
     <PageContainer
       title={title}
+      extra={[
+        <Dropdown
+          disabled={!detailParams}
+          key="resource-actions"
+          menu={{
+            items: resourceActionItems,
+            onClick: ({ key }) => {
+              if (key === 'yaml') {
+                openYamlDrawer();
+              }
+              if (key === 'delete') {
+                handleDelete();
+              }
+            },
+          }}
+          trigger={['click']}
+        >
+          <Button disabled={!detailParams} loading={Boolean(actionLoading)}>
+            操作
+            <DownOutlined />
+          </Button>
+        </Dropdown>,
+      ]}
       onBack={() => {
         history.back();
       }}
@@ -1280,6 +1480,41 @@ const ClusterResourceDetail = () => {
           </Card>
         </div>
       )}
+      <Drawer
+        title={
+          <>
+            <FileTextOutlined /> 编辑当前资源 YAML
+          </>
+        }
+        destroyOnHidden
+        footer={
+          <div className={styles.yamlDrawerFooter}>
+            <Button onClick={() => setYamlDrawerOpen(false)}>取消</Button>
+            <Button
+              loading={actionLoading === 'yaml'}
+              type="primary"
+              onClick={handleSaveYaml}
+            >
+              确定
+            </Button>
+          </div>
+        }
+        open={yamlDrawerOpen}
+        width="65vw"
+        onClose={() => setYamlDrawerOpen(false)}
+      >
+        <Spin spinning={actionLoading === 'yaml' && !yamlValue}>
+          <div className={styles.yamlDrawerBody}>
+            <div className={styles.yamlDrawerEditor}>
+              <YamlEditor
+                height="calc(100vh - 154px)"
+                value={yamlValue}
+                onChange={setYamlValue}
+              />
+            </div>
+          </div>
+        </Spin>
+      </Drawer>
     </PageContainer>
   );
 };
