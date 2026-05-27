@@ -59,11 +59,44 @@ body,
 }
 
 .ant-card .ant-card-body {
-  padding: 20px;
+  padding: 18px;
 }
 
 .ant-pro-sider.ant-layout-sider.ant-pro-sider-fixed {
   left: unset;
+}
+
+.ant-table-wrapper {
+  .ant-table table {
+    border-collapse: collapse;
+  }
+
+  .ant-table-container {
+    overflow: hidden;
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: var(--ant-border-radius-lg);
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td,
+  .ant-table-summary > tr > td {
+    border: 0;
+  }
+
+  .ant-table-thead > tr,
+  .ant-table-tbody > tr,
+  .ant-table-summary > tr {
+    border-bottom: 1px solid var(--ant-color-border-secondary);
+  }
+
+  .ant-table-tbody > tr:last-child,
+  .ant-table-summary > tr:last-child {
+    border-bottom: 0;
+  }
+
+  .ant-table-thead > tr > th::before {
+    display: none;
+  }
 }
 
 canvas {

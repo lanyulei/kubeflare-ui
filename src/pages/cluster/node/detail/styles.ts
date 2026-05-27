@@ -5,7 +5,7 @@ const useStyles = createStyles(({ token }) => ({
     backgroundColor: token.colorBgContainer,
     border: `1px solid ${token.colorBorder}80`,
     borderRadius: token.borderRadiusLG,
-    padding: `20px`,
+    padding: 18,
   },
   moreInfo: {
     marginTop: '15px',
