@@ -2,6 +2,7 @@ import {
   DeleteOutlined,
   DownOutlined,
   FileTextOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
@@ -22,6 +23,7 @@ import {
   deleteClusterResource,
   getClusterResourceManifest,
   getClusterServiceEndpoints,
+  rerunClusterJob,
   updateClusterJobReplicas,
   updateClusterResourceManifest,
 } from '@/services/kubeflare/cluster/resource';
@@ -141,7 +143,7 @@ const resourceTypes = Object.keys(
   resourceTypeLabels,
 ) as API.ClusterResourceCreateType[];
 
-type ResourceActionKey = 'yaml' | 'delete';
+type ResourceActionKey = 'yaml' | 'rerun' | 'delete';
 
 const useStyles = createStyles(({ token }) => ({
   content: {
@@ -791,6 +793,15 @@ const ClusterResourceDetail = () => {
     [manifest],
   );
   const resourceActionItems = [
+    ...(type === 'Job'
+      ? [
+          {
+            key: 'rerun',
+            icon: <ReloadOutlined />,
+            label: '重新运行',
+          },
+        ]
+      : []),
     {
       key: 'yaml',
       icon: <FileTextOutlined />,
@@ -1030,6 +1041,41 @@ const ClusterResourceDetail = () => {
     } finally {
       setScaling(false);
     }
+  };
+
+  const handleRerunJob = () => {
+    if (type !== 'Job' || !namespace || !name) {
+      return;
+    }
+
+    modal.confirm({
+      title: '确认重新运行该任务吗？',
+      content: '重新运行会触发该任务重新执行，并生成新的运行记录。',
+      okText: '重新运行',
+      cancelText: '取消',
+      onOk: async () => {
+        if (!manifest) {
+          message.error('任务数据不存在，请刷新后重试');
+          return;
+        }
+
+        setActionLoading('rerun');
+        try {
+          await rerunClusterJob({
+            namespace,
+            name,
+            manifest,
+          });
+          message.success('任务已开始重新运行');
+          await fetchManifest();
+          await fetchPods();
+        } catch (error) {
+          message.error((error as Error)?.message || '任务重新运行失败');
+        } finally {
+          setActionLoading(undefined);
+        }
+      },
+    });
   };
 
   const openYamlDrawer = async () => {
@@ -1358,6 +1404,9 @@ const ClusterResourceDetail = () => {
             onClick: ({ key }) => {
               if (key === 'yaml') {
                 openYamlDrawer();
+              }
+              if (key === 'rerun') {
+                handleRerunJob();
               }
               if (key === 'delete') {
                 handleDelete();

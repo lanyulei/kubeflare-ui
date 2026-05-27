@@ -419,6 +419,93 @@ const getDetailResourcePath = (
   return path.replace(':name', encodeURIComponent(name.trim()))
 }
 
+const sleep = (duration: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, duration)
+  })
+
+const isNotFoundError = (error: unknown) =>
+  (error as { response?: { status?: number } })?.response?.status === 404
+
+const waitForClusterResourceDeleted = async (
+  params: API.ClusterResourceDetailParams,
+  options?: { [key: string]: any },
+) => {
+  for (let count = 0; count < 20; count += 1) {
+    try {
+      await getClusterResourceManifest(params, {
+        ...(options || {}),
+        skipErrorHandler: true,
+      })
+    } catch (error) {
+      if (isNotFoundError(error)) {
+        return
+      }
+
+      throw error
+    }
+
+    await sleep(500)
+  }
+
+  throw new Error('等待任务删除超时，请稍后重试')
+}
+
+const cleanJobSelectorLabels = (labels?: unknown) => {
+  if (!labels || typeof labels !== 'object') {
+    return labels
+  }
+
+  const {
+    'batch.kubernetes.io/controller-uid': _batchControllerUid,
+    'controller-uid': _controllerUid,
+    ...restLabels
+  } = labels as Record<string, unknown>
+
+  return restLabels
+}
+
+const buildRerunJobManifest = (
+  manifest: Record<string, unknown>,
+  namespace: string,
+  name: string,
+) => {
+  const clonedManifest = JSON.parse(JSON.stringify(manifest)) as Record<
+    string,
+    any
+  >
+  const metadata = (clonedManifest.metadata || {}) as Record<string, unknown>
+  const spec = (clonedManifest.spec || {}) as Record<string, any>
+  const template = (spec.template || {}) as Record<string, any>
+  const templateMetadata = (template.metadata || {}) as Record<string, unknown>
+
+  delete clonedManifest.status
+  delete metadata.creationTimestamp
+  delete metadata.deletionGracePeriodSeconds
+  delete metadata.deletionTimestamp
+  delete metadata.finalizers
+  delete metadata.generation
+  delete metadata.managedFields
+  delete metadata.resourceVersion
+  delete metadata.selfLink
+  delete metadata.uid
+  delete spec.selector
+
+  metadata.name = name
+  metadata.namespace = namespace
+  metadata.labels = cleanJobSelectorLabels(metadata.labels)
+  templateMetadata.labels = cleanJobSelectorLabels(templateMetadata.labels)
+
+  clonedManifest.metadata = metadata
+  spec.template = {
+    ...template,
+    metadata: templateMetadata,
+  }
+  clonedManifest.spec = spec
+
+  return clonedManifest
+}
+
 const includeKeyword = (
   keyword: string | undefined,
   values: (string | number | boolean | undefined)[],
@@ -1079,6 +1166,50 @@ export async function updateClusterJobReplicas(
       'Content-Type': 'application/merge-patch+json',
     },
   })
+}
+
+export async function rerunClusterJob(
+  params: API.RerunClusterJobParams,
+  options?: { [key: string]: any },
+) {
+  const { namespace, name, manifest } = params
+
+  if (!namespace || !name || !manifest) {
+    throw new Error('任务重新运行参数不完整')
+  }
+
+  const rerunManifest = buildRerunJobManifest(manifest, namespace, name)
+
+  await deleteClusterResource(
+    {
+      type: 'Job',
+      namespace,
+      name,
+    },
+    {
+      ...(options || {}),
+      data: {
+        propagationPolicy: 'Background',
+      },
+    },
+  )
+  await waitForClusterResourceDeleted(
+    {
+      type: 'Job',
+      namespace,
+      name,
+    },
+    options,
+  )
+
+  return createClusterResource(
+    {
+      type: 'Job',
+      namespace,
+      manifest: rerunManifest,
+    },
+    options,
+  )
 }
 
 export async function getClusterServiceList(

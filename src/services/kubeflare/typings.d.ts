@@ -681,6 +681,12 @@ declare namespace API {
     replicas: number
   }
 
+  type RerunClusterJobParams = {
+    namespace: string
+    name: string
+    manifest: Record<string, unknown>
+  }
+
   type ClusterServiceItem = {
     id?: string
     name: string
