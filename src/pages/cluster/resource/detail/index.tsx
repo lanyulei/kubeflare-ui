@@ -38,8 +38,16 @@ import {
 import JobEnvironmentVariables from './components/JobEnvironmentVariables';
 import JobResourceStatus from './components/JobResourceStatus';
 import JobRunRecords from './components/JobRunRecords';
+import PersistentVolumeClaimResourceStatus from './components/PersistentVolumeClaimResourceStatus';
+import PersistentVolumeClaimTable from './components/PersistentVolumeClaimTable';
 import PodResourceStatus from './components/PodResourceStatus';
 import PodSchedulingInfo from './components/PodSchedulingInfo';
+import {
+  buildPersistentVolumeClaimBasicInfo,
+  formatPersistentVolumeClaimValue,
+  hasPersistentVolumeClaim,
+  type PersistentVolumeClaimBasicInfo,
+} from './components/persistentVolumeClaimHelpers';
 import {
   buildPodBasicInfo,
   buildPodConditions,
@@ -49,13 +57,13 @@ import {
 import ResourceBasicInfo from './components/ResourceBasicInfo';
 import ResourceDataFields from './components/ResourceDataFields';
 import SecretResourceData from './components/SecretResourceData';
+import ServiceResourceStatus from './components/ServiceResourceStatus';
+import StatusText from './components/StatusText';
 import {
   buildSecretBasicInfo,
   buildSecretDataView,
   type SecretBasicInfo,
 } from './components/secretHelpers';
-import ServiceResourceStatus from './components/ServiceResourceStatus';
-import StatusText from './components/StatusText';
 import {
   buildServiceBasicInfo,
   buildServicePorts,
@@ -64,6 +72,12 @@ import {
   matchServiceWorkload,
   type ServiceBasicInfo,
 } from './components/serviceHelpers';
+import {
+  buildStorageClassBasicInfo,
+  formatStorageClassBoolean,
+  getReclaimPolicyLabel,
+  type StorageClassBasicInfo,
+} from './components/storageClassHelpers';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 
@@ -304,6 +318,68 @@ const getJobPodSelectors = (name?: string) =>
 type JobBasicInfo = ReturnType<typeof buildJobBasicInfo>;
 type CronJobBasicInfo = ReturnType<typeof buildCronJobBasicInfo>;
 type ServiceAccountBasicInfo = ReturnType<typeof buildServiceAccountBasicInfo>;
+
+const storageClassBasicInfoColumns: ProDescriptionsItemProps<StorageClassBasicInfo>[] =
+  [
+    {
+      title: '默认存储卷',
+      dataIndex: 'default_volume',
+      renderText: (value) => formatStorageClassBoolean(value),
+    },
+    {
+      title: '允许卷拓展',
+      dataIndex: 'allow_volume_expansion',
+      renderText: (value) => formatStorageClassBoolean(value),
+    },
+    {
+      title: '回收机制',
+      dataIndex: 'reclaim_policy',
+      renderText: (value) => getReclaimPolicyLabel(value),
+    },
+    {
+      title: '允许卷快照',
+      dataIndex: 'allow_volume_snapshot',
+      renderText: (value) => formatStorageClassBoolean(value),
+    },
+  ];
+
+const persistentVolumeClaimBasicInfoColumns: ProDescriptionsItemProps<PersistentVolumeClaimBasicInfo>[] =
+  [
+    {
+      title: '命名空间',
+      dataIndex: 'namespace',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      render: (_, record) => <StatusText status={record.status} />,
+    },
+    {
+      title: '容量',
+      dataIndex: 'capacity',
+      renderText: (value) => formatPersistentVolumeClaimValue(value),
+    },
+    {
+      title: '访问模式',
+      dataIndex: 'access_modes',
+      renderText: (value) => formatPersistentVolumeClaimValue(value),
+    },
+    {
+      title: '存储类',
+      dataIndex: 'storage_class',
+      renderText: (value) => formatPersistentVolumeClaimValue(value),
+    },
+    {
+      title: '持久卷',
+      dataIndex: 'volume_name',
+      renderText: (value) => formatPersistentVolumeClaimValue(value),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'create_time',
+      valueType: 'dateTime',
+    },
+  ];
 
 const secretBasicInfoColumns: ProDescriptionsItemProps<SecretBasicInfo>[] = [
   {
@@ -583,7 +659,11 @@ const ClusterResourceDetail = () => {
                   ? buildIngressBasicInfo(manifest, namespace)
                   : detailType === 'CronJob'
                     ? buildCronJobBasicInfo(manifest, namespace)
-                    : buildJobBasicInfo(manifest, namespace),
+                    : detailType === 'PersistentVolumeClaim'
+                      ? buildPersistentVolumeClaimBasicInfo(manifest, namespace)
+                      : detailType === 'StorageClass'
+                        ? buildStorageClassBasicInfo(manifest)
+                        : buildJobBasicInfo(manifest, namespace),
     [detailType, manifest, namespace, serviceEndpoints],
   );
   const podDetail = useMemo(() => buildPodDetail(manifest), [manifest]);
@@ -636,7 +716,11 @@ const ClusterResourceDetail = () => {
   }, [name, namespace, type]);
 
   const fetchPods = useCallback(async () => {
-    if (!namespace || !name || (type !== 'Job' && type !== 'Service')) {
+    if (
+      !namespace ||
+      !name ||
+      (type !== 'Job' && type !== 'Service' && type !== 'PersistentVolumeClaim')
+    ) {
       setPods([]);
       return;
     }
@@ -657,6 +741,19 @@ const ClusterResourceDetail = () => {
           limit: 500,
         });
         setPods(res.data.items || []);
+        return;
+      }
+
+      if (type === 'PersistentVolumeClaim') {
+        const res = await getClusterNodePodList({
+          namespace,
+          limit: 500,
+        });
+        setPods(
+          (res.data.items || []).filter((pod) =>
+            hasPersistentVolumeClaim(pod, name),
+          ),
+        );
         return;
       }
 
@@ -877,6 +974,34 @@ const ClusterResourceDetail = () => {
       ];
     }
 
+    if (detailType === 'PersistentVolumeClaim') {
+      return [
+        {
+          key: 'resourceStatus',
+          label: '资源状态',
+          children: (
+            <PersistentVolumeClaimResourceStatus
+              loading={podLoading}
+              pods={pods}
+              onRefresh={fetchPods}
+            />
+          ),
+        },
+        metadataTab,
+        eventsTab,
+      ];
+    }
+
+    if (detailType === 'StorageClass') {
+      return [
+        {
+          key: 'persistentVolumeClaims',
+          label: '持久卷声明',
+          children: <PersistentVolumeClaimTable storageClassName={name} />,
+        },
+      ];
+    }
+
     if (detailType === 'ConfigMap') {
       return [
         {
@@ -1004,6 +1129,20 @@ const ClusterResourceDetail = () => {
                     column={2}
                     columns={configMapBasicInfoColumns}
                     dataSource={basicInfo as ConfigMapBasicInfo}
+                  />
+                ) : detailType === 'PersistentVolumeClaim' ? (
+                  <ResourceBasicInfo<PersistentVolumeClaimBasicInfo>
+                    className={styles.description}
+                    column={3}
+                    columns={persistentVolumeClaimBasicInfoColumns}
+                    dataSource={basicInfo as PersistentVolumeClaimBasicInfo}
+                  />
+                ) : detailType === 'StorageClass' ? (
+                  <ResourceBasicInfo<StorageClassBasicInfo>
+                    className={styles.description}
+                    column={4}
+                    columns={storageClassBasicInfoColumns}
+                    dataSource={basicInfo as StorageClassBasicInfo}
                   />
                 ) : detailType === 'CronJob' ? (
                   <ResourceBasicInfo<CronJobBasicInfo>

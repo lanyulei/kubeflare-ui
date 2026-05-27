@@ -1,10 +1,22 @@
+import { Tag } from 'antd';
 import { getClusterPersistentVolumeClaimList } from '@/services/kubeflare/cluster/resource';
 import ClusterResourceListPage, {
   createResourceNameColumn,
   createStatusColumn,
-  renderBooleanText,
 } from '../../resource';
 import { createPersistentVolumeClaimConfig } from '../../resource/createConfigs';
+
+const renderMountStatus = (mounted?: boolean) => {
+  if (mounted === undefined) {
+    return '-';
+  }
+
+  return mounted ? (
+    <Tag color="success">已挂载</Tag>
+  ) : (
+    <Tag color="default">未挂载</Tag>
+  );
+};
 
 const PersistentVolumeClaims = () => (
   <ClusterResourceListPage<API.ClusterPersistentVolumeClaimItem>
@@ -34,7 +46,7 @@ const PersistentVolumeClaims = () => (
         title: '挂载状态',
         dataIndex: 'mounted',
         width: 120,
-        renderText: (_, record) => renderBooleanText(record.mounted),
+        render: (_, record) => renderMountStatus(record.mounted),
       },
       {
         title: '创建时间',

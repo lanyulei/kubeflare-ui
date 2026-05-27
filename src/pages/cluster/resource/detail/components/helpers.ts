@@ -31,11 +31,17 @@ const getJobStatusLabel = (status?: string) => {
   if (normalizedStatus === 'running' || normalizedStatus === 'active') {
     return normalizedStatus === 'active' ? '活跃' : '运行中';
   }
+  if (normalizedStatus === 'bound') {
+    return '已绑定';
+  }
   if (normalizedStatus === 'suspended') {
     return '已暂停';
   }
   if (normalizedStatus === 'failed') {
     return '失败';
+  }
+  if (normalizedStatus === 'lost') {
+    return '丢失';
   }
   if (normalizedStatus === 'terminating') {
     return '删除中';
@@ -66,10 +72,11 @@ const getJobStatusType = (
   if (normalizedStatus === 'completed' || normalizedStatus === 'succeeded') {
     return 'success';
   }
-  if (normalizedStatus === 'active') {
-    return 'success';
-  }
-  if (normalizedStatus === 'running') {
+  if (
+    normalizedStatus === 'active' ||
+    normalizedStatus === 'running' ||
+    normalizedStatus === 'bound'
+  ) {
     return 'success';
   }
   if (normalizedStatus === 'suspended') {
@@ -88,7 +95,8 @@ const getJobStatusType = (
   if (
     normalizedStatus === 'imagepullbackoff' ||
     normalizedStatus === 'crashloopbackoff' ||
-    normalizedStatus === 'unknown'
+    normalizedStatus === 'unknown' ||
+    normalizedStatus === 'lost'
   ) {
     return 'error';
   }
