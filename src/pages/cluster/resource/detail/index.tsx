@@ -45,6 +45,7 @@ import PodSchedulingInfo from './components/PodSchedulingInfo';
 import {
   buildPersistentVolumeClaimBasicInfo,
   formatPersistentVolumeClaimValue,
+  getPersistentVolumeClaimStorageClassName,
   hasPersistentVolumeClaim,
   type PersistentVolumeClaimBasicInfo,
 } from './components/persistentVolumeClaimHelpers';
@@ -327,6 +328,11 @@ const storageClassBasicInfoColumns: ProDescriptionsItemProps<StorageClassBasicIn
       renderText: (value) => formatStorageClassBoolean(value),
     },
     {
+      title: '供应者',
+      dataIndex: 'provisioner',
+      renderText: (value) => formatValue(value),
+    },
+    {
       title: '允许卷拓展',
       dataIndex: 'allow_volume_expansion',
       renderText: (value) => formatStorageClassBoolean(value),
@@ -362,6 +368,11 @@ const persistentVolumeClaimBasicInfoColumns: ProDescriptionsItemProps<Persistent
     {
       title: '访问模式',
       dataIndex: 'access_modes',
+      renderText: (value) => formatPersistentVolumeClaimValue(value),
+    },
+    {
+      title: '供应者',
+      dataIndex: 'provisioner',
       renderText: (value) => formatPersistentVolumeClaimValue(value),
     },
     {
@@ -635,6 +646,8 @@ const ClusterResourceDetail = () => {
   const [serviceWorkloads, setServiceWorkloads] = useState<
     API.ClusterWorkloadItem[]
   >([]);
+  const [pvcStorageClassProvisioner, setPvcStorageClassProvisioner] =
+    useState<string>();
   const metadata = useMemo(
     () => getRecordValue(manifest?.metadata),
     [manifest],
@@ -660,11 +673,21 @@ const ClusterResourceDetail = () => {
                   : detailType === 'CronJob'
                     ? buildCronJobBasicInfo(manifest, namespace)
                     : detailType === 'PersistentVolumeClaim'
-                      ? buildPersistentVolumeClaimBasicInfo(manifest, namespace)
+                      ? buildPersistentVolumeClaimBasicInfo(
+                          manifest,
+                          namespace,
+                          pvcStorageClassProvisioner,
+                        )
                       : detailType === 'StorageClass'
                         ? buildStorageClassBasicInfo(manifest)
                         : buildJobBasicInfo(manifest, namespace),
-    [detailType, manifest, namespace, serviceEndpoints],
+    [
+      detailType,
+      manifest,
+      namespace,
+      pvcStorageClassProvisioner,
+      serviceEndpoints,
+    ],
   );
   const podDetail = useMemo(() => buildPodDetail(manifest), [manifest]);
   const podConditions = useMemo(() => buildPodConditions(manifest), [manifest]);
@@ -820,6 +843,32 @@ const ClusterResourceDetail = () => {
     }
   }, [manifest, namespace, type]);
 
+  const fetchPvcStorageClassProvisioner = useCallback(async () => {
+    if (type !== 'PersistentVolumeClaim' || !manifest) {
+      setPvcStorageClassProvisioner(undefined);
+      return;
+    }
+
+    const storageClassName = getPersistentVolumeClaimStorageClassName(manifest);
+
+    if (!storageClassName) {
+      setPvcStorageClassProvisioner(undefined);
+      return;
+    }
+
+    try {
+      const res = await getClusterResourceManifest({
+        type: 'StorageClass',
+        name: storageClassName,
+      });
+      setPvcStorageClassProvisioner(
+        getStringValue(getRecordValue(res.data)?.provisioner),
+      );
+    } catch {
+      setPvcStorageClassProvisioner(undefined);
+    }
+  }, [manifest, type]);
+
   useEffect(() => {
     fetchManifest();
   }, [fetchManifest]);
@@ -837,18 +886,29 @@ const ClusterResourceDetail = () => {
   }, [fetchServiceWorkloads]);
 
   useEffect(() => {
+    fetchPvcStorageClassProvisioner();
+  }, [fetchPvcStorageClassProvisioner]);
+
+  useEffect(() => {
     const refresh = () => {
       void fetchManifest();
       void fetchPods();
       void fetchServiceEndpoints();
       void fetchServiceWorkloads();
+      void fetchPvcStorageClassProvisioner();
     };
 
     window.addEventListener(CURRENT_CLUSTER_CHANGE_EVENT, refresh);
     return () => {
       window.removeEventListener(CURRENT_CLUSTER_CHANGE_EVENT, refresh);
     };
-  }, [fetchManifest, fetchPods, fetchServiceEndpoints, fetchServiceWorkloads]);
+  }, [
+    fetchManifest,
+    fetchPods,
+    fetchPvcStorageClassProvisioner,
+    fetchServiceEndpoints,
+    fetchServiceWorkloads,
+  ]);
 
   const handleScaleJobReplicas = async (replicas: number) => {
     if (type !== 'Job' || !namespace || !name) {
@@ -1140,7 +1200,7 @@ const ClusterResourceDetail = () => {
                 ) : detailType === 'StorageClass' ? (
                   <ResourceBasicInfo<StorageClassBasicInfo>
                     className={styles.description}
-                    column={4}
+                    column={3}
                     columns={storageClassBasicInfoColumns}
                     dataSource={basicInfo as StorageClassBasicInfo}
                   />

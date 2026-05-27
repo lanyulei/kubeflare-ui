@@ -36,6 +36,7 @@ const buildStorageClassBasicInfo = (manifest?: Record<string, unknown>) => {
       annotations,
       DEFAULT_CLASS_ANNOTATIONS,
     ),
+    provisioner: manifest?.provisioner,
     allow_volume_expansion:
       typeof manifest?.allowVolumeExpansion === 'boolean'
         ? manifest.allowVolumeExpansion
