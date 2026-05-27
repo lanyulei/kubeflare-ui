@@ -17,11 +17,17 @@ import {
   updateClusterJobReplicas,
 } from '@/services/kubeflare/cluster/resource';
 import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
+import CustomResourceTable from './components/CustomResourceTable';
 import {
   buildConfigMapBasicInfo,
   buildConfigMapDataItems,
   type ConfigMapBasicInfo,
 } from './components/configMapHelpers';
+import {
+  buildCustomResourceDefinitionBasicInfo,
+  buildCustomResourceDefinitionVersions,
+  type CustomResourceDefinitionBasicInfo,
+} from './components/customResourceDefinitionHelpers';
 import {
   formatValue,
   getArrayValue,
@@ -319,6 +325,20 @@ const getJobPodSelectors = (name?: string) =>
 type JobBasicInfo = ReturnType<typeof buildJobBasicInfo>;
 type CronJobBasicInfo = ReturnType<typeof buildCronJobBasicInfo>;
 type ServiceAccountBasicInfo = ReturnType<typeof buildServiceAccountBasicInfo>;
+
+const customResourceDefinitionBasicInfoColumns: ProDescriptionsItemProps<CustomResourceDefinitionBasicInfo>[] =
+  [
+    {
+      title: '作用域',
+      dataIndex: 'scope',
+      renderText: (value) => formatValue(value),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'create_time',
+      valueType: 'dateTime',
+    },
+  ];
 
 const storageClassBasicInfoColumns: ProDescriptionsItemProps<StorageClassBasicInfo>[] =
   [
@@ -672,15 +692,17 @@ const ClusterResourceDetail = () => {
                   ? buildIngressBasicInfo(manifest, namespace)
                   : detailType === 'CronJob'
                     ? buildCronJobBasicInfo(manifest, namespace)
-                    : detailType === 'PersistentVolumeClaim'
-                      ? buildPersistentVolumeClaimBasicInfo(
-                          manifest,
-                          namespace,
-                          pvcStorageClassProvisioner,
-                        )
-                      : detailType === 'StorageClass'
-                        ? buildStorageClassBasicInfo(manifest)
-                        : buildJobBasicInfo(manifest, namespace),
+                    : detailType === 'CustomResourceDefinition'
+                      ? buildCustomResourceDefinitionBasicInfo(manifest)
+                      : detailType === 'PersistentVolumeClaim'
+                        ? buildPersistentVolumeClaimBasicInfo(
+                            manifest,
+                            namespace,
+                            pvcStorageClassProvisioner,
+                          )
+                        : detailType === 'StorageClass'
+                          ? buildStorageClassBasicInfo(manifest)
+                          : buildJobBasicInfo(manifest, namespace),
     [
       detailType,
       manifest,
@@ -702,6 +724,10 @@ const ClusterResourceDetail = () => {
     [manifest],
   );
   const secretData = useMemo(() => buildSecretDataView(manifest), [manifest]);
+  const customResourceDefinitionVersions = useMemo(
+    () => buildCustomResourceDefinitionVersions(manifest),
+    [manifest],
+  );
 
   const fetchManifest = useCallback(async () => {
     if (!type || !name) {
@@ -1062,6 +1088,20 @@ const ClusterResourceDetail = () => {
       ];
     }
 
+    if (detailType === 'CustomResourceDefinition') {
+      return [
+        {
+          key: 'customResources',
+          label: '定制资源定义',
+          children: (
+            <CustomResourceTable
+              version={customResourceDefinitionVersions[0]}
+            />
+          ),
+        },
+      ];
+    }
+
     if (detailType === 'ConfigMap') {
       return [
         {
@@ -1120,6 +1160,7 @@ const ClusterResourceDetail = () => {
     pods,
     serviceEndpoints,
     configMapDataItems,
+    customResourceDefinitionVersions,
     secretData,
     ingressRules,
     servicePorts,
@@ -1196,6 +1237,13 @@ const ClusterResourceDetail = () => {
                     column={3}
                     columns={persistentVolumeClaimBasicInfoColumns}
                     dataSource={basicInfo as PersistentVolumeClaimBasicInfo}
+                  />
+                ) : detailType === 'CustomResourceDefinition' ? (
+                  <ResourceBasicInfo<CustomResourceDefinitionBasicInfo>
+                    className={styles.description}
+                    column={2}
+                    columns={customResourceDefinitionBasicInfoColumns}
+                    dataSource={basicInfo as CustomResourceDefinitionBasicInfo}
                   />
                 ) : detailType === 'StorageClass' ? (
                   <ResourceBasicInfo<StorageClassBasicInfo>

@@ -6,7 +6,7 @@ const CustomResourceDefinitions = () => (
   <ClusterResourceListPage<API.ClusterCustomResourceDefinitionItem>
     titleId="menu.cluster.clusterCustomResourceDefinitions"
     defaultTitle="定制资源定义"
-    searchPlaceholder="搜索定制资源定义类别 / 名称 / 作用域"
+    searchPlaceholder="搜索定制资源定义类别 / API 版本 / 名称 / 作用域"
     createConfig={createCustomResourceDefinitionConfig}
     request={getClusterCustomResourceDefinitionList}
     columns={[
@@ -18,6 +18,12 @@ const CustomResourceDefinitions = () => (
         dataIndex: 'category',
         ellipsis: true,
         renderText: (_, record) => record.category || '-',
+      },
+      {
+        title: 'API 版本',
+        dataIndex: 'apiVersions',
+        ellipsis: true,
+        renderText: (_, record) => record.apiVersions.join('、') || '-',
       },
       {
         title: '作用域',

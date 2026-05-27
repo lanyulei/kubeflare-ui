@@ -1,4 +1,4 @@
-import { ClusterPodList, SectionTitle } from '@/components';
+import { ClusterPodList } from '@/components';
 
 type PersistentVolumeClaimResourceStatusProps = {
   loading?: boolean;
@@ -12,9 +12,6 @@ const PersistentVolumeClaimResourceStatus = ({
   onRefresh,
 }: PersistentVolumeClaimResourceStatusProps) => (
   <div>
-    <SectionTitle color={'#36435C'} fontSize={12}>
-      已挂载容器组
-    </SectionTitle>
     <ClusterPodList
       dataSource={pods}
       loading={loading}

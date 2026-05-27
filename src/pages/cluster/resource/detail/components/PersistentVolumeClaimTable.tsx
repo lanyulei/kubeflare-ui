@@ -5,7 +5,7 @@ import { Link } from '@umijs/max';
 import { Space } from 'antd';
 import { createStyles } from 'antd-style';
 import { useRef } from 'react';
-import { ClusterTableSearch, SectionTitle } from '@/components';
+import { ClusterTableSearch } from '@/components';
 import { getClusterPersistentVolumeClaimList } from '@/services/kubeflare/cluster/resource';
 import StatusText from './StatusText';
 
@@ -130,9 +130,6 @@ const PersistentVolumeClaimTable = ({
 
   return (
     <div className={styles.content}>
-      <SectionTitle color={'#36435C'} fontSize={12}>
-        持久卷声明
-      </SectionTitle>
       <ProTable<API.ClusterPersistentVolumeClaimItem>
         className={styles.table}
         rowKey={(record) =>

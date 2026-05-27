@@ -190,7 +190,15 @@ type KubernetesCustomResourceDefinition = {
       plural?: string
       categories?: string[]
     }
+    versions?: {
+      name?: string
+      served?: boolean
+    }[]
   }
+}
+
+type KubernetesCustomResource = {
+  metadata?: KubernetesMetadata
 }
 
 type KubernetesPersistentVolumeClaim = {
@@ -243,14 +251,24 @@ const getClusterHeaders = (
   ...options?.headers,
 })
 
-const getResourceRequestParams = (params?: API.ClusterResourceListParams) => {
-  const { keyword: _keyword, namespace: _namespace, ...restParams } = params || {}
+const getResourceRequestParams = (
+  params?: API.ClusterCustomResourceListParams,
+) => {
+  const {
+    keyword: _keyword,
+    namespace: _namespace,
+    group: _group,
+    version: _version,
+    plural: _plural,
+    scope: _scope,
+    ...restParams
+  } = params || {}
   return restParams
 }
 
 const requestKubernetesList = async <T>(
   path: string,
-  params?: API.ClusterResourceListParams,
+  params?: API.ClusterCustomResourceListParams,
   options?: { [key: string]: any },
 ) => {
   const clusterId = getCurrentClusterId()
@@ -758,12 +776,37 @@ const toServiceAccountItem = (
 
 const toCustomResourceDefinitionItem = (
   crd: KubernetesCustomResourceDefinition,
-): API.ClusterCustomResourceDefinitionItem => ({
-  id: crd.metadata?.uid || crd.metadata?.name,
-  category: crd.spec?.names?.categories?.join('、') || crd.spec?.group,
-  name: crd.metadata?.name || crd.spec?.names?.plural || '-',
-  scope: crd.spec?.scope,
-  create_time: crd.metadata?.creationTimestamp,
+): API.ClusterCustomResourceDefinitionItem => {
+  const group = crd.spec?.group
+  const servedVersions = (crd.spec?.versions || []).filter(
+    (version) => version.served !== false,
+  )
+  const versions = servedVersions.length ? servedVersions : crd.spec?.versions
+  const apiVersions = uniqueText(
+    (versions || []).map((version) =>
+      group && version.name ? `${group}/${version.name}` : version.name,
+    ),
+  )
+
+  return {
+    id: crd.metadata?.uid || crd.metadata?.name,
+    apiVersions,
+    category: crd.spec?.names?.categories?.join('、') || group,
+    name: crd.metadata?.name || crd.spec?.names?.plural || '-',
+    scope: crd.spec?.scope,
+    create_time: crd.metadata?.creationTimestamp,
+  }
+}
+
+const toCustomResourceItem = (
+  resource: KubernetesCustomResource,
+): API.ClusterCustomResourceItem => ({
+  id:
+    resource.metadata?.uid ||
+    `${resource.metadata?.namespace || '-'}-${resource.metadata?.name}`,
+  name: resource.metadata?.name || '-',
+  namespace: resource.metadata?.namespace,
+  create_time: resource.metadata?.creationTimestamp,
 })
 
 const toPersistentVolumeClaimItem = (
@@ -1201,12 +1244,51 @@ export async function getClusterCustomResourceDefinitionList(
     .map(toCustomResourceDefinitionItem)
     .filter((item) =>
       includeKeyword(params?.keyword, [
+        ...item.apiVersions,
         item.category,
         item.name,
         item.scope,
       ]),
     )
     .sort((first, second) => first.name.localeCompare(second.name))
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterCustomResourceList(
+  params?: API.ClusterCustomResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const apiGroup = params?.group?.trim()
+  const apiVersion = params?.version?.trim()
+  const plural = params?.plural?.trim()
+
+  if (!apiVersion || !plural) {
+    return emptyListResponse<API.ClusterCustomResourceItem>()
+  }
+
+  const rootPath = apiGroup
+    ? `/kapis/${encodeURIComponent(apiGroup)}/${encodeURIComponent(apiVersion)}`
+    : `/kapi/${encodeURIComponent(apiVersion)}`
+  const path =
+    params?.scope === 'Namespaced' && params.namespace
+      ? `${rootPath}/namespaces/${encodeURIComponent(params.namespace)}/${encodeURIComponent(plural)}`
+      : `${rootPath}/${encodeURIComponent(plural)}`
+  const res = await requestKubernetesList<KubernetesCustomResource>(
+    path,
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterCustomResourceItem>()
+  }
+
+  const items = sortByNamespaceAndName(
+    (res.data?.items || []).map(toCustomResourceItem).filter((item) =>
+      includeKeyword(params?.keyword, [item.name, item.namespace]),
+    ),
+  )
 
   return buildResourceListResponse(res, items)
 }

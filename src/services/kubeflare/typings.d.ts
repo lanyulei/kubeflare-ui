@@ -739,10 +739,25 @@ declare namespace API {
 
   type ClusterCustomResourceDefinitionItem = {
     id?: string
+    apiVersions: string[]
     category?: string
     name: string
     scope?: string
     create_time?: string
+  }
+
+  type ClusterCustomResourceItem = {
+    id?: string
+    name: string
+    namespace?: string
+    create_time?: string
+  }
+
+  type ClusterCustomResourceListParams = ClusterResourceListParams & {
+    group?: string
+    version?: string
+    plural?: string
+    scope?: string
   }
 
   type CreateUserParams = {
