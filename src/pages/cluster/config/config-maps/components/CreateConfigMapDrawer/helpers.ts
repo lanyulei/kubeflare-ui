@@ -28,6 +28,14 @@ const getInitialCreateConfigMapValues = (
 
 const normalizeText = (value?: string) => value?.trim() || '';
 
+const getRecordValue = (value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+
+const getStringValue = (value: unknown) =>
+  typeof value === 'string' ? value : undefined;
+
 const normalizeDataItems = (items?: ConfigMapDataItem[]) =>
   (items || [])
     .map((item) => ({
@@ -89,6 +97,44 @@ const buildCreateConfigMapManifest = (
 const buildCreateConfigMapYaml = (values: CreateConfigMapFormValues) =>
   stringify(buildCreateConfigMapManifest(values), { indent: 2 });
 
+const getConfigMapFormValuesFromManifest = (
+  manifest?: Record<string, unknown>,
+  fallbackNamespace?: string,
+): CreateConfigMapFormValues => {
+  const metadata = getRecordValue(manifest?.metadata);
+  const data = getRecordValue(manifest?.data) || {};
+
+  return {
+    ...getInitialCreateConfigMapValues(
+      getStringValue(metadata?.namespace) || fallbackNamespace,
+    ),
+    name: getStringValue(metadata?.name),
+    namespace: getStringValue(metadata?.namespace) || fallbackNamespace,
+    dataItems: Object.entries(data).flatMap(([keyName, value]) =>
+      typeof value === 'string'
+        ? [createConfigMapDataItem(keyName, value)]
+        : [],
+    ),
+  };
+};
+
+const buildUpdatedConfigMapSettingsManifest = (
+  manifest: Record<string, unknown>,
+  values: CreateConfigMapFormValues,
+): Record<string, unknown> => {
+  const data = buildConfigMapData(values.dataItems);
+  const nextManifest: Record<string, unknown> = {
+    ...manifest,
+    data,
+  };
+
+  if (Object.keys(data).length === 0) {
+    delete nextManifest.data;
+  }
+
+  return nextManifest;
+};
+
 const getConfigMapStepFields = (
   step: number,
 ): (keyof CreateConfigMapFormValues)[] => {
@@ -100,14 +146,17 @@ const getConfigMapStepFields = (
 };
 
 export {
+  buildConfigMapData,
   buildCreateConfigMapManifest,
   buildCreateConfigMapYaml,
+  buildUpdatedConfigMapSettingsManifest,
   CONFIG_MAP_API_VERSION,
   CONFIG_MAP_KEY_PATTERN,
   CONFIG_MAP_KIND,
   CONFIG_MAP_NAME_PATTERN,
   CONFIG_MAP_RESOURCE_TYPE,
   createConfigMapDataItem,
+  getConfigMapFormValuesFromManifest,
   getConfigMapStepFields,
   getInitialCreateConfigMapValues,
   hasConfigMapDataContent,

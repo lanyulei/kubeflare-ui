@@ -1,12 +1,15 @@
 import {
+  CopyOutlined,
   DeleteOutlined,
   DownOutlined,
   EditOutlined,
+  ExpandAltOutlined,
   FileTextOutlined,
   GlobalOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
@@ -22,18 +25,26 @@ import {
   SectionTitle,
   YamlEditor,
 } from '@/components';
+import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 import { getClusterNodePodList } from '@/services/kubeflare/cluster/node';
 import {
+  createClusterResource,
   deleteClusterResource,
   getClusterResourceManifest,
   getClusterServiceEndpoints,
+  getClusterServiceList,
+  getClusterStorageClassList,
   rerunClusterJob,
   updateClusterCronJobSuspend,
   updateClusterJobReplicas,
+  updateClusterPersistentVolumeClaimPatch,
   updateClusterResourceManifest,
   updateClusterServicePatch,
 } from '@/services/kubeflare/cluster/resource';
 import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
+import { createKeyValueItem } from '../../workloads/ingresses/components/CreateIngressDrawer/helpers';
+import type { IngressServiceOption } from '../../workloads/ingresses/components/CreateIngressDrawer/types';
+import { ConfigMapSettingsEditDrawer } from './components/ConfigMapEditDrawers';
 import CustomResourceTable from './components/CustomResourceTable';
 import {
   buildConfigMapBasicInfo,
@@ -52,6 +63,10 @@ import {
   getRecordValue,
   getStringValue,
 } from './components/helpers';
+import {
+  IngressAnnotationsEditDrawer,
+  IngressRouteRulesEditDrawer,
+} from './components/IngressEditDrawers';
 import IngressResourceStatus from './components/IngressResourceStatus';
 import {
   buildIngressBasicInfo,
@@ -61,6 +76,11 @@ import {
 import JobEnvironmentVariables from './components/JobEnvironmentVariables';
 import JobResourceStatus from './components/JobResourceStatus';
 import JobRunRecords from './components/JobRunRecords';
+import {
+  getPersistentVolumeClaimSizeGi,
+  PersistentVolumeClaimCloneDrawer,
+  PersistentVolumeClaimExpandDrawer,
+} from './components/PersistentVolumeClaimEditDrawers';
 import PersistentVolumeClaimResourceStatus from './components/PersistentVolumeClaimResourceStatus';
 import PersistentVolumeClaimTable from './components/PersistentVolumeClaimTable';
 import PodResourceStatus from './components/PodResourceStatus';
@@ -80,6 +100,7 @@ import {
 } from './components/podHelpers';
 import ResourceBasicInfo from './components/ResourceBasicInfo';
 import ResourceDataFields from './components/ResourceDataFields';
+import { SecretSettingsEditDrawer } from './components/SecretEditDrawers';
 import SecretResourceData from './components/SecretResourceData';
 import {
   ServiceExternalAccessEditDrawer,
@@ -87,6 +108,10 @@ import {
 } from './components/ServiceEditDrawers';
 import ServiceResourceStatus from './components/ServiceResourceStatus';
 import StatusText from './components/StatusText';
+import {
+  type StorageClassVolumeOperationFormValues,
+  StorageClassVolumeOperationModal,
+} from './components/StorageClassEditModals';
 import {
   buildSecretBasicInfo,
   buildSecretDataView,
@@ -101,9 +126,13 @@ import {
   type ServiceBasicInfo,
 } from './components/serviceHelpers';
 import {
+  applyStorageClassDefault,
+  applyStorageClassVolumeOperations,
   buildStorageClassBasicInfo,
+  buildStorageClassVolumeOperations,
   formatStorageClassBoolean,
   getReclaimPolicyLabel,
+  isDefaultStorageClass,
   type StorageClassBasicInfo,
 } from './components/storageClassHelpers';
 
@@ -159,6 +188,14 @@ type ResourceActionKey =
   | 'cronJobSuspend'
   | 'serviceSettings'
   | 'serviceExternalAccess'
+  | 'ingressRules'
+  | 'ingressAnnotations'
+  | 'configMapSettings'
+  | 'secretSettings'
+  | 'pvcClone'
+  | 'pvcExpand'
+  | 'storageClassDefault'
+  | 'storageClassVolumeOperations'
   | 'delete';
 
 const useStyles = createStyles(({ token }) => ({
@@ -420,6 +457,11 @@ const storageClassBasicInfoColumns: ProDescriptionsItemProps<StorageClassBasicIn
       title: '供应者',
       dataIndex: 'provisioner',
       renderText: (value) => formatValue(value),
+    },
+    {
+      title: '允许卷克隆',
+      dataIndex: 'allow_volume_clone',
+      renderText: (value) => formatStorageClassBoolean(value),
     },
     {
       title: '允许卷拓展',
@@ -738,6 +780,26 @@ const ClusterResourceDetail = () => {
     useState(false);
   const [serviceExternalAccessDrawerOpen, setServiceExternalAccessDrawerOpen] =
     useState(false);
+  const [ingressRouteRulesDrawerOpen, setIngressRouteRulesDrawerOpen] =
+    useState(false);
+  const [ingressAnnotationModalOpen, setIngressAnnotationModalOpen] =
+    useState(false);
+  const [configMapSettingsDrawerOpen, setConfigMapSettingsDrawerOpen] =
+    useState(false);
+  const [secretSettingsDrawerOpen, setSecretSettingsDrawerOpen] =
+    useState(false);
+  const [pvcCloneDrawerOpen, setPvcCloneDrawerOpen] = useState(false);
+  const [pvcExpandDrawerOpen, setPvcExpandDrawerOpen] = useState(false);
+  const [
+    storageClassVolumeOperationModalOpen,
+    setStorageClassVolumeOperationModalOpen,
+  ] = useState(false);
+  const [ingressAnnotationRows, setIngressAnnotationRows] = useState<
+    KeyValueEditorItem[]
+  >([]);
+  const [ingressServiceOptions, setIngressServiceOptions] = useState<
+    IngressServiceOption[]
+  >([]);
   const [yamlValue, setYamlValue] = useState('');
   const [manifest, setManifest] = useState<Record<string, unknown>>();
   const [detailType, setDetailType] = useState<
@@ -812,6 +874,15 @@ const ClusterResourceDetail = () => {
     () => buildCustomResourceDefinitionVersions(manifest),
     [manifest],
   );
+  const persistentVolumeClaimSizeGi = useMemo(
+    () => getPersistentVolumeClaimSizeGi(manifest),
+    [manifest],
+  );
+  const storageClassVolumeOperations = useMemo(
+    () => buildStorageClassVolumeOperations(manifest),
+    [manifest],
+  );
+  const storageClassDefault = isDefaultStorageClass(manifest);
   const cronJobSuspended = getRecordValue(manifest?.spec)?.suspend === true;
   const resourceActionItems = [
     ...(type === 'Job'
@@ -847,6 +918,67 @@ const ClusterResourceDetail = () => {
             key: 'serviceExternalAccess',
             icon: <GlobalOutlined />,
             label: '编辑外部访问',
+          },
+        ]
+      : []),
+    ...(type === 'Ingress'
+      ? [
+          {
+            key: 'ingressRules',
+            icon: <GlobalOutlined />,
+            label: '编辑路由规则',
+          },
+          {
+            key: 'ingressAnnotations',
+            icon: <EditOutlined />,
+            label: '编辑注解',
+          },
+        ]
+      : []),
+    ...(type === 'Secret'
+      ? [
+          {
+            key: 'secretSettings',
+            icon: <SettingOutlined />,
+            label: '编辑设置',
+          },
+        ]
+      : []),
+    ...(type === 'ConfigMap'
+      ? [
+          {
+            key: 'configMapSettings',
+            icon: <SettingOutlined />,
+            label: '编辑设置',
+          },
+        ]
+      : []),
+    ...(type === 'PersistentVolumeClaim'
+      ? [
+          {
+            key: 'pvcClone',
+            icon: <CopyOutlined />,
+            label: '克隆',
+          },
+          {
+            key: 'pvcExpand',
+            icon: <ExpandAltOutlined />,
+            label: '拓展',
+          },
+        ]
+      : []),
+    ...(type === 'StorageClass'
+      ? [
+          {
+            disabled: storageClassDefault,
+            key: 'storageClassDefault',
+            icon: <SettingOutlined />,
+            label: storageClassDefault ? '已是默认存储类' : '设置默认存储类',
+          },
+          {
+            key: 'storageClassVolumeOperations',
+            icon: <SettingOutlined />,
+            label: '设置卷操作',
           },
         ]
       : []),
@@ -1003,6 +1135,30 @@ const ClusterResourceDetail = () => {
     }
   }, [manifest, namespace, type]);
 
+  const fetchIngressServiceOptions = useCallback(async () => {
+    if (type !== 'Ingress' || !namespace) {
+      setIngressServiceOptions([]);
+      return;
+    }
+
+    const res = await getClusterServiceList({ namespace });
+    setIngressServiceOptions(
+      (res.data.items || []).flatMap((item) =>
+        item.name && item.name !== '-'
+          ? [
+              {
+                label: item.name,
+                ports: (item.ports || []).flatMap((port) =>
+                  port.port ? [port.port] : [],
+                ),
+                value: item.name,
+              },
+            ]
+          : [],
+      ),
+    );
+  }, [namespace, type]);
+
   const fetchPvcStorageClassProvisioner = useCallback(async () => {
     if (type !== 'PersistentVolumeClaim' || !manifest) {
       setPvcStorageClassProvisioner(undefined);
@@ -1048,6 +1204,12 @@ const ClusterResourceDetail = () => {
   useEffect(() => {
     fetchPvcStorageClassProvisioner();
   }, [fetchPvcStorageClassProvisioner]);
+
+  useEffect(() => {
+    if (ingressRouteRulesDrawerOpen) {
+      void fetchIngressServiceOptions();
+    }
+  }, [fetchIngressServiceOptions, ingressRouteRulesDrawerOpen]);
 
   useEffect(() => {
     const refresh = () => {
@@ -1186,6 +1348,281 @@ const ClusterResourceDetail = () => {
     } finally {
       setActionLoading(undefined);
     }
+  };
+
+  const handleUpdateIngressManifest = async (
+    nextManifest: Record<string, unknown>,
+    actionKey: 'ingressRules' | 'ingressAnnotations',
+    successText: string,
+  ) => {
+    if (type !== 'Ingress' || !namespace || !name) {
+      return;
+    }
+
+    setActionLoading(actionKey);
+    try {
+      const res = await updateClusterResourceManifest({
+        type: 'Ingress',
+        namespace,
+        name,
+        manifest: nextManifest,
+      });
+      message.success(successText);
+      setManifest(res.data);
+      setIngressRouteRulesDrawerOpen(false);
+      setIngressAnnotationModalOpen(false);
+      await fetchManifest();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleUpdateSecretManifest = async (
+    nextManifest: Record<string, unknown>,
+  ) => {
+    if (type !== 'Secret' || !namespace || !name) {
+      return;
+    }
+
+    setActionLoading('secretSettings');
+    try {
+      const res = await updateClusterResourceManifest({
+        type: 'Secret',
+        namespace,
+        name,
+        manifest: nextManifest,
+      });
+      message.success('设置已更新');
+      setManifest(res.data);
+      setSecretSettingsDrawerOpen(false);
+      await fetchManifest();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleUpdateConfigMapManifest = async (
+    nextManifest: Record<string, unknown>,
+  ) => {
+    if (type !== 'ConfigMap' || !namespace || !name) {
+      return;
+    }
+
+    setActionLoading('configMapSettings');
+    try {
+      const res = await updateClusterResourceManifest({
+        type: 'ConfigMap',
+        namespace,
+        name,
+        manifest: nextManifest,
+      });
+      message.success('设置已更新');
+      setManifest(res.data);
+      setConfigMapSettingsDrawerOpen(false);
+      await fetchManifest();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleClonePersistentVolumeClaim = async (
+    nextManifest: Record<string, unknown>,
+  ) => {
+    if (type !== 'PersistentVolumeClaim' || !namespace) {
+      return;
+    }
+
+    setActionLoading('pvcClone');
+    try {
+      await createClusterResource({
+        type: 'PersistentVolumeClaim',
+        namespace,
+        manifest: nextManifest,
+      });
+      message.success('持久卷声明已克隆');
+      setPvcCloneDrawerOpen(false);
+      await fetchPods();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleExpandPersistentVolumeClaim = async (storage: string) => {
+    if (type !== 'PersistentVolumeClaim' || !namespace || !name) {
+      return;
+    }
+
+    setActionLoading('pvcExpand');
+    try {
+      const res = await updateClusterPersistentVolumeClaimPatch({
+        namespace,
+        name,
+        patch: {
+          spec: {
+            resources: {
+              requests: {
+                storage,
+              },
+            },
+          },
+        },
+      });
+      message.success('持久卷声明容量已更新');
+      setManifest(res.data);
+      setPvcExpandDrawerOpen(false);
+      await fetchManifest();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const handleSetDefaultStorageClass = () => {
+    if (type !== 'StorageClass' || !name || !manifest) {
+      return;
+    }
+
+    modal.confirm({
+      title: '确认设置为默认存储类吗？',
+      content: '设置后，未指定存储类的持久卷声明将默认使用该存储类。',
+      okText: '设置',
+      cancelText: '取消',
+      onOk: async () => {
+        setActionLoading('storageClassDefault');
+        try {
+          const storageClassRes = await getClusterStorageClassList({
+            limit: 500,
+          });
+          const storageClassNames = (storageClassRes.data.items || [])
+            .map((item) => item.name)
+            .filter((item) => item && item !== name);
+
+          const storageClassManifests = await Promise.all(
+            storageClassNames.map(async (storageClassName) => {
+              const res = await getClusterResourceManifest({
+                type: 'StorageClass',
+                name: storageClassName,
+              });
+
+              return res.data;
+            }),
+          );
+          const defaultManifests = storageClassManifests.filter(
+            (item): item is Record<string, unknown> =>
+              Boolean(item && isDefaultStorageClass(item)),
+          );
+
+          await Promise.all(
+            defaultManifests.map((item) => {
+              const metadataRecord = getRecordValue(item.metadata);
+              const storageClassName = getStringValue(metadataRecord?.name);
+
+              if (!storageClassName) {
+                return Promise.resolve();
+              }
+
+              return updateClusterResourceManifest({
+                type: 'StorageClass',
+                name: storageClassName,
+                manifest: applyStorageClassDefault(item, false),
+              });
+            }),
+          );
+
+          const res = await updateClusterResourceManifest({
+            type: 'StorageClass',
+            name,
+            manifest: applyStorageClassDefault(manifest, true),
+          });
+          message.success('默认存储类已设置');
+          setManifest(res.data);
+          await fetchManifest();
+        } finally {
+          setActionLoading(undefined);
+        }
+      },
+    });
+  };
+
+  const handleUpdateStorageClassVolumeOperations = async (
+    values: StorageClassVolumeOperationFormValues,
+  ) => {
+    if (type !== 'StorageClass' || !name || !manifest) {
+      return;
+    }
+
+    setActionLoading('storageClassVolumeOperations');
+    try {
+      const res = await updateClusterResourceManifest({
+        type: 'StorageClass',
+        name,
+        manifest: applyStorageClassVolumeOperations(manifest, values),
+      });
+      message.success('卷操作已更新');
+      setManifest(res.data);
+      setStorageClassVolumeOperationModalOpen(false);
+      await fetchManifest();
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const openIngressAnnotationModal = () => {
+    const currentAnnotations = getRecordValue(metadata?.annotations) as
+      | Record<string, unknown>
+      | undefined;
+    const rows = Object.entries(currentAnnotations || {}).map(
+      ([keyName, value]) => createKeyValueItem(keyName, String(value ?? '')),
+    );
+
+    setIngressAnnotationRows(rows.length > 0 ? rows : [createKeyValueItem()]);
+    setIngressAnnotationModalOpen(true);
+  };
+
+  const handleSaveIngressAnnotations = async () => {
+    if (!manifest) {
+      return;
+    }
+
+    const nextAnnotations: Record<string, string> = {};
+    const annotationKeys = new Set<string>();
+
+    for (const row of ingressAnnotationRows) {
+      const keyName = row.keyName.trim();
+      const value = row.value.trim();
+
+      if (!keyName && !value) {
+        continue;
+      }
+      if (!keyName) {
+        message.warning('注解 Key 不能为空');
+        return;
+      }
+      if (annotationKeys.has(keyName)) {
+        message.warning('注解 Key 不能重复');
+        return;
+      }
+
+      annotationKeys.add(keyName);
+      nextAnnotations[keyName] = value;
+    }
+
+    const nextMetadata: Record<string, unknown> = {
+      ...(getRecordValue(manifest.metadata) || {}),
+      annotations: nextAnnotations,
+    };
+
+    if (Object.keys(nextAnnotations).length === 0) {
+      delete nextMetadata.annotations;
+    }
+
+    await handleUpdateIngressManifest(
+      {
+        ...manifest,
+        metadata: nextMetadata,
+      },
+      'ingressAnnotations',
+      '注解已更新',
+    );
   };
 
   const openYamlDrawer = async () => {
@@ -1527,6 +1964,31 @@ const ClusterResourceDetail = () => {
               if (key === 'serviceExternalAccess') {
                 setServiceExternalAccessDrawerOpen(true);
               }
+              if (key === 'ingressRules') {
+                setIngressRouteRulesDrawerOpen(true);
+                void fetchIngressServiceOptions();
+              }
+              if (key === 'ingressAnnotations') {
+                openIngressAnnotationModal();
+              }
+              if (key === 'configMapSettings') {
+                setConfigMapSettingsDrawerOpen(true);
+              }
+              if (key === 'secretSettings') {
+                setSecretSettingsDrawerOpen(true);
+              }
+              if (key === 'pvcClone') {
+                setPvcCloneDrawerOpen(true);
+              }
+              if (key === 'pvcExpand') {
+                setPvcExpandDrawerOpen(true);
+              }
+              if (key === 'storageClassDefault') {
+                handleSetDefaultStorageClass();
+              }
+              if (key === 'storageClassVolumeOperations') {
+                setStorageClassVolumeOperationModalOpen(true);
+              }
               if (key === 'delete') {
                 handleDelete();
               }
@@ -1704,6 +2166,68 @@ const ClusterResourceDetail = () => {
             '外部访问已更新',
           )
         }
+      />
+      <IngressRouteRulesEditDrawer
+        loading={actionLoading === 'ingressRules'}
+        manifest={manifest}
+        namespace={namespace}
+        open={ingressRouteRulesDrawerOpen}
+        serviceOptions={ingressServiceOptions}
+        onCancel={() => setIngressRouteRulesDrawerOpen(false)}
+        onSubmit={(nextManifest) =>
+          handleUpdateIngressManifest(
+            nextManifest,
+            'ingressRules',
+            '路由规则已更新',
+          )
+        }
+      />
+      <IngressAnnotationsEditDrawer
+        loading={actionLoading === 'ingressAnnotations'}
+        open={ingressAnnotationModalOpen}
+        rows={ingressAnnotationRows}
+        onCancel={() => setIngressAnnotationModalOpen(false)}
+        onChange={setIngressAnnotationRows}
+        onSubmit={handleSaveIngressAnnotations}
+      />
+      <SecretSettingsEditDrawer
+        loading={actionLoading === 'secretSettings'}
+        manifest={manifest}
+        namespace={namespace}
+        open={secretSettingsDrawerOpen}
+        onCancel={() => setSecretSettingsDrawerOpen(false)}
+        onSubmit={handleUpdateSecretManifest}
+      />
+      <ConfigMapSettingsEditDrawer
+        loading={actionLoading === 'configMapSettings'}
+        manifest={manifest}
+        namespace={namespace}
+        open={configMapSettingsDrawerOpen}
+        onCancel={() => setConfigMapSettingsDrawerOpen(false)}
+        onSubmit={handleUpdateConfigMapManifest}
+      />
+      <PersistentVolumeClaimCloneDrawer
+        currentSizeGi={persistentVolumeClaimSizeGi}
+        loading={actionLoading === 'pvcClone'}
+        manifest={manifest}
+        open={pvcCloneDrawerOpen}
+        onCancel={() => setPvcCloneDrawerOpen(false)}
+        onSubmit={handleClonePersistentVolumeClaim}
+      />
+      <PersistentVolumeClaimExpandDrawer
+        currentSizeGi={persistentVolumeClaimSizeGi}
+        loading={actionLoading === 'pvcExpand'}
+        manifest={manifest}
+        open={pvcExpandDrawerOpen}
+        onCancel={() => setPvcExpandDrawerOpen(false)}
+        onSubmit={handleExpandPersistentVolumeClaim}
+      />
+      <StorageClassVolumeOperationModal
+        loading={actionLoading === 'storageClassVolumeOperations'}
+        open={storageClassVolumeOperationModalOpen}
+        values={storageClassVolumeOperations}
+        onCancel={() => setStorageClassVolumeOperationModalOpen(false)}
+        onSubmit={handleUpdateStorageClassVolumeOperations}
       />
     </PageContainer>
   );

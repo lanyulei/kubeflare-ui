@@ -693,6 +693,12 @@ declare namespace API {
     patch: Record<string, unknown>
   }
 
+  type UpdateClusterPersistentVolumeClaimPatchParams = {
+    namespace: string
+    name: string
+    patch: Record<string, unknown>
+  }
+
   type RerunClusterJobParams = {
     namespace: string
     name: string

@@ -15,6 +15,26 @@ export const NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 
 const createId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+const getRecordValue = (value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+
+const getArrayValue = (value: unknown) => (Array.isArray(value) ? value : []);
+
+const getStringValue = (value: unknown) =>
+  typeof value === 'string' ? value : undefined;
+
+const getNumberValue = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+const mapRecordToKeyValueItems = (
+  record?: Record<string, unknown>,
+): KeyValueEditorItem[] =>
+  Object.entries(record || {}).map(([keyName, value]) =>
+    createKeyValueItem(keyName, String(value ?? '')),
+  );
+
 export const createKeyValueItem = (
   keyName = '',
   value = '',
@@ -79,6 +99,123 @@ export const toRecord = (items?: KeyValueEditorItem[]) =>
     return record;
   }, {});
 
+const getIngressTlsHosts = (manifest?: Record<string, unknown>) =>
+  new Set(
+    getArrayValue(getRecordValue(manifest?.spec)?.tls)
+      .map((item) => getRecordValue(item))
+      .flatMap((item) => getArrayValue(item?.hosts))
+      .map((item) => getStringValue(item))
+      .filter(Boolean),
+  );
+
+const buildIngressRouteRules = (values: CreateIngressFormValues) => {
+  const groupedRules = groupRulesByHost(values.rules || []);
+
+  return Object.entries(groupedRules).map(([host, paths]) => ({
+    host,
+    http: {
+      paths: paths.map((path) => ({
+        path: path.path || '/',
+        pathType: path.pathType,
+        backend: {
+          service: {
+            name: path.serviceName,
+            port: {
+              number: path.servicePort,
+            },
+          },
+        },
+      })),
+    },
+  }));
+};
+
+const buildIngressTls = (values: CreateIngressFormValues) => {
+  const tlsHosts = getTlsHosts(values.rules || []);
+
+  return tlsHosts.length > 0
+    ? [
+        {
+          hosts: tlsHosts,
+        },
+      ]
+    : undefined;
+};
+
+export const buildIngressRouteSpec = (values: CreateIngressFormValues) => {
+  const spec: Record<string, unknown> = {
+    rules: buildIngressRouteRules(values),
+  };
+  const tls = buildIngressTls(values);
+
+  if (tls) {
+    spec.tls = tls;
+  }
+
+  return spec;
+};
+
+export const buildIngressMetadata = (values: CreateIngressFormValues) => {
+  const annotations = toRecord(values.annotations);
+  const labels = toRecord(values.labels);
+
+  if (values.enablePathRewrite) {
+    annotations['nginx.ingress.kubernetes.io/use-regex'] ||= 'true';
+    annotations['nginx.ingress.kubernetes.io/rewrite-target'] =
+      values.rewriteTarget?.trim() || '/';
+  }
+
+  return {
+    ...(Object.keys(labels).length > 0 ? { labels } : {}),
+    ...(Object.keys(annotations).length > 0 ? { annotations } : {}),
+  };
+};
+
+export const buildIngressRouteManifest = (
+  values: CreateIngressFormValues,
+  manifest?: Record<string, unknown>,
+) => {
+  const currentSpec = getRecordValue(manifest?.spec) || {};
+  const currentMetadata = getRecordValue(manifest?.metadata) || {};
+  const nextSpec = {
+    ...currentSpec,
+    ...buildIngressRouteSpec(values),
+  };
+  const annotations = toRecord(values.annotations);
+  const labels = toRecord(values.labels);
+  const tls = buildIngressTls(values);
+
+  if (tls) {
+    nextSpec.tls = tls;
+  } else {
+    delete nextSpec.tls;
+  }
+  if (values.enablePathRewrite) {
+    annotations['nginx.ingress.kubernetes.io/use-regex'] ||= 'true';
+    annotations['nginx.ingress.kubernetes.io/rewrite-target'] =
+      values.rewriteTarget?.trim() || '/';
+  }
+
+  const metadata = {
+    ...currentMetadata,
+    ...(Object.keys(labels).length > 0 ? { labels } : {}),
+    ...(Object.keys(annotations).length > 0 ? { annotations } : {}),
+  };
+
+  if (Object.keys(labels).length === 0) {
+    delete metadata.labels;
+  }
+  if (Object.keys(annotations).length === 0) {
+    delete metadata.annotations;
+  }
+
+  return {
+    ...(manifest || {}),
+    spec: nextSpec,
+    metadata,
+  };
+};
+
 export const isValidIngressPath = (path?: IngressRoutePathItem) =>
   Boolean(
     path?.path?.trim()?.startsWith('/') &&
@@ -122,56 +259,83 @@ const getTlsHosts = (rules: IngressRouteRuleItem[]) =>
   );
 
 export const buildCreateIngressManifest = (values: CreateIngressFormValues) => {
-  const annotations = toRecord(values.annotations);
-  const labels = toRecord(values.labels);
-  const groupedRules = groupRulesByHost(values.rules || []);
-  const specRules = Object.entries(groupedRules).map(([host, paths]) => ({
-    host,
-    http: {
-      paths: paths.map((path) => ({
-        path: path.path || '/',
-        pathType: path.pathType,
-        backend: {
-          service: {
-            name: path.serviceName,
-            port: {
-              number: path.servicePort,
-            },
-          },
-        },
-      })),
-    },
-  }));
-  const tlsHosts = getTlsHosts(values.rules || []);
-
-  if (values.enablePathRewrite) {
-    annotations['nginx.ingress.kubernetes.io/use-regex'] ||= 'true';
-    annotations['nginx.ingress.kubernetes.io/rewrite-target'] =
-      values.rewriteTarget?.trim() || '/';
-  }
-
-  const spec: Record<string, unknown> = {
-    rules: specRules,
-  };
-
-  if (tlsHosts.length > 0) {
-    spec.tls = [
-      {
-        hosts: tlsHosts,
-      },
-    ];
-  }
-
   return {
     apiVersion: INGRESS_API_VERSION,
     kind: INGRESS_KIND,
     metadata: {
       name: values.name,
       namespace: values.namespace,
-      ...(Object.keys(labels).length > 0 ? { labels } : {}),
-      ...(Object.keys(annotations).length > 0 ? { annotations } : {}),
+      ...buildIngressMetadata(values),
     },
-    spec,
+    spec: buildIngressRouteSpec(values),
+  };
+};
+
+export const buildIngressFormValuesFromManifest = (
+  manifest?: Record<string, unknown>,
+  fallbackNamespace?: string,
+): CreateIngressFormValues => {
+  const metadata = getRecordValue(manifest?.metadata);
+  const spec = getRecordValue(manifest?.spec);
+  const annotations = {
+    ...(getRecordValue(metadata?.annotations) as Record<string, unknown>),
+  };
+  const rewriteTarget = getStringValue(
+    annotations['nginx.ingress.kubernetes.io/rewrite-target'],
+  );
+  const tlsHosts = getIngressTlsHosts(manifest);
+  const rules = getArrayValue(spec?.rules).flatMap((ruleItem) => {
+    const rule = getRecordValue(ruleItem);
+    const host = getStringValue(rule?.host);
+    const paths = getArrayValue(getRecordValue(rule?.http)?.paths)
+      .map((pathItem) => {
+        const pathRecord = getRecordValue(pathItem);
+        const backend = getRecordValue(pathRecord?.backend);
+        const service = getRecordValue(backend?.service);
+        const port = getRecordValue(service?.port);
+        const servicePort = getNumberValue(port?.number);
+
+        if (!servicePort) {
+          return undefined;
+        }
+
+        return createIngressPathItem({
+          path: getStringValue(pathRecord?.path) || '/',
+          pathType:
+            (getStringValue(pathRecord?.pathType) as IngressPathType) ||
+            'Prefix',
+          serviceName: getStringValue(service?.name),
+          servicePort,
+        });
+      })
+      .filter(Boolean) as IngressRoutePathItem[];
+
+    if (!host || paths.length === 0) {
+      return [];
+    }
+
+    return [
+      createIngressRuleItem({
+        host,
+        protocol: tlsHosts.has(host) ? 'HTTPS' : 'HTTP',
+        paths,
+      }),
+    ];
+  });
+
+  delete annotations['nginx.ingress.kubernetes.io/use-regex'];
+  delete annotations['nginx.ingress.kubernetes.io/rewrite-target'];
+
+  return {
+    name: getStringValue(metadata?.name),
+    namespace: getStringValue(metadata?.namespace) || fallbackNamespace,
+    rules,
+    enablePathRewrite: Boolean(rewriteTarget),
+    rewriteTarget: rewriteTarget || '/',
+    annotations: mapRecordToKeyValueItems(annotations),
+    labels: mapRecordToKeyValueItems(
+      getRecordValue(metadata?.labels) as Record<string, unknown>,
+    ),
   };
 };
 

@@ -922,12 +922,16 @@ const toStorageClassItem = (
   pvcCounts: Map<string, number>,
 ): API.ClusterStorageClassItem => {
   const name = storageClass.metadata?.name || '-'
+  const annotations = storageClass.metadata?.annotations || {}
 
   return {
     name,
     provisioner: storageClass.provisioner,
     storage_type: storageClass.parameters?.type || storageClass.provisioner,
     persistent_volume_claim_count: pvcCounts.get(name) || 0,
+    allow_volume_clone:
+      annotations['storageclass.kubesphere.io/allow-clone'] === 'true' ||
+      annotations['storageclass.kubeflare.io/allow-clone'] === 'true',
     allow_volume_expansion: storageClass.allowVolumeExpansion,
   }
 }
@@ -1206,6 +1210,33 @@ export async function updateClusterServicePatch(
   const clusterId = getCurrentClusterId()
   const { namespace, name, patch } = params
   const url = getDetailResourcePath('Service', name, namespace)
+
+  if (!clusterId || !namespace || !url) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(url, {
+    method: 'PATCH',
+    data: patch,
+    ...(options || {}),
+    headers: {
+      ...getClusterHeaders(clusterId, options),
+      'Content-Type': 'application/merge-patch+json',
+    },
+  })
+}
+
+export async function updateClusterPersistentVolumeClaimPatch(
+  params: API.UpdateClusterPersistentVolumeClaimPatchParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, name, patch } = params
+  const url = getDetailResourcePath('PersistentVolumeClaim', name, namespace)
 
   if (!clusterId || !namespace || !url) {
     return {
