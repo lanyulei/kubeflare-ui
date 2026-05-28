@@ -681,6 +681,18 @@ declare namespace API {
     replicas: number
   }
 
+  type UpdateClusterCronJobSuspendParams = {
+    namespace: string
+    name: string
+    suspend: boolean
+  }
+
+  type UpdateClusterServicePatchParams = {
+    namespace: string
+    name: string
+    patch: Record<string, unknown>
+  }
+
   type RerunClusterJobParams = {
     namespace: string
     name: string

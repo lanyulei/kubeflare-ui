@@ -1,7 +1,11 @@
 import {
   DeleteOutlined,
   DownOutlined,
+  EditOutlined,
   FileTextOutlined,
+  GlobalOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
@@ -24,8 +28,10 @@ import {
   getClusterResourceManifest,
   getClusterServiceEndpoints,
   rerunClusterJob,
+  updateClusterCronJobSuspend,
   updateClusterJobReplicas,
   updateClusterResourceManifest,
+  updateClusterServicePatch,
 } from '@/services/kubeflare/cluster/resource';
 import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
 import CustomResourceTable from './components/CustomResourceTable';
@@ -75,6 +81,10 @@ import {
 import ResourceBasicInfo from './components/ResourceBasicInfo';
 import ResourceDataFields from './components/ResourceDataFields';
 import SecretResourceData from './components/SecretResourceData';
+import {
+  ServiceExternalAccessEditDrawer,
+  ServiceSettingsEditDrawer,
+} from './components/ServiceEditDrawers';
 import ServiceResourceStatus from './components/ServiceResourceStatus';
 import StatusText from './components/StatusText';
 import {
@@ -143,7 +153,13 @@ const resourceTypes = Object.keys(
   resourceTypeLabels,
 ) as API.ClusterResourceCreateType[];
 
-type ResourceActionKey = 'yaml' | 'rerun' | 'delete';
+type ResourceActionKey =
+  | 'yaml'
+  | 'rerun'
+  | 'cronJobSuspend'
+  | 'serviceSettings'
+  | 'serviceExternalAccess'
+  | 'delete';
 
 const useStyles = createStyles(({ token }) => ({
   content: {
@@ -718,6 +734,10 @@ const ClusterResourceDetail = () => {
   const [scaling, setScaling] = useState(false);
   const [actionLoading, setActionLoading] = useState<ResourceActionKey>();
   const [yamlDrawerOpen, setYamlDrawerOpen] = useState(false);
+  const [serviceSettingsDrawerOpen, setServiceSettingsDrawerOpen] =
+    useState(false);
+  const [serviceExternalAccessDrawerOpen, setServiceExternalAccessDrawerOpen] =
+    useState(false);
   const [yamlValue, setYamlValue] = useState('');
   const [manifest, setManifest] = useState<Record<string, unknown>>();
   const [detailType, setDetailType] = useState<
@@ -792,6 +812,7 @@ const ClusterResourceDetail = () => {
     () => buildCustomResourceDefinitionVersions(manifest),
     [manifest],
   );
+  const cronJobSuspended = getRecordValue(manifest?.spec)?.suspend === true;
   const resourceActionItems = [
     ...(type === 'Job'
       ? [
@@ -799,6 +820,33 @@ const ClusterResourceDetail = () => {
             key: 'rerun',
             icon: <ReloadOutlined />,
             label: '重新运行',
+          },
+        ]
+      : []),
+    ...(type === 'CronJob'
+      ? [
+          {
+            key: 'cronJobSuspend',
+            icon: cronJobSuspended ? (
+              <PlayCircleOutlined />
+            ) : (
+              <PauseCircleOutlined />
+            ),
+            label: cronJobSuspended ? '恢复' : '暂停',
+          },
+        ]
+      : []),
+    ...(type === 'Service'
+      ? [
+          {
+            key: 'serviceSettings',
+            icon: <EditOutlined />,
+            label: '编辑服务',
+          },
+          {
+            key: 'serviceExternalAccess',
+            icon: <GlobalOutlined />,
+            label: '编辑外部访问',
           },
         ]
       : []),
@@ -1076,6 +1124,68 @@ const ClusterResourceDetail = () => {
         }
       },
     });
+  };
+
+  const handleToggleCronJobSuspend = () => {
+    if (type !== 'CronJob' || !namespace || !name) {
+      return;
+    }
+
+    const nextSuspended = !cronJobSuspended;
+    const actionText = nextSuspended ? '暂停' : '恢复';
+
+    modal.confirm({
+      title: `确认${actionText}该定时任务吗？`,
+      content: nextSuspended
+        ? '暂停后将不再按计划创建新的任务，已有运行中的任务不受影响。'
+        : '恢复后定时任务将继续按计划创建新的任务。',
+      okText: actionText,
+      cancelText: '取消',
+      onOk: async () => {
+        setActionLoading('cronJobSuspend');
+        try {
+          const res = await updateClusterCronJobSuspend({
+            namespace,
+            name,
+            suspend: nextSuspended,
+          });
+          message.success(`定时任务已${actionText}`);
+          setManifest(res.data);
+          await fetchManifest();
+        } finally {
+          setActionLoading(undefined);
+        }
+      },
+    });
+  };
+
+  const handleUpdateServicePatch = async (
+    patch: Record<string, unknown>,
+    actionKey: 'serviceSettings' | 'serviceExternalAccess',
+    successText: string,
+  ) => {
+    if (type !== 'Service' || !namespace || !name) {
+      return;
+    }
+
+    setActionLoading(actionKey);
+    try {
+      const res = await updateClusterServicePatch({
+        namespace,
+        name,
+        patch,
+      });
+      message.success(successText);
+      setManifest(res.data);
+      setServiceSettingsDrawerOpen(false);
+      setServiceExternalAccessDrawerOpen(false);
+      await fetchManifest();
+      await fetchPods();
+      await fetchServiceEndpoints();
+      await fetchServiceWorkloads();
+    } finally {
+      setActionLoading(undefined);
+    }
   };
 
   const openYamlDrawer = async () => {
@@ -1408,6 +1518,15 @@ const ClusterResourceDetail = () => {
               if (key === 'rerun') {
                 handleRerunJob();
               }
+              if (key === 'cronJobSuspend') {
+                handleToggleCronJobSuspend();
+              }
+              if (key === 'serviceSettings') {
+                setServiceSettingsDrawerOpen(true);
+              }
+              if (key === 'serviceExternalAccess') {
+                setServiceExternalAccessDrawerOpen(true);
+              }
               if (key === 'delete') {
                 handleDelete();
               }
@@ -1564,6 +1683,28 @@ const ClusterResourceDetail = () => {
           </div>
         </Spin>
       </Drawer>
+      <ServiceSettingsEditDrawer
+        loading={actionLoading === 'serviceSettings'}
+        manifest={manifest}
+        open={serviceSettingsDrawerOpen}
+        onCancel={() => setServiceSettingsDrawerOpen(false)}
+        onSubmit={(patch) =>
+          handleUpdateServicePatch(patch, 'serviceSettings', '服务已更新')
+        }
+      />
+      <ServiceExternalAccessEditDrawer
+        loading={actionLoading === 'serviceExternalAccess'}
+        manifest={manifest}
+        open={serviceExternalAccessDrawerOpen}
+        onCancel={() => setServiceExternalAccessDrawerOpen(false)}
+        onSubmit={(patch) =>
+          handleUpdateServicePatch(
+            patch,
+            'serviceExternalAccess',
+            '外部访问已更新',
+          )
+        }
+      />
     </PageContainer>
   );
 };

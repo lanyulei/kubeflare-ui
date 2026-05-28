@@ -526,9 +526,13 @@ const ServicePortEditor = ({ form }: ServicePortEditorProps) => {
 
 type ServiceSettingsProps = {
   form: FormInstance<CreateServiceFormValues>;
+  showInternalAccess?: boolean;
 };
 
-const ServiceSettings = ({ form }: ServiceSettingsProps) => {
+const ServiceSettings = ({
+  form,
+  showInternalAccess = true,
+}: ServiceSettingsProps) => {
   const { styles } = useStyles();
   const [workloadModalOpen, setWorkloadModalOpen] = useState(false);
   const namespace = Form.useWatch('namespace', form);
@@ -547,14 +551,16 @@ const ServiceSettings = ({ form }: ServiceSettingsProps) => {
 
   return (
     <div className={styles.stack}>
-      <ServiceFormSection
-        tooltip="选择服务在集群内部被访问时使用的地址形态"
-        title="内部访问模式"
-      >
-        <Form.Item name="internalAccessMode" noStyle>
-          <AccessModeSelector />
-        </Form.Item>
-      </ServiceFormSection>
+      {showInternalAccess && (
+        <ServiceFormSection
+          tooltip="选择服务在集群内部被访问时使用的地址形态"
+          title="内部访问模式"
+        >
+          <Form.Item name="internalAccessMode" noStyle>
+            <AccessModeSelector />
+          </Form.Item>
+        </ServiceFormSection>
+      )}
 
       <ServiceFormSection
         tooltip="通过标签选择一组工作负载，服务流量会转发到匹配的容器组"

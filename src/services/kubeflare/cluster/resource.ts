@@ -1168,6 +1168,64 @@ export async function updateClusterJobReplicas(
   })
 }
 
+export async function updateClusterCronJobSuspend(
+  params: API.UpdateClusterCronJobSuspendParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, name, suspend } = params
+  const url = getDetailResourcePath('CronJob', name, namespace)
+
+  if (!clusterId || !namespace || !url) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(url, {
+    method: 'PATCH',
+    data: {
+      spec: {
+        suspend,
+      },
+    },
+    ...(options || {}),
+    headers: {
+      ...getClusterHeaders(clusterId, options),
+      'Content-Type': 'application/merge-patch+json',
+    },
+  })
+}
+
+export async function updateClusterServicePatch(
+  params: API.UpdateClusterServicePatchParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, name, patch } = params
+  const url = getDetailResourcePath('Service', name, namespace)
+
+  if (!clusterId || !namespace || !url) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(url, {
+    method: 'PATCH',
+    data: patch,
+    ...(options || {}),
+    headers: {
+      ...getClusterHeaders(clusterId, options),
+      'Content-Type': 'application/merge-patch+json',
+    },
+  })
+}
+
 export async function rerunClusterJob(
   params: API.RerunClusterJobParams,
   options?: { [key: string]: any },

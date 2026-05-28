@@ -2,6 +2,7 @@ import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import { Checkbox, Form, InputNumber, message, Select } from 'antd';
 import { createStyles } from 'antd-style';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { KeyValueEditor } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
@@ -108,11 +109,127 @@ type ServiceAdvancedSettingsProps = {
   form: FormInstance<CreateServiceFormValues>;
 };
 
+type ServiceAdvancedOptionProps = {
+  children?: ReactNode;
+  description: ReactNode;
+  formItemName: keyof CreateServiceFormValues;
+  title: ReactNode;
+};
+
+const ServiceAdvancedOption = ({
+  children,
+  description,
+  formItemName,
+  title,
+}: ServiceAdvancedOptionProps) => {
+  const { styles } = useStyles();
+
+  return (
+    <div className={styles.option}>
+      <div className={styles.optionHeader}>
+        <Form.Item
+          className={styles.checkbox}
+          name={formItemName}
+          valuePropName="checked"
+        >
+          <Checkbox aria-label={String(title)} />
+        </Form.Item>
+        <span>
+          <div className={styles.title}>{title}</div>
+          <div className={styles.description}>{description}</div>
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+};
+
+const SERVICE_EXTERNAL_ACCESS_OPTIONS = [
+  { label: 'NodePort', value: 'NodePort' },
+  { label: 'LoadBalancer', value: 'LoadBalancer' },
+];
+
+type ServiceExternalAccessSectionProps = {
+  form: FormInstance<CreateServiceFormValues>;
+};
+
+const ServiceExternalAccessSection = ({
+  form,
+}: ServiceExternalAccessSectionProps) => {
+  const { styles } = useStyles();
+  const enableExternalAccess = Form.useWatch('enableExternalAccess', form);
+
+  return (
+    <div>
+      <div className={styles.sectionTitle}>外部访问</div>
+      <ServiceAdvancedOption
+        description="设置从集群外访问服务的方式。"
+        formItemName="enableExternalAccess"
+        title="外部访问"
+      >
+        {enableExternalAccess && (
+          <div className={styles.body}>
+            <Form.Item label="访问模式" name="externalAccessMode">
+              <Select
+                className={styles.field}
+                options={SERVICE_EXTERNAL_ACCESS_OPTIONS}
+              />
+            </Form.Item>
+          </div>
+        )}
+      </ServiceAdvancedOption>
+    </div>
+  );
+};
+
+type ServiceSessionAffinitySectionProps = {
+  form: FormInstance<CreateServiceFormValues>;
+};
+
+const ServiceSessionAffinitySection = ({
+  form,
+}: ServiceSessionAffinitySectionProps) => {
+  const { styles } = useStyles();
+  const enableSessionAffinity = Form.useWatch('enableSessionAffinity', form);
+
+  return (
+    <div>
+      <div className={styles.sectionTitle}>会话保持</div>
+      <ServiceAdvancedOption
+        description="设置系统在指定的时间内将同一个会话中来自同一个客户端的请求全部转发给同一个容器组。"
+        formItemName="enableSessionAffinity"
+        title="会话保持"
+      >
+        {enableSessionAffinity && (
+          <div className={styles.body}>
+            <Form.Item
+              label="最长会话保持时间（s）"
+              name="sessionAffinityTimeoutSeconds"
+              rules={[
+                { required: true, message: '请输入最长会话保持时间' },
+                {
+                  type: 'number',
+                  min: 0,
+                  max: 86400,
+                  message: '取值范围为 0 到 86400',
+                },
+              ]}
+            >
+              <InputNumber className={styles.field} min={0} max={86400} />
+            </Form.Item>
+            <div className={styles.extra}>
+              设置最大会话保持时间。取值范围为 0 到 86400，默认值 10800。
+            </div>
+          </div>
+        )}
+      </ServiceAdvancedOption>
+    </div>
+  );
+};
+
 const ServiceAdvancedSettings = ({ form }: ServiceAdvancedSettingsProps) => {
   const { styles } = useStyles();
   const [metadataOpen, setMetadataOpen] = useState(true);
-  const enableExternalAccess = Form.useWatch('enableExternalAccess', form);
-  const enableSessionAffinity = Form.useWatch('enableSessionAffinity', form);
   const labels = (Form.useWatch('labels', form) as KeyValueEditorItem[]) || [];
 
   useEffect(() => {
@@ -123,82 +240,8 @@ const ServiceAdvancedSettings = ({ form }: ServiceAdvancedSettingsProps) => {
 
   return (
     <div className={styles.stack}>
-      <div>
-        <div className={styles.sectionTitle}>外部访问</div>
-        <div className={styles.option}>
-          <div className={styles.optionHeader}>
-            <Form.Item
-              className={styles.checkbox}
-              name="enableExternalAccess"
-              valuePropName="checked"
-            >
-              <Checkbox aria-label="外部访问" />
-            </Form.Item>
-            <span>
-              <div className={styles.title}>外部访问</div>
-              <div className={styles.description}>
-                设置从集群外访问服务的方式。
-              </div>
-            </span>
-          </div>
-          {enableExternalAccess && (
-            <div className={styles.body}>
-              <Form.Item label="访问模式" name="externalAccessMode">
-                <Select
-                  className={styles.field}
-                  options={[
-                    { label: 'NodePort', value: 'NodePort' },
-                    { label: 'LoadBalancer', value: 'LoadBalancer' },
-                  ]}
-                />
-              </Form.Item>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <div className={styles.sectionTitle}>会话保持</div>
-        <div className={styles.option}>
-          <div className={styles.optionHeader}>
-            <Form.Item
-              className={styles.checkbox}
-              name="enableSessionAffinity"
-              valuePropName="checked"
-            >
-              <Checkbox aria-label="会话保持" />
-            </Form.Item>
-            <span>
-              <div className={styles.title}>会话保持</div>
-              <div className={styles.description}>
-                设置系统在指定的时间内将同一个会话中来自同一个客户端的请求全部转发给同一个容器组。
-              </div>
-            </span>
-          </div>
-          {enableSessionAffinity && (
-            <div className={styles.body}>
-              <Form.Item
-                label="最长会话保持时间（s）"
-                name="sessionAffinityTimeoutSeconds"
-                rules={[
-                  { required: true, message: '请输入最长会话保持时间' },
-                  {
-                    type: 'number',
-                    min: 0,
-                    max: 86400,
-                    message: '取值范围为 0 到 86400',
-                  },
-                ]}
-              >
-                <InputNumber className={styles.field} min={0} max={86400} />
-              </Form.Item>
-              <div className={styles.extra}>
-                设置最大会话保持时间。取值范围为 0 到 86400，默认值 10800。
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <ServiceExternalAccessSection form={form} />
+      <ServiceSessionAffinitySection form={form} />
 
       <div>
         <div className={styles.sectionTitle}>元数据</div>
@@ -240,4 +283,5 @@ const ServiceAdvancedSettings = ({ form }: ServiceAdvancedSettingsProps) => {
   );
 };
 
+export { ServiceExternalAccessSection, ServiceSessionAffinitySection };
 export default ServiceAdvancedSettings;
