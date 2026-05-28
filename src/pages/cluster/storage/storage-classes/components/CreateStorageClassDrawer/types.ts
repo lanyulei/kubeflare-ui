@@ -1,3 +1,5 @@
+import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+
 type StorageClassStorageType = 'block' | 'object' | 'file';
 
 type StorageClassBooleanSelectValue = 'true' | 'false';
@@ -6,17 +8,11 @@ type StorageClassReclaimPolicy = 'Delete' | 'Retain';
 
 type StorageClassVolumeBindingMode = 'Immediate' | 'WaitForFirstConsumer';
 
-type StorageClassParameterItem = {
-  id: string;
-  keyName: string;
-  value: string;
-};
-
 type CreateStorageClassFormValues = {
   accessModes?: string[];
   allowVolumeExpansion?: StorageClassBooleanSelectValue;
   name?: string;
-  parameters?: StorageClassParameterItem[];
+  parameters?: KeyValueEditorItem[];
   provisioner?: string;
   reclaimPolicy?: StorageClassReclaimPolicy;
   storageType?: StorageClassStorageType;
@@ -26,7 +22,6 @@ type CreateStorageClassFormValues = {
 export type {
   CreateStorageClassFormValues,
   StorageClassBooleanSelectValue,
-  StorageClassParameterItem,
   StorageClassReclaimPolicy,
   StorageClassStorageType,
   StorageClassVolumeBindingMode,

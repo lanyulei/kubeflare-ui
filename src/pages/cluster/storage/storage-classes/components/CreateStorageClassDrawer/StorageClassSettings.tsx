@@ -1,6 +1,7 @@
-import { Col, Form, Input, Row, Select } from 'antd';
+import { Col, Form, Input, message, Row, Select } from 'antd';
 import { createStyles } from 'antd-style';
-import StorageClassParameterEditor from './StorageClassParameterEditor';
+import { KeyValueEditor } from '@/components';
+import { createKeyValueItem } from './helpers';
 
 const useStyles = createStyles(({ token }) => ({
   settings: {
@@ -124,7 +125,13 @@ const StorageClassSettings = () => {
         label="参数"
         name="parameters"
       >
-        <StorageClassParameterEditor />
+        <KeyValueEditor
+          addText="添加"
+          deleteAriaLabel="删除参数"
+          minRows={1}
+          onAddBlocked={() => message.warning('请先填写已有参数的键。')}
+          onCreateItem={() => createKeyValueItem()}
+        />
       </Form.Item>
     </div>
   );

@@ -1,8 +1,6 @@
 import { stringify } from 'yaml';
-import type {
-  CreateStorageClassFormValues,
-  StorageClassParameterItem,
-} from './types';
+import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+import type { CreateStorageClassFormValues } from './types';
 
 const STORAGE_CLASS_API_VERSION = 'storage.k8s.io/v1';
 const STORAGE_CLASS_KIND = 'StorageClass';
@@ -20,7 +18,7 @@ const createId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const createKeyValueItem = (
   keyName = '',
   value = '',
-): StorageClassParameterItem => ({
+): KeyValueEditorItem => ({
   id: createId(),
   keyName,
   value,
@@ -28,7 +26,7 @@ const createKeyValueItem = (
 
 const normalizeName = (value?: string) => value?.trim() || '';
 
-const keyValueItemsToRecord = (items?: StorageClassParameterItem[]) => {
+const keyValueItemsToRecord = (items?: KeyValueEditorItem[]) => {
   const entries = (items || [])
     .map((item) => [item.keyName.trim(), item.value] as const)
     .filter(([key]) => key);
@@ -40,7 +38,7 @@ const getInitialStorageClassValues = (): CreateStorageClassFormValues => ({
   accessModes: ['ReadWriteOnce', 'ReadOnlyMany', 'ReadWriteMany'],
   allowVolumeExpansion: 'false',
   name: undefined,
-  parameters: [],
+  parameters: [createKeyValueItem()],
   provisioner: undefined,
   reclaimPolicy: 'Delete',
   storageType: undefined,
@@ -100,9 +98,7 @@ const getStorageClassStepFields = (
   ];
 };
 
-const validateStorageClassParameters = (
-  items?: StorageClassParameterItem[],
-) => {
+const validateStorageClassParameters = (items?: KeyValueEditorItem[]) => {
   const normalizedKeys = (items || [])
     .map((item) => normalizeName(item.keyName))
     .filter(Boolean);

@@ -65,6 +65,7 @@ type KeyValueEditorProps = {
   deleteAriaLabel?: string;
   footerJustify?: CSSProperties['justifyContent'];
   keyPlaceholder?: string;
+  minRows?: number;
   value?: KeyValueEditorItem[];
   valuePlaceholder?: string;
   footerExtra?: ReactNode;
@@ -79,6 +80,7 @@ const KeyValueEditor = ({
   deleteAriaLabel = '删除',
   footerJustify = 'flex-end',
   keyPlaceholder = '键',
+  minRows,
   value = [],
   valuePlaceholder = '值',
   footerExtra,
@@ -111,6 +113,15 @@ const KeyValueEditor = ({
   };
 
   const deleteItem = (id: string) => {
+    if (minRows && value.length <= minRows) {
+      onChange?.(
+        value.map((item) =>
+          item.id === id ? { ...item, keyName: '', value: '' } : item,
+        ),
+      );
+      return;
+    }
+
     onChange?.(value.filter((item) => item.id !== id));
   };
 
