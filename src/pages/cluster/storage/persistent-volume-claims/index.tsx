@@ -4,7 +4,7 @@ import ClusterResourceListPage, {
   createResourceNameColumn,
   createStatusColumn,
 } from '../../resource';
-import { createPersistentVolumeClaimConfig } from '../../resource/createConfigs';
+import CreatePersistentVolumeClaimDrawer from './components/CreatePersistentVolumeClaimDrawer';
 
 const renderMountStatus = (mounted?: boolean) => {
   if (mounted === undefined) {
@@ -24,7 +24,9 @@ const PersistentVolumeClaims = () => (
     defaultTitle="持久卷声明"
     searchPlaceholder="搜索持久卷声明名称 / 持久卷 / 访问模式"
     showNamespaceFilter
-    createConfig={createPersistentVolumeClaimConfig}
+    renderCreateDrawer={(props) => (
+      <CreatePersistentVolumeClaimDrawer {...props} />
+    )}
     request={getClusterPersistentVolumeClaimList}
     columns={[
       createResourceNameColumn<API.ClusterPersistentVolumeClaimItem>(

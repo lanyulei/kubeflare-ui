@@ -3,15 +3,17 @@ import ClusterResourceListPage, {
   createResourceNameColumn,
   renderBooleanText,
 } from '../../resource';
-import { createStorageClassConfig } from '../../resource/createConfigs';
+import CreateStorageClassDrawer from './components/CreateStorageClassDrawer';
 
 const StorageClasses = () => (
   <ClusterResourceListPage<API.ClusterStorageClassItem>
     titleId="menu.cluster.clusterStorage.clusterStorageStorageClasses"
     defaultTitle="存储类"
     searchPlaceholder="搜索存储类名称 / 存储类型 / 供应者"
-    createConfig={createStorageClassConfig}
     request={getClusterStorageClassList}
+    renderCreateDrawer={({ namespaceOptions: _namespaceOptions, ...props }) => (
+      <CreateStorageClassDrawer {...props} />
+    )}
     columns={[
       createResourceNameColumn<API.ClusterStorageClassItem>('StorageClass'),
       {

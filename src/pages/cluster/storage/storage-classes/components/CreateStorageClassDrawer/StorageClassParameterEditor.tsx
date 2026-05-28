@@ -1,0 +1,304 @@
+import {
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
+import { Button, Form, Input, Modal, Tooltip } from 'antd';
+import { createStyles } from 'antd-style';
+import { useEffect, useMemo, useState } from 'react';
+import { createKeyValueItem } from './helpers';
+import type { StorageClassParameterItem } from './types';
+
+const { TextArea } = Input;
+
+const useStyles = createStyles(({ token }) => ({
+  editor: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+    width: '100%',
+  },
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+  },
+  card: {
+    minHeight: 64,
+    padding: `${token.paddingSM}px ${token.paddingMD}px`,
+    border: `1px solid color-mix(in srgb, ${token.colorBorder} 72%, ${token.colorBgContainer})`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+    transition: `border-color ${token.motionDurationMid} ${token.motionEaseOut}, box-shadow ${token.motionDurationMid} ${token.motionEaseOut}`,
+
+    '&:hover': {
+      borderColor: token.colorBorder,
+      boxShadow: token.boxShadowTertiary,
+    },
+  },
+  cardHeader: {
+    display: 'grid',
+    gridTemplateColumns: '40px minmax(0, 1fr) max-content',
+    alignItems: 'center',
+    gap: token.marginLG,
+    minHeight: 40,
+  },
+  icon: {
+    color: token.colorTextDescription,
+    fontSize: 32,
+  },
+  title: {
+    overflow: 'hidden',
+    color: token.colorText,
+    fontSize: token.fontSize,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  description: {
+    marginTop: 2,
+    overflow: 'hidden',
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeightSM,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginXL,
+  },
+  actionButton: {
+    color: token.colorTextTertiary,
+
+    '&:hover': {
+      color: token.colorPrimary,
+    },
+  },
+  add: {
+    display: 'flex',
+    width: '100%',
+    minHeight: 64,
+    alignItems: 'center',
+    gap: token.marginSM,
+    padding: '12px 20px',
+    border: `1px dashed ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+    color: token.colorText,
+    cursor: 'pointer',
+    font: 'inherit',
+    textAlign: 'left',
+
+    '&:hover': {
+      borderColor: token.colorPrimary,
+      background: token.colorFillQuaternary,
+    },
+
+    '&:focus-visible': {
+      outline: `${token.lineWidthFocus}px solid ${token.colorPrimaryBorder}`,
+      outlineOffset: 2,
+    },
+  },
+  addText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginXXS,
+  },
+  addTitle: {
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+  },
+  addDescription: {
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeightSM,
+  },
+  modal: {
+    '.ant-modal-body': {
+      paddingTop: token.paddingMD,
+    },
+  },
+}));
+
+type ParameterModalValues = {
+  keyName: string;
+  value: string;
+};
+
+type StorageClassParameterEditorProps = {
+  value?: StorageClassParameterItem[];
+  onChange?: (value: StorageClassParameterItem[]) => void;
+};
+
+const StorageClassParameterEditor = ({
+  value = [],
+  onChange,
+}: StorageClassParameterEditorProps) => {
+  const { styles } = useStyles();
+  const [form] = Form.useForm<ParameterModalValues>();
+  const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string>();
+  const editingItem = useMemo(
+    () => value.find((item) => item.id === editingId),
+    [editingId, value],
+  );
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    form.setFieldsValue({
+      keyName: editingItem?.keyName || '',
+      value: editingItem?.value || '',
+    });
+  }, [editingItem, form, open]);
+
+  const openCreateModal = () => {
+    setEditingId(undefined);
+    form.resetFields();
+    setOpen(true);
+  };
+
+  const openEditModal = (item: StorageClassParameterItem) => {
+    setEditingId(item.id);
+    setOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
+    const keyName = values.keyName.trim();
+    const nextItem = editingItem
+      ? {
+          ...editingItem,
+          keyName,
+          value: values.value,
+        }
+      : createKeyValueItem(keyName, values.value);
+
+    onChange?.(
+      editingItem
+        ? value.map((item) => (item.id === editingItem.id ? nextItem : item))
+        : [...value, nextItem],
+    );
+    setOpen(false);
+  };
+
+  const deleteItem = (id: string) => {
+    onChange?.(value.filter((item) => item.id !== id));
+  };
+
+  return (
+    <>
+      <div className={styles.editor}>
+        {value.length > 0 && (
+          <div className={styles.list}>
+            {value.map((item) => (
+              <div className={styles.card} key={item.id}>
+                <div className={styles.cardHeader}>
+                  <SettingOutlined className={styles.icon} />
+                  <div>
+                    <Tooltip title={item.keyName} placement="topLeft">
+                      <div className={styles.title}>{item.keyName || '-'}</div>
+                    </Tooltip>
+                    <Tooltip title={item.value || '空'} placement="topLeft">
+                      <div className={styles.description}>
+                        {item.value || '空'}
+                      </div>
+                    </Tooltip>
+                  </div>
+                  <div className={styles.actions}>
+                    <Tooltip title="删除参数">
+                      <Button
+                        aria-label="删除参数"
+                        className={styles.actionButton}
+                        icon={<DeleteOutlined />}
+                        type="text"
+                        onClick={() => deleteItem(item.id)}
+                      />
+                    </Tooltip>
+                    <Tooltip title="编辑参数">
+                      <Button
+                        aria-label="编辑参数"
+                        className={styles.actionButton}
+                        icon={<EditOutlined />}
+                        type="text"
+                        onClick={() => openEditModal(item)}
+                      />
+                    </Tooltip>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <button className={styles.add} type="button" onClick={openCreateModal}>
+          <PlusOutlined />
+          <span className={styles.addText}>
+            <span className={styles.addTitle}>添加参数</span>
+            <span className={styles.addDescription}>
+              添加供应者需要的键值对参数。
+            </span>
+          </span>
+        </button>
+      </div>
+      <Modal
+        className={styles.modal}
+        destroyOnHidden
+        maskClosable={false}
+        okText={editingItem ? '保存' : '添加'}
+        open={open}
+        title={editingItem ? '编辑参数' : '添加参数'}
+        width={720}
+        onCancel={() => setOpen(false)}
+        onOk={handleSubmit}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            label="键"
+            name="keyName"
+            rules={[
+              {
+                required: true,
+                message: '请输入键',
+              },
+              {
+                validator: (_, fieldValue?: string) => {
+                  const keyName = fieldValue?.trim();
+
+                  if (!keyName) {
+                    return Promise.resolve();
+                  }
+                  if (
+                    value.some(
+                      (item) =>
+                        item.id !== editingId &&
+                        item.keyName.trim() === keyName,
+                    )
+                  ) {
+                    return Promise.reject(new Error('键不能重复'));
+                  }
+
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <Input autoFocus />
+          </Form.Item>
+          <Form.Item label="值" name="value">
+            <TextArea autoSize={{ minRows: 5, maxRows: 10 }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  );
+};
+
+export default StorageClassParameterEditor;
