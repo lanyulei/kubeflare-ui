@@ -304,7 +304,7 @@ const CreateSecretDrawer = ({
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
-            extra="名称只能包含小写字母、数字和连字符（-），必须以小写字母或数字开头和结尾，最长 63 个字符"
+            tooltip="名称只能包含小写字母、数字和连字符（-），必须以小写字母或数字开头和结尾，最长 63 个字符"
             label="名称"
             name="name"
             rules={[
@@ -322,7 +322,7 @@ const CreateSecretDrawer = ({
         </Col>
         <Col span={12}>
           <Form.Item
-            extra="选择将要创建资源的命名空间"
+            tooltip="选择将要创建资源的命名空间"
             label="命名空间"
             name="namespace"
             rules={[{ required: true, message: '请选择命名空间' }]}
