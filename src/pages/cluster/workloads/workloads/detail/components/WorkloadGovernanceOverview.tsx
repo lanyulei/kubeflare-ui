@@ -4,7 +4,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { Link } from '@umijs/max';
-import { Button, Empty, Spin, Tag } from 'antd';
+import { Button, Empty, Spin } from 'antd';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -14,6 +14,7 @@ import {
   getClusterPodDisruptionBudgetList,
   getClusterVerticalPodAutoscalerList,
 } from '@/services/kubeflare/cluster/resource';
+import { getClusterResourceDetailPath } from '../../../../resource';
 
 const useStyles = createStyles(({ token }) => ({
   grid: {
@@ -30,8 +31,9 @@ const useStyles = createStyles(({ token }) => ({
     },
   },
   item: {
+    position: 'relative',
     minWidth: 0,
-    padding: token.paddingLG,
+    padding: `${token.padding}px ${token.padding}px 48px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     backgroundColor: token.colorBgContainer,
@@ -67,10 +69,60 @@ const useStyles = createStyles(({ token }) => ({
     gap: token.marginXS,
     marginTop: token.marginSM,
   },
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 24,
+    padding: `0 ${token.paddingXS}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusSM,
+    color: token.colorTextSecondary,
+    backgroundColor: token.colorFillQuaternary,
+    fontSize: token.fontSizeSM,
+    lineHeight: '22px',
+    whiteSpace: 'nowrap',
+  },
+  statusBadgeSuccess: {
+    borderColor: token.colorSuccessBorder,
+    color: token.colorSuccess,
+    backgroundColor: token.colorSuccessBg,
+  },
+  nameBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    maxWidth: '100%',
+    height: 24,
+    padding: `0 ${token.paddingXS}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusSM,
+    color: token.colorTextSecondary,
+    backgroundColor: token.colorFillQuaternary,
+    fontSize: token.fontSizeSM,
+    lineHeight: '22px',
+
+    '&:hover': {
+      color: token.colorPrimary,
+      borderColor: token.colorPrimaryBorder,
+      backgroundColor: token.colorPrimaryBg,
+    },
+  },
+  emptyPolicy: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 32,
+    width: '100%',
+    color: token.colorTextQuaternary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
   footer: {
     display: 'flex',
     justifyContent: 'flex-end',
-    marginTop: token.marginMD,
+    position: 'absolute',
+    right: token.padding,
+    bottom: token.paddingSM,
   },
 }));
 
@@ -80,7 +132,13 @@ type GovernancePolicy = {
   description: string;
   icon: ReactNode;
   path: string;
-  names: string[];
+  resources: GovernancePolicyResource[];
+};
+
+type GovernancePolicyResource = {
+  name: string;
+  namespace?: string;
+  type: API.ClusterResourceCreateType;
 };
 
 type WorkloadGovernanceOverviewProps = {
@@ -184,7 +242,11 @@ const WorkloadGovernanceOverview = ({
         description: '按 CPU、内存或自定义指标自动调整副本数。',
         icon: <ThunderboltOutlined className={styles.icon} />,
         path: '/cluster/policies/autoscaling',
-        names: hpas.map((item) => item.name),
+        resources: hpas.map((item) => ({
+          name: item.name,
+          namespace: item.namespace,
+          type: 'HorizontalPodAutoscaler',
+        })),
       },
       {
         key: 'vpa',
@@ -192,7 +254,11 @@ const WorkloadGovernanceOverview = ({
         description: '观察或自动调整容器 CPU、内存请求值。',
         icon: <ThunderboltOutlined className={styles.icon} />,
         path: '/cluster/policies/vertical-pod-autoscalers',
-        names: vpas.map((item) => item.name),
+        resources: vpas.map((item) => ({
+          name: item.name,
+          namespace: item.namespace,
+          type: 'VerticalPodAutoscaler',
+        })),
       },
       {
         key: 'pdb',
@@ -200,7 +266,11 @@ const WorkloadGovernanceOverview = ({
         description: '限制维护或驱逐时允许同时中断的副本数量。',
         icon: <SafetyCertificateOutlined className={styles.icon} />,
         path: '/cluster/policies/availability',
-        names: pdbs.map((item) => item.name),
+        resources: pdbs.map((item) => ({
+          name: item.name,
+          namespace: item.namespace,
+          type: 'PodDisruptionBudget',
+        })),
       },
       {
         key: 'network',
@@ -208,7 +278,11 @@ const WorkloadGovernanceOverview = ({
         description: '控制该应用 Pod 的入站、出站访问范围。',
         icon: <ApartmentOutlined className={styles.icon} />,
         path: '/cluster/policies/network',
-        names: networkPolicies.map((item) => item.name),
+        resources: networkPolicies.map((item) => ({
+          name: item.name,
+          namespace: item.namespace,
+          type: 'NetworkPolicy',
+        })),
       },
     ],
     [hpas, networkPolicies, pdbs, styles.icon, vpas],
@@ -228,22 +302,39 @@ const WorkloadGovernanceOverview = ({
                 {item.icon}
                 <span>{item.title}</span>
               </div>
-              <Tag color={item.names.length > 0 ? 'success' : 'default'}>
-                {item.names.length > 0 ? '已配置' : '未配置'}
-              </Tag>
+              <span
+                className={[
+                  styles.statusBadge,
+                  item.resources.length > 0 ? styles.statusBadgeSuccess : '',
+                ].join(' ')}
+              >
+                {item.resources.length > 0 ? '已配置' : '未配置'}
+              </span>
             </div>
             <div className={styles.description}>{item.description}</div>
             <div className={styles.names}>
-              {item.names.length > 0 ? (
-                item.names.map((name) => <Tag key={name}>{name}</Tag>)
+              {item.resources.length > 0 ? (
+                item.resources.map((resource) => (
+                  <Link
+                    className={styles.nameBadge}
+                    key={`${resource.type}-${resource.namespace}-${resource.name}`}
+                    to={getClusterResourceDetailPath(
+                      resource.type,
+                      resource.name,
+                      resource.namespace,
+                    )}
+                  >
+                    {resource.name}
+                  </Link>
+                ))
               ) : (
-                <Tag>暂无策略</Tag>
+                <div className={styles.emptyPolicy}>暂无策略</div>
               )}
             </div>
             <div className={styles.footer}>
               <Link to={item.path}>
-                <Button size="small">
-                  {item.names.length > 0 ? '查看策略' : '去配置'}
+                <Button size="small" type="text">
+                  去配置
                 </Button>
               </Link>
             </div>
