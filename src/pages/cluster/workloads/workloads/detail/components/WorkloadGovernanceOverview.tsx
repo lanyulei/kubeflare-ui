@@ -334,7 +334,7 @@ const WorkloadGovernanceOverview = ({
             <div className={styles.footer}>
               <Link to={item.path}>
                 <Button size="small" type="text">
-                  去配置
+                  配置
                 </Button>
               </Link>
             </div>
