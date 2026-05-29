@@ -18,6 +18,12 @@ export default {
   'menu.cluster.clusterWorkloads.clusterWorkloadsPods': '容器组',
   'menu.cluster.clusterWorkloads.clusterWorkloadsServices': '服务',
   'menu.cluster.clusterWorkloads.clusterWorkloadsIngresses': '应用路由',
+  'menu.cluster.clusterPolicies': '策略治理',
+  'menu.cluster.clusterPolicies.clusterPoliciesAutoscaling': '弹性伸缩',
+  'menu.cluster.clusterPolicies.clusterPoliciesVerticalPodAutoscalers':
+    '资源建议',
+  'menu.cluster.clusterPolicies.clusterPoliciesAvailability': '可用性保护',
+  'menu.cluster.clusterPolicies.clusterPoliciesNetwork': '网络策略',
   'menu.cluster.clusterConfig': '配置',
   'menu.cluster.clusterConfig.clusterConfigSecrets': '保密字典',
   'menu.cluster.clusterConfig.clusterConfigConfigMaps': '配置字典',

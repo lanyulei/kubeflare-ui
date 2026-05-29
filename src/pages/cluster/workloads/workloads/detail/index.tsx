@@ -42,6 +42,7 @@ import ContainerReplicas from './components/ContainerReplicas';
 import ContainerStatusManagement from './components/ContainerStatusManagement';
 import EventTable from './components/EventTable';
 import useWorkloadPods from './components/useWorkloadPods';
+import WorkloadGovernanceOverview from './components/WorkloadGovernanceOverview';
 import WorkloadSettingsDrawer from './components/WorkloadSettingsDrawer';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
@@ -675,6 +676,10 @@ const WorkloadDetail = () => {
             )}
           </Spin>
         </div>
+      </div>
+      <div className={styles.section}>
+        <SectionTitle>治理策略</SectionTitle>
+        <WorkloadGovernanceOverview workload={workload} />
       </div>
       <div className={styles.section}>
         <SectionTitle>容器状态管理</SectionTitle>

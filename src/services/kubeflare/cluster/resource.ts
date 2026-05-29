@@ -149,6 +149,136 @@ type KubernetesIngress = {
   }
 }
 
+type KubernetesCrossVersionObjectReference = {
+  apiVersion?: string
+  kind?: string
+  name?: string
+}
+
+type KubernetesMetricSpec = {
+  type?: string
+  resource?: {
+    name?: string
+    target?: {
+      type?: string
+      averageUtilization?: number
+      averageValue?: string
+      value?: string
+    }
+  }
+  pods?: {
+    metric?: {
+      name?: string
+    }
+    target?: {
+      type?: string
+      averageValue?: string
+    }
+  }
+  object?: {
+    metric?: {
+      name?: string
+    }
+    target?: {
+      type?: string
+      value?: string
+      averageValue?: string
+    }
+  }
+  external?: {
+    metric?: {
+      name?: string
+    }
+    target?: {
+      type?: string
+      value?: string
+      averageValue?: string
+    }
+  }
+}
+
+type KubernetesResourceRecommendation = {
+  target?: Record<string, string>
+}
+
+type KubernetesHorizontalPodAutoscaler = {
+  metadata?: KubernetesMetadata
+  spec?: {
+    scaleTargetRef?: KubernetesCrossVersionObjectReference
+    minReplicas?: number
+    maxReplicas?: number
+    metrics?: KubernetesMetricSpec[]
+  }
+  status?: {
+    currentReplicas?: number
+    desiredReplicas?: number
+    conditions?: {
+      type?: string
+      status?: string
+      reason?: string
+    }[]
+  }
+}
+
+type KubernetesVerticalPodAutoscaler = {
+  metadata?: KubernetesMetadata
+  spec?: {
+    targetRef?: KubernetesCrossVersionObjectReference
+    updatePolicy?: {
+      updateMode?: string
+    }
+  }
+  status?: {
+    recommendation?: {
+      containerRecommendations?: KubernetesResourceRecommendation[]
+    }
+    conditions?: {
+      type?: string
+      status?: string
+      reason?: string
+    }[]
+  }
+}
+
+type KubernetesLabelSelector = {
+  matchLabels?: Record<string, string>
+  matchExpressions?: {
+    key?: string
+    operator?: string
+    values?: string[]
+  }[]
+}
+
+type KubernetesPodDisruptionBudget = {
+  metadata?: KubernetesMetadata
+  spec?: {
+    minAvailable?: number | string
+    maxUnavailable?: number | string
+    selector?: KubernetesLabelSelector
+  }
+  status?: {
+    disruptionsAllowed?: number
+    currentHealthy?: number
+    desiredHealthy?: number
+    expectedPods?: number
+    conditions?: {
+      type?: string
+      status?: string
+      reason?: string
+    }[]
+  }
+}
+
+type KubernetesNetworkPolicy = {
+  metadata?: KubernetesMetadata
+  spec?: {
+    podSelector?: KubernetesLabelSelector
+    policyTypes?: string[]
+    ingress?: unknown[]
+    egress?: unknown[]
+  }
+}
+
 type KubernetesConfigResource = {
   metadata?: KubernetesMetadata
   type?: string
@@ -309,6 +439,26 @@ const namespacedResourceListPaths: Partial<
     namespaced:
       '/kapis/networking.k8s.io/v1/namespaces/:namespace/ingresses',
   },
+  HorizontalPodAutoscaler: {
+    all: '/kapis/autoscaling/v2/horizontalpodautoscalers',
+    namespaced:
+      '/kapis/autoscaling/v2/namespaces/:namespace/horizontalpodautoscalers',
+  },
+  VerticalPodAutoscaler: {
+    all: '/kapis/autoscaling.k8s.io/v1/verticalpodautoscalers',
+    namespaced:
+      '/kapis/autoscaling.k8s.io/v1/namespaces/:namespace/verticalpodautoscalers',
+  },
+  PodDisruptionBudget: {
+    all: '/kapis/policy/v1/poddisruptionbudgets',
+    namespaced:
+      '/kapis/policy/v1/namespaces/:namespace/poddisruptionbudgets',
+  },
+  NetworkPolicy: {
+    all: '/kapis/networking.k8s.io/v1/networkpolicies',
+    namespaced:
+      '/kapis/networking.k8s.io/v1/namespaces/:namespace/networkpolicies',
+  },
   Secret: {
     all: '/kapi/v1/secrets',
     namespaced: '/kapi/v1/namespaces/:namespace/secrets',
@@ -336,6 +486,14 @@ const clusterResourceCreatePaths: Record<API.ClusterResourceCreateType, string> 
     Service: '/kapi/v1/namespaces/:namespace/services',
     Ingress:
       '/kapis/networking.k8s.io/v1/namespaces/:namespace/ingresses',
+    HorizontalPodAutoscaler:
+      '/kapis/autoscaling/v2/namespaces/:namespace/horizontalpodautoscalers',
+    VerticalPodAutoscaler:
+      '/kapis/autoscaling.k8s.io/v1/namespaces/:namespace/verticalpodautoscalers',
+    PodDisruptionBudget:
+      '/kapis/policy/v1/namespaces/:namespace/poddisruptionbudgets',
+    NetworkPolicy:
+      '/kapis/networking.k8s.io/v1/namespaces/:namespace/networkpolicies',
     Secret: '/kapi/v1/namespaces/:namespace/secrets',
     ConfigMap: '/kapi/v1/namespaces/:namespace/configmaps',
     ServiceAccount: '/kapi/v1/namespaces/:namespace/serviceaccounts',
@@ -354,6 +512,14 @@ const clusterResourceDetailPaths: Record<API.ClusterResourceCreateType, string> 
     Service: '/kapi/v1/namespaces/:namespace/services/:name',
     Ingress:
       '/kapis/networking.k8s.io/v1/namespaces/:namespace/ingresses/:name',
+    HorizontalPodAutoscaler:
+      '/kapis/autoscaling/v2/namespaces/:namespace/horizontalpodautoscalers/:name',
+    VerticalPodAutoscaler:
+      '/kapis/autoscaling.k8s.io/v1/namespaces/:namespace/verticalpodautoscalers/:name',
+    PodDisruptionBudget:
+      '/kapis/policy/v1/namespaces/:namespace/poddisruptionbudgets/:name',
+    NetworkPolicy:
+      '/kapis/networking.k8s.io/v1/namespaces/:namespace/networkpolicies/:name',
     Secret: '/kapi/v1/namespaces/:namespace/secrets/:name',
     ConfigMap: '/kapi/v1/namespaces/:namespace/configmaps/:name',
     ServiceAccount:
@@ -821,6 +987,173 @@ const toIngressItem = (
   gateway_address: getIngressGatewayAddress(ingress),
   ingress_class: ingress.spec?.ingressClassName,
   create_time: ingress.metadata?.creationTimestamp,
+})
+
+const formatIntOrString = (value?: number | string) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  return String(value)
+}
+
+const formatLabelSelector = (selector?: KubernetesLabelSelector) => {
+  const labels = Object.entries(selector?.matchLabels || {}).map(
+    ([key, value]) => `${key}=${value}`,
+  )
+  const expressions = (selector?.matchExpressions || []).map((item) => {
+    const values = item.values?.length ? `(${item.values.join(',')})` : ''
+    return `${item.key || '-'} ${item.operator || '-'} ${values}`.trim()
+  })
+
+  return [...labels, ...expressions].join('、') || undefined
+}
+
+const getResourceMetricLabel = (metric: KubernetesMetricSpec) => {
+  const name = metric.resource?.name
+  const target = metric.resource?.target
+
+  if (!name || !target) {
+    return undefined
+  }
+  if (target.averageUtilization !== undefined) {
+    return `${name.toUpperCase()} ${target.averageUtilization}%`
+  }
+  if (target.averageValue) {
+    return `${name.toUpperCase()} ${target.averageValue}`
+  }
+  if (target.value) {
+    return `${name.toUpperCase()} ${target.value}`
+  }
+  return name.toUpperCase()
+}
+
+const getHorizontalPodAutoscalerMetrics = (
+  metrics?: KubernetesMetricSpec[],
+) =>
+  (metrics || []).flatMap((metric) => {
+    if (metric.type === 'Resource') {
+      return getResourceMetricLabel(metric) || []
+    }
+    if (metric.type === 'Pods' && metric.pods?.metric?.name) {
+      return [`Pods ${metric.pods.metric.name}`]
+    }
+    if (metric.type === 'Object' && metric.object?.metric?.name) {
+      return [`Object ${metric.object.metric.name}`]
+    }
+    if (metric.type === 'External' && metric.external?.metric?.name) {
+      return [`External ${metric.external.metric.name}`]
+    }
+    return metric.type ? [metric.type] : []
+  })
+
+const getPolicyConditionStatus = (
+  conditions?: { type?: string; status?: string; reason?: string }[],
+  healthyType?: string,
+) => {
+  const blockingCondition = (conditions || []).find(
+    (condition) => condition.status === 'False',
+  )
+  const healthyCondition = healthyType
+    ? (conditions || []).find(
+        (condition) =>
+          condition.type === healthyType && condition.status === 'True',
+      )
+    : undefined
+
+  return blockingCondition?.reason || healthyCondition?.type || undefined
+}
+
+const getVerticalPodAutoscalerRecommendation = (
+  recommendations?: KubernetesResourceRecommendation[],
+) => {
+  const targets = (recommendations || [])
+    .map((item) => item.target)
+    .filter(Boolean) as Record<string, string>[]
+  const cpu = targets.find((item) => item.cpu)?.cpu
+  const memory = targets.find((item) => item.memory)?.memory
+
+  if (cpu && memory) {
+    return `CPU ${cpu} / 内存 ${memory}`
+  }
+  if (cpu) {
+    return `CPU ${cpu}`
+  }
+  if (memory) {
+    return `内存 ${memory}`
+  }
+  return undefined
+}
+
+const toHorizontalPodAutoscalerItem = (
+  item: KubernetesHorizontalPodAutoscaler,
+): API.ClusterHorizontalPodAutoscalerItem => ({
+  id: item.metadata?.uid || `${item.metadata?.namespace || '-'}-${item.metadata?.name}`,
+  name: item.metadata?.name || '-',
+  namespace: item.metadata?.namespace,
+  target_kind: item.spec?.scaleTargetRef?.kind,
+  target_name: item.spec?.scaleTargetRef?.name,
+  min_replicas: item.spec?.minReplicas,
+  max_replicas: item.spec?.maxReplicas,
+  current_replicas: item.status?.currentReplicas,
+  desired_replicas: item.status?.desiredReplicas,
+  metrics: getHorizontalPodAutoscalerMetrics(item.spec?.metrics),
+  status: getPolicyConditionStatus(item.status?.conditions, 'AbleToScale'),
+  create_time: item.metadata?.creationTimestamp,
+})
+
+const toVerticalPodAutoscalerItem = (
+  item: KubernetesVerticalPodAutoscaler,
+): API.ClusterVerticalPodAutoscalerItem => ({
+  id: item.metadata?.uid || `${item.metadata?.namespace || '-'}-${item.metadata?.name}`,
+  name: item.metadata?.name || '-',
+  namespace: item.metadata?.namespace,
+  target_kind: item.spec?.targetRef?.kind,
+  target_name: item.spec?.targetRef?.name,
+  update_mode: item.spec?.updatePolicy?.updateMode,
+  recommendation: getVerticalPodAutoscalerRecommendation(
+    item.status?.recommendation?.containerRecommendations,
+  ),
+  status: getPolicyConditionStatus(item.status?.conditions, 'RecommendationProvided'),
+  create_time: item.metadata?.creationTimestamp,
+})
+
+const toPodDisruptionBudgetItem = (
+  item: KubernetesPodDisruptionBudget,
+): API.ClusterPodDisruptionBudgetItem => {
+  const disruptionsAllowed = item.status?.disruptionsAllowed
+
+  return {
+    id: item.metadata?.uid || `${item.metadata?.namespace || '-'}-${item.metadata?.name}`,
+    name: item.metadata?.name || '-',
+    namespace: item.metadata?.namespace,
+    min_available: formatIntOrString(item.spec?.minAvailable),
+    max_unavailable: formatIntOrString(item.spec?.maxUnavailable),
+    allowed_disruptions: disruptionsAllowed,
+    current_healthy: item.status?.currentHealthy,
+    desired_healthy: item.status?.desiredHealthy,
+    expected_pods: item.status?.expectedPods,
+    selector: formatLabelSelector(item.spec?.selector),
+    status:
+      disruptionsAllowed === undefined
+        ? getPolicyConditionStatus(item.status?.conditions)
+        : disruptionsAllowed > 0
+          ? 'Healthy'
+          : 'Protected',
+    create_time: item.metadata?.creationTimestamp,
+  }
+}
+
+const toNetworkPolicyItem = (
+  item: KubernetesNetworkPolicy,
+): API.ClusterNetworkPolicyItem => ({
+  id: item.metadata?.uid || `${item.metadata?.namespace || '-'}-${item.metadata?.name}`,
+  name: item.metadata?.name || '-',
+  namespace: item.metadata?.namespace,
+  pod_selector: formatLabelSelector(item.spec?.podSelector) || '全部容器组',
+  policy_types: item.spec?.policyTypes || [],
+  ingress_rules: item.spec?.ingress?.length || 0,
+  egress_rules: item.spec?.egress?.length || 0,
+  create_time: item.metadata?.creationTimestamp,
 })
 
 const toConfigResourceItem = (
@@ -1399,6 +1732,141 @@ export async function getClusterIngressList(
         item.namespace,
         item.gateway_address,
         item.ingress_class,
+      ]),
+    ),
+  )
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterHorizontalPodAutoscalerList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const res = await requestKubernetesList<KubernetesHorizontalPodAutoscaler>(
+    getNamespacedListPath('HorizontalPodAutoscaler', params?.namespace) ||
+      '/kapis/autoscaling/v2/horizontalpodautoscalers',
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterHorizontalPodAutoscalerItem>()
+  }
+
+  const items = sortByNamespaceAndName(
+    (res.data?.items || [])
+      .map(toHorizontalPodAutoscalerItem)
+      .filter((item) =>
+        includeKeyword(params?.keyword, [
+          item.name,
+          item.namespace,
+          item.target_kind,
+          item.target_name,
+          item.status,
+          ...(item.metrics || []),
+        ]),
+      ),
+  )
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterVerticalPodAutoscalerList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  try {
+    const res = await requestKubernetesList<KubernetesVerticalPodAutoscaler>(
+      getNamespacedListPath('VerticalPodAutoscaler', params?.namespace) ||
+        '/kapis/autoscaling.k8s.io/v1/verticalpodautoscalers',
+      params,
+      {
+        ...(options || {}),
+        skipErrorHandler: true,
+      },
+    )
+
+    if (!res) {
+      return emptyListResponse<API.ClusterVerticalPodAutoscalerItem>()
+    }
+
+    const items = sortByNamespaceAndName(
+      (res.data?.items || [])
+        .map(toVerticalPodAutoscalerItem)
+        .filter((item) =>
+          includeKeyword(params?.keyword, [
+            item.name,
+            item.namespace,
+            item.target_kind,
+            item.target_name,
+            item.update_mode,
+            item.recommendation,
+            item.status,
+          ]),
+        ),
+    )
+
+    return buildResourceListResponse(res, items)
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return emptyListResponse<API.ClusterVerticalPodAutoscalerItem>()
+    }
+    throw error
+  }
+}
+
+export async function getClusterPodDisruptionBudgetList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const res = await requestKubernetesList<KubernetesPodDisruptionBudget>(
+    getNamespacedListPath('PodDisruptionBudget', params?.namespace) ||
+      '/kapis/policy/v1/poddisruptionbudgets',
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterPodDisruptionBudgetItem>()
+  }
+
+  const items = sortByNamespaceAndName(
+    (res.data?.items || []).map(toPodDisruptionBudgetItem).filter((item) =>
+      includeKeyword(params?.keyword, [
+        item.name,
+        item.namespace,
+        item.selector,
+        item.status,
+      ]),
+    ),
+  )
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterNetworkPolicyList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const res = await requestKubernetesList<KubernetesNetworkPolicy>(
+    getNamespacedListPath('NetworkPolicy', params?.namespace) ||
+      '/kapis/networking.k8s.io/v1/networkpolicies',
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterNetworkPolicyItem>()
+  }
+
+  const items = sortByNamespaceAndName(
+    (res.data?.items || []).map(toNetworkPolicyItem).filter((item) =>
+      includeKeyword(params?.keyword, [
+        item.name,
+        item.namespace,
+        item.pod_selector,
+        ...(item.policy_types || []),
       ]),
     ),
   )
