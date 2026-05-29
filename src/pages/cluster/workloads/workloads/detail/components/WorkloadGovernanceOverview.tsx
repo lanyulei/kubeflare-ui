@@ -133,6 +133,7 @@ type GovernancePolicy = {
   icon: ReactNode;
   path: string;
   resources: GovernancePolicyResource[];
+  supportedKinds: API.ClusterWorkloadType[];
 };
 
 type GovernancePolicyResource = {
@@ -160,6 +161,9 @@ const selectorMatches = (
   );
 };
 
+const isScalableGovernanceKind = (type?: API.ClusterWorkloadType) =>
+  type === 'Deployment' || type === 'StatefulSet';
+
 const WorkloadGovernanceOverview = ({
   workload,
 }: WorkloadGovernanceOverviewProps) => {
@@ -185,18 +189,25 @@ const WorkloadGovernanceOverview = ({
 
     setLoading(true);
     try {
+      const scalableGovernance = isScalableGovernanceKind(workload.type);
       const [hpaRes, vpaRes, pdbRes, networkPolicyRes] = await Promise.all([
-        getClusterHorizontalPodAutoscalerList({
-          namespace: workload.namespace,
-          keyword: workload.name,
-        }),
-        getClusterVerticalPodAutoscalerList({
-          namespace: workload.namespace,
-          keyword: workload.name,
-        }),
-        getClusterPodDisruptionBudgetList({
-          namespace: workload.namespace,
-        }),
+        scalableGovernance
+          ? getClusterHorizontalPodAutoscalerList({
+              namespace: workload.namespace,
+              keyword: workload.name,
+            })
+          : Promise.resolve({ data: { items: [] } }),
+        scalableGovernance
+          ? getClusterVerticalPodAutoscalerList({
+              namespace: workload.namespace,
+              keyword: workload.name,
+            })
+          : Promise.resolve({ data: { items: [] } }),
+        scalableGovernance
+          ? getClusterPodDisruptionBudgetList({
+              namespace: workload.namespace,
+            })
+          : Promise.resolve({ data: { items: [] } }),
         getClusterNetworkPolicyList({
           namespace: workload.namespace,
         }),
@@ -242,6 +253,7 @@ const WorkloadGovernanceOverview = ({
         description: '按 CPU、内存或自定义指标自动调整副本数。',
         icon: <ThunderboltOutlined className={styles.icon} />,
         path: '/cluster/policies/autoscaling',
+        supportedKinds: ['Deployment', 'StatefulSet'],
         resources: hpas.map((item) => ({
           name: item.name,
           namespace: item.namespace,
@@ -254,6 +266,7 @@ const WorkloadGovernanceOverview = ({
         description: '观察或自动调整容器 CPU、内存请求值。',
         icon: <ThunderboltOutlined className={styles.icon} />,
         path: '/cluster/policies/vertical-pod-autoscalers',
+        supportedKinds: ['Deployment', 'StatefulSet'],
         resources: vpas.map((item) => ({
           name: item.name,
           namespace: item.namespace,
@@ -266,6 +279,7 @@ const WorkloadGovernanceOverview = ({
         description: '限制维护或驱逐时允许同时中断的副本数量。',
         icon: <SafetyCertificateOutlined className={styles.icon} />,
         path: '/cluster/policies/availability',
+        supportedKinds: ['Deployment', 'StatefulSet'],
         resources: pdbs.map((item) => ({
           name: item.name,
           namespace: item.namespace,
@@ -278,6 +292,7 @@ const WorkloadGovernanceOverview = ({
         description: '控制该应用 Pod 的入站、出站访问范围。',
         icon: <ApartmentOutlined className={styles.icon} />,
         path: '/cluster/policies/network',
+        supportedKinds: ['Deployment', 'StatefulSet', 'DaemonSet'],
         resources: networkPolicies.map((item) => ({
           name: item.name,
           namespace: item.namespace,
@@ -295,51 +310,55 @@ const WorkloadGovernanceOverview = ({
   return (
     <Spin spinning={loading}>
       <div className={styles.grid}>
-        {policies.map((item) => (
-          <div className={styles.item} key={item.key}>
-            <div className={styles.header}>
-              <div className={styles.title}>
-                {item.icon}
-                <span>{item.title}</span>
+        {policies
+          .filter((item) =>
+            workload.type ? item.supportedKinds.includes(workload.type) : false,
+          )
+          .map((item) => (
+            <div className={styles.item} key={item.key}>
+              <div className={styles.header}>
+                <div className={styles.title}>
+                  {item.icon}
+                  <span>{item.title}</span>
+                </div>
+                <span
+                  className={[
+                    styles.statusBadge,
+                    item.resources.length > 0 ? styles.statusBadgeSuccess : '',
+                  ].join(' ')}
+                >
+                  {item.resources.length > 0 ? '已配置' : '未配置'}
+                </span>
               </div>
-              <span
-                className={[
-                  styles.statusBadge,
-                  item.resources.length > 0 ? styles.statusBadgeSuccess : '',
-                ].join(' ')}
-              >
-                {item.resources.length > 0 ? '已配置' : '未配置'}
-              </span>
+              <div className={styles.description}>{item.description}</div>
+              <div className={styles.names}>
+                {item.resources.length > 0 ? (
+                  item.resources.map((resource) => (
+                    <Link
+                      className={styles.nameBadge}
+                      key={`${resource.type}-${resource.namespace}-${resource.name}`}
+                      to={getClusterResourceDetailPath(
+                        resource.type,
+                        resource.name,
+                        resource.namespace,
+                      )}
+                    >
+                      {resource.name}
+                    </Link>
+                  ))
+                ) : (
+                  <div className={styles.emptyPolicy}>暂无策略</div>
+                )}
+              </div>
+              <div className={styles.footer}>
+                <Link to={item.path}>
+                  <Button size="small" type="text">
+                    配置
+                  </Button>
+                </Link>
+              </div>
             </div>
-            <div className={styles.description}>{item.description}</div>
-            <div className={styles.names}>
-              {item.resources.length > 0 ? (
-                item.resources.map((resource) => (
-                  <Link
-                    className={styles.nameBadge}
-                    key={`${resource.type}-${resource.namespace}-${resource.name}`}
-                    to={getClusterResourceDetailPath(
-                      resource.type,
-                      resource.name,
-                      resource.namespace,
-                    )}
-                  >
-                    {resource.name}
-                  </Link>
-                ))
-              ) : (
-                <div className={styles.emptyPolicy}>暂无策略</div>
-              )}
-            </div>
-            <div className={styles.footer}>
-              <Link to={item.path}>
-                <Button size="small" type="text">
-                  配置
-                </Button>
-              </Link>
-            </div>
-          </div>
-        ))}
+          ))}
       </div>
     </Spin>
   );

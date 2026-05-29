@@ -4,7 +4,6 @@ import {
   SlidersOutlined,
 } from '@ant-design/icons';
 import {
-  Alert,
   App,
   Col,
   Form,
@@ -239,7 +238,7 @@ const CreatePodDisruptionBudgetDrawer = ({
             <WorkloadTargetSelector
               form={form}
               namespaceOptions={namespaceOptions}
-              targetKinds={['Deployment', 'StatefulSet', 'DaemonSet']}
+              targetKinds={['Deployment', 'StatefulSet']}
               onTargetChange={handleTargetChange}
             />
           </>

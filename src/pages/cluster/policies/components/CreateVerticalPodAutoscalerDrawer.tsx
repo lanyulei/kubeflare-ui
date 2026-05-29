@@ -3,7 +3,7 @@ import {
   ControlOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
-import { Alert, App, Col, Form, Input, Row, Select } from 'antd';
+import { App, Col, Form, Input, Row, Select, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { parse, stringify } from 'yaml';
 import {
@@ -213,20 +213,32 @@ const CreateVerticalPodAutoscalerDrawer = ({
           </>
         )}
         {current === 1 && (
-          <Form.Item
-            label="更新模式"
-            name="updateMode"
-            rules={[{ required: true, message: '请选择更新模式' }]}
-          >
-            <Select
-              options={[
-                { label: '仅推荐，不自动修改（Off）', value: 'Off' },
-                { label: '仅新建容器组生效（Initial）', value: 'Initial' },
-                { label: '可重建容器组后生效（Recreate）', value: 'Recreate' },
-                { label: '自动调整（Auto）', value: 'Auto' },
-              ]}
-            />
-          </Form.Item>
+          <>
+            <Form.Item
+              label="更新模式"
+              name="updateMode"
+              rules={[{ required: true, message: '请选择更新模式' }]}
+            >
+              <Select
+                options={[
+                  { label: '仅推荐，不自动修改（Off）', value: 'Off' },
+                  { label: '仅新建容器组生效（Initial）', value: 'Initial' },
+                  {
+                    label: '可重建容器组后生效（Recreate）',
+                    value: 'Recreate',
+                  },
+                  {
+                    label: '优先原地调整，失败后重建（InPlaceOrRecreate）',
+                    value: 'InPlaceOrRecreate',
+                  },
+                ]}
+              />
+            </Form.Item>
+            <Typography.Paragraph type="secondary">
+              Kubernetes 官方已不建议继续使用 Auto。需要零自动变更时请选择
+              Off，仅把推荐值用于观察和人工评估。
+            </Typography.Paragraph>
+          </>
         )}
         {current === 2 && (
           <Form.Item

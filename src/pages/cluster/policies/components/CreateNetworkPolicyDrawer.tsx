@@ -62,7 +62,18 @@ const getSummary = (values: NetworkPolicyFormValues) => {
     return `仅允许同命名空间内的容器组与匹配 ${selectorText} 的容器组进行${directionText}访问。`;
   }
 
-  const peerNamespace = values.peerNamespace || '任意命名空间';
+  if (values.peerType === 'ipBlock') {
+    return `仅允许 IP 段 ${values.ipBlockCidr || '-'} 与匹配 ${selectorText} 的容器组进行${directionText}访问。`;
+  }
+
+  if (values.peerType === 'namespace') {
+    return `仅允许 ${values.peerNamespace || '任意命名空间'} 中的容器组与匹配 ${selectorText} 的容器组进行${directionText}访问。`;
+  }
+
+  const peerNamespace =
+    values.peerType === 'pod'
+      ? '同命名空间'
+      : values.peerNamespace || '任意命名空间';
   const peerSelector = formatSelector(toRecord(values.peerSelectors));
   return `仅允许 ${peerNamespace} 中匹配 ${peerSelector} 的容器组与匹配 ${selectorText} 的容器组进行${directionText}访问。`;
 };
@@ -130,6 +141,29 @@ const CreateNetworkPolicyDrawer = ({
     return true;
   };
 
+  const validateCustomPeer = () => {
+    const formValues = form.getFieldsValue(true);
+
+    if (formValues.mode !== 'custom') {
+      return true;
+    }
+    if (formValues.peerType === 'ipBlock') {
+      if (!formValues.ipBlockCidr?.trim()) {
+        message.warning('请输入 IP 段 CIDR');
+        return false;
+      }
+      return true;
+    }
+    if (formValues.peerType === 'namespace') {
+      return true;
+    }
+    if (Object.keys(toRecord(formValues.peerSelectors)).length === 0) {
+      message.warning('请至少填写一个来源/目标 Pod 标签');
+      return false;
+    }
+    return true;
+  };
+
   const getStepFields = () => {
     if (current === 0) {
       return ['name', 'namespace'];
@@ -143,6 +177,9 @@ const CreateNetworkPolicyDrawer = ({
   const handleNext = async () => {
     await form.validateFields(getStepFields());
     if (current === 0 && !validatePodSelector()) {
+      return;
+    }
+    if (current === 1 && !validateCustomPeer()) {
       return;
     }
     setCurrent((step) => Math.min(step + 1, steps.length - 1));
@@ -182,7 +219,7 @@ const CreateNetworkPolicyDrawer = ({
     }
 
     const formValues = await form.validateFields();
-    if (!validatePodSelector()) {
+    if (!validatePodSelector() || !validateCustomPeer()) {
       return;
     }
 
@@ -299,24 +336,72 @@ const CreateNetworkPolicyDrawer = ({
             )}
             {values.mode === 'custom' && (
               <>
-                <Form.Item label="来源/目标命名空间" name="peerNamespace">
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    options={namespaceOptions}
-                    placeholder="不选择则匹配任意命名空间"
+                <Form.Item
+                  label="匹配类型"
+                  name="peerType"
+                  rules={[{ required: true, message: '请选择匹配类型' }]}
+                >
+                  <Radio.Group
+                    options={[
+                      { label: '同命名空间 Pod', value: 'pod' },
+                      { label: '命名空间', value: 'namespace' },
+                      { label: '指定命名空间 Pod', value: 'podInNamespace' },
+                      { label: 'IP 段', value: 'ipBlock' },
+                    ]}
                   />
                 </Form.Item>
-                <Form.Item label="来源/目标 Pod 标签" name="peerSelectors">
-                  <KeyValueEditor
-                    addText="添加标签"
-                    keyPlaceholder="标签 Key，例如 app"
-                    valuePlaceholder="标签值，例如 gateway"
-                    onAddBlocked={() => message.warning('请先填写已有标签 Key')}
-                    onCreateItem={() => createKeyValueItem()}
-                  />
-                </Form.Item>
+                {(values.peerType === 'namespace' ||
+                  values.peerType === 'podInNamespace') && (
+                  <Form.Item label="来源/目标命名空间" name="peerNamespace">
+                    <Select
+                      allowClear
+                      showSearch
+                      optionFilterProp="label"
+                      options={namespaceOptions}
+                      placeholder="不选择则匹配任意命名空间"
+                    />
+                  </Form.Item>
+                )}
+                {(values.peerType === 'pod' ||
+                  values.peerType === 'podInNamespace') && (
+                  <Form.Item label="来源/目标 Pod 标签" name="peerSelectors">
+                    <KeyValueEditor
+                      addText="添加标签"
+                      keyPlaceholder="标签 Key，例如 app"
+                      valuePlaceholder="标签值，例如 gateway"
+                      onAddBlocked={() =>
+                        message.warning('请先填写已有标签 Key')
+                      }
+                      onCreateItem={() => createKeyValueItem()}
+                    />
+                  </Form.Item>
+                )}
+                {values.peerType === 'ipBlock' && (
+                  <>
+                    <Typography.Paragraph type="secondary">
+                      IP 段通常用于匹配集群外部 CIDR；Pod IP
+                      会随生命周期变化，不建议用作长期策略目标。
+                    </Typography.Paragraph>
+                    <Form.Item
+                      label="IP 段 CIDR"
+                      name="ipBlockCidr"
+                      rules={[{ required: true, message: '请输入 IP 段 CIDR' }]}
+                    >
+                      <Input placeholder="例如 10.0.0.0/24" />
+                    </Form.Item>
+                    <Form.Item label="排除 CIDR" name="ipBlockExcept">
+                      <KeyValueEditor
+                        addText="添加排除项"
+                        keyPlaceholder="排除的 CIDR，例如 10.0.0.5/32"
+                        valuePlaceholder="备注，可留空"
+                        onAddBlocked={() =>
+                          message.warning('请先填写已有 CIDR')
+                        }
+                        onCreateItem={() => createKeyValueItem()}
+                      />
+                    </Form.Item>
+                  </>
+                )}
                 <Form.Item label="端口限制" name="ports">
                   <KeyValueEditor
                     addText="添加端口"

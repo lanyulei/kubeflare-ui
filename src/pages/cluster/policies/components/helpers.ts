@@ -4,6 +4,7 @@ export const NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 
 export type WorkloadTargetKind = 'Deployment' | 'StatefulSet' | 'DaemonSet';
 export type ScalableWorkloadTargetKind = 'Deployment' | 'StatefulSet';
+export type AvailabilityWorkloadTargetKind = 'Deployment' | 'StatefulSet';
 
 export type HorizontalPodAutoscalerFormValues = {
   name?: string;
@@ -23,14 +24,14 @@ export type VerticalPodAutoscalerFormValues = {
   namespace?: string;
   targetKind?: ScalableWorkloadTargetKind;
   targetName?: string;
-  updateMode?: 'Off' | 'Initial' | 'Recreate' | 'Auto';
+  updateMode?: 'Off' | 'Initial' | 'Recreate' | 'InPlaceOrRecreate' | 'Auto';
   controlledResources?: ('cpu' | 'memory')[];
 };
 
 export type PodDisruptionBudgetFormValues = {
   name?: string;
   namespace?: string;
-  targetKind?: WorkloadTargetKind;
+  targetKind?: AvailabilityWorkloadTargetKind;
   targetName?: string;
   selector?: Record<string, string>;
   mode?: 'minAvailable' | 'maxUnavailable';
@@ -43,8 +44,11 @@ export type NetworkPolicyFormValues = {
   mode?: 'allowAll' | 'sameNamespace' | 'custom';
   direction?: 'Ingress' | 'Egress' | 'Both';
   podSelectors?: KeyValueEditorItem[];
+  peerType?: 'pod' | 'namespace' | 'podInNamespace' | 'ipBlock';
   peerNamespace?: string;
   peerSelectors?: KeyValueEditorItem[];
+  ipBlockCidr?: string;
+  ipBlockExcept?: KeyValueEditorItem[];
   ports?: KeyValueEditorItem[];
 };
 
@@ -138,7 +142,9 @@ export const getInitialNetworkPolicyValues = (
   mode: 'sameNamespace',
   direction: 'Ingress',
   podSelectors: [createKeyValueItem()],
+  peerType: 'podInNamespace',
   peerSelectors: [createKeyValueItem()],
+  ipBlockExcept: [createKeyValueItem()],
   ports: [createKeyValueItem()],
 });
 
@@ -241,21 +247,46 @@ export const buildPodDisruptionBudgetManifest = (
   },
 });
 
-const buildNetworkPolicyPeer = (
-  namespace?: string,
-  selectors?: KeyValueEditorItem[],
-) => {
+const buildNetworkPolicyPeer = (values?: NetworkPolicyFormValues) => {
+  const peerType = values?.peerType || 'podInNamespace';
+  const namespace = values?.peerNamespace;
+  const selectors = values?.peerSelectors;
   const podSelector = toRecord(selectors);
   const peer: Record<string, unknown> = {};
 
-  if (namespace) {
+  if (peerType === 'ipBlock') {
+    const cidr = normalizeName(values?.ipBlockCidr);
+    const except = (values?.ipBlockExcept || []).flatMap((item) => {
+      const value = normalizeName(item.keyName);
+
+      return value ? [value] : [];
+    });
+
+    if (!cidr) {
+      return peer;
+    }
+
+    peer.ipBlock = {
+      cidr,
+      ...(except.length > 0 ? { except } : {}),
+    };
+
+    return peer;
+  }
+
+  if (peerType === 'namespace' || peerType === 'podInNamespace') {
     peer.namespaceSelector = {
-      matchLabels: {
-        'kubernetes.io/metadata.name': namespace,
-      },
+      matchLabels: namespace
+        ? {
+            'kubernetes.io/metadata.name': namespace,
+          }
+        : {},
     };
   }
-  if (Object.keys(podSelector).length > 0) {
+  if (
+    (peerType === 'pod' || peerType === 'podInNamespace') &&
+    Object.keys(podSelector).length > 0
+  ) {
     peer.podSelector = {
       matchLabels: podSelector,
     };
@@ -299,10 +330,7 @@ const buildNetworkPolicyRule = (
         };
   }
 
-  const peer = buildNetworkPolicyPeer(
-    values?.peerNamespace,
-    values?.peerSelectors,
-  );
+  const peer = buildNetworkPolicyPeer(values);
   const ports = buildNetworkPolicyPorts(values?.ports);
   const rule: Record<string, unknown> = {};
 
