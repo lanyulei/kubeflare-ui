@@ -73,6 +73,8 @@ const HorizontalPodAutoscalers = () => {
         <CreateHorizontalPodAutoscalerDrawer {...props} />
       )}
       request={getClusterHorizontalPodAutoscalerList}
+      resourceType="HorizontalPodAutoscaler"
+      resourceTypeName="自动伸缩策略"
       searchPlaceholder="搜索策略名称 / 目标工作负载"
       showNamespaceFilter
     />

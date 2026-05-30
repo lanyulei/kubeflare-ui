@@ -56,6 +56,8 @@ const NetworkPolicies = () => {
       createButtonText="新建网络策略"
       renderCreateDrawer={(props) => <CreateNetworkPolicyDrawer {...props} />}
       request={getClusterNetworkPolicyList}
+      resourceType="NetworkPolicy"
+      resourceTypeName="网络策略"
       searchPlaceholder="搜索策略名称 / 作用对象"
       showNamespaceFilter
     />

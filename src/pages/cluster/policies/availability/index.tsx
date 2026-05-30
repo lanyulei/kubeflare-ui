@@ -73,6 +73,8 @@ const PodDisruptionBudgets = () => {
         <CreatePodDisruptionBudgetDrawer {...props} />
       )}
       request={getClusterPodDisruptionBudgetList}
+      resourceType="PodDisruptionBudget"
+      resourceTypeName="可用性保护"
       searchPlaceholder="搜索策略名称 / 选择器"
       showNamespaceFilter
     />

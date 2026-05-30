@@ -1,19 +1,39 @@
-import { PlusOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  FileTextOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Link, useIntl } from '@umijs/max';
-import { App, Button, Select, Space, Tag, Tooltip } from 'antd';
+import {
+  App,
+  Button,
+  Drawer,
+  Popconfirm,
+  Select,
+  Space,
+  Spin,
+  Tag,
+  Tooltip,
+} from 'antd';
 import { createStyles } from 'antd-style';
 import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
-import { ClusterTableSearch } from '@/components';
+import { stringify } from 'yaml';
+import { ClusterTableSearch, YamlEditor } from '@/components';
 import { getClusterNamespaceList } from '@/services/kubeflare/cluster/namespace';
-import { createClusterResource } from '@/services/kubeflare/cluster/resource';
+import {
+  createClusterResource,
+  deleteClusterResource,
+  getClusterResourceManifest,
+} from '@/services/kubeflare/cluster/resource';
 import CreateResourceYamlDrawer, {
   type CreateResourceConfig,
 } from './CreateResourceYamlDrawer';
@@ -30,6 +50,11 @@ const useStyles = createStyles(({ token }) => ({
   },
   namespaceSelect: {
     width: 180,
+  },
+  yamlDrawerBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
   },
   nameText: {
     color: token.colorText,
@@ -82,7 +107,9 @@ const useStyles = createStyles(({ token }) => ({
 
 type StatusType = 'default' | 'error' | 'success' | 'warning';
 
-type ClusterResourceListPageProps<T extends { id?: string; name: string }> = {
+type ClusterResourceListPageProps<
+  T extends { id?: string; name: string; namespace?: string },
+> = {
   titleId: string;
   defaultTitle: string;
   columns: ProColumns<T>[];
@@ -102,6 +129,8 @@ type ClusterResourceListPageProps<T extends { id?: string; name: string }> = {
     }) => Promise<void>;
   }) => ReactNode;
   reloadKey?: string | number;
+  resourceType?: API.ClusterResourceCreateType;
+  resourceTypeName?: string;
   searchPlaceholder?: string;
   showNamespaceFilter?: boolean;
   onCreate?: (namespace?: string) => void;
@@ -298,7 +327,9 @@ const ResourceStatus = ({
   return content;
 };
 
-const ClusterResourceListPage = <T extends { id?: string; name: string }>({
+const ClusterResourceListPage = <
+  T extends { id?: string; name: string; namespace?: string },
+>({
   titleId,
   defaultTitle,
   columns,
@@ -307,6 +338,8 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
   createConfig,
   renderCreateDrawer,
   reloadKey,
+  resourceType,
+  resourceTypeName = '资源',
   searchPlaceholder,
   showNamespaceFilter = false,
   onCreate,
@@ -324,6 +357,11 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
   >([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [yamlOpen, setYamlOpen] = useState(false);
+  const [yamlLoading, setYamlLoading] = useState(false);
+  const [yamlValue, setYamlValue] = useState('');
+  const [yamlTitle, setYamlTitle] = useState('查看 YAML');
+  const [deleteLoadingKey, setDeleteLoadingKey] = useState<string>();
   const title = intl.formatMessage({
     id: titleId,
     defaultMessage: defaultTitle,
@@ -394,13 +432,127 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
     }
   };
 
+  const getResourceParams = useCallback(
+    (record: T): API.ClusterResourceDetailParams | undefined => {
+      if (!resourceType || !record.name) {
+        return undefined;
+      }
+
+      return {
+        type: resourceType,
+        namespace: record.namespace,
+        name: record.name,
+      };
+    },
+    [resourceType],
+  );
+
+  const handleViewYaml = useCallback(
+    async (record: T) => {
+      const params = getResourceParams(record);
+
+      if (!params) {
+        return;
+      }
+
+      setYamlOpen(true);
+      setYamlLoading(true);
+      setYamlTitle(`${record.name} YAML`);
+      setYamlValue('');
+
+      try {
+        const res = await getClusterResourceManifest(params);
+        setYamlValue(stringify(res.data || {}, { indent: 2 }));
+      } catch (error) {
+        message.error(getCreateErrorMessage(error));
+      } finally {
+        setYamlLoading(false);
+      }
+    },
+    [getResourceParams, message],
+  );
+
+  const handleDeleteResource = useCallback(
+    async (record: T) => {
+      const params = getResourceParams(record);
+
+      if (!params) {
+        return;
+      }
+
+      setDeleteLoadingKey(record.id || record.name);
+      try {
+        await deleteClusterResource(params, {
+          skipErrorHandler: true,
+        });
+        message.success(`${resourceTypeName}已删除`);
+        actionRef.current?.reloadAndRest?.();
+      } catch (error) {
+        message.error(getCreateErrorMessage(error));
+      } finally {
+        setDeleteLoadingKey(undefined);
+      }
+    },
+    [getResourceParams, message, resourceTypeName],
+  );
+
+  const tableColumns = useMemo<ProColumns<T>[]>(() => {
+    if (!resourceType) {
+      return columns;
+    }
+
+    return [
+      ...columns,
+      {
+        title: '操作',
+        valueType: 'option',
+        key: 'option',
+        width: 150,
+        fixed: 'right',
+        render: (_, record) => [
+          <a
+            key="yaml"
+            onClick={() => {
+              handleViewYaml(record);
+            }}
+          >
+            <FileTextOutlined /> YAML
+          </a>,
+          <Popconfirm
+            key="delete"
+            title={`确认删除该${resourceTypeName}吗？`}
+            description="删除后资源将从当前集群移除，请谨慎操作。"
+            okText="删除"
+            okButtonProps={{
+              danger: true,
+              loading: deleteLoadingKey === (record.id || record.name),
+            }}
+            cancelText="取消"
+            onConfirm={() => handleDeleteResource(record)}
+          >
+            <a>
+              <DeleteOutlined /> 删除
+            </a>
+          </Popconfirm>,
+        ],
+      },
+    ];
+  }, [
+    columns,
+    deleteLoadingKey,
+    handleDeleteResource,
+    handleViewYaml,
+    resourceType,
+    resourceTypeName,
+  ]);
+
   return (
     <PageContainer title={title}>
       <ProTable<T>
         rowKey={rowKey}
         actionRef={actionRef}
         search={false}
-        columns={columns}
+        columns={tableColumns}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,
@@ -488,6 +640,23 @@ const ClusterResourceListPage = <T extends { id?: string; name: string }>({
           onSubmit={handleCreateResource}
         />
       )}
+      <Drawer
+        destroyOnHidden
+        open={yamlOpen}
+        title={yamlTitle}
+        width="65vw"
+        onClose={() => setYamlOpen(false)}
+      >
+        <Spin spinning={yamlLoading}>
+          <div className={styles.yamlDrawerBody}>
+            <YamlEditor
+              height="calc(100vh - 116px)"
+              readOnly
+              value={yamlValue}
+            />
+          </div>
+        </Spin>
+      </Drawer>
     </PageContainer>
   );
 };
