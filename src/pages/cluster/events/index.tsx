@@ -2,7 +2,7 @@ import { LinkOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Link } from '@umijs/max';
-import { Alert, App, Select, Space, Switch, Tag, Tooltip } from 'antd';
+import { App, Select, Space, Switch, Tag, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -63,13 +63,6 @@ const useStyles = createStyles(({ token }) => ({
   },
 }));
 
-const watchStatusText: Record<string, string> = {
-  connected: '实时中',
-  connecting: '连接中',
-  error: '重连等待',
-  reconnecting: '重连中',
-};
-
 const kindOptions = Object.entries(resourceKindLabels).map(
   ([value, label]) => ({
     label: `${label}（${value}）`,
@@ -118,16 +111,13 @@ const GlobalEvents = () => {
     }),
     [filters],
   );
-  const {
-    clearItems: clearWatchItems,
-    items: watchItems,
-    status: watchStatus,
-  } = useClusterEventWatch({
-    enabled: liveEnabled,
-    filters: watchFilters,
-    resourceVersion,
-    onResourceVersionChange: setResourceVersion,
-  });
+  const { clearItems: clearWatchItems, items: watchItems } =
+    useClusterEventWatch({
+      enabled: liveEnabled,
+      filters: watchFilters,
+      resourceVersion,
+      onResourceVersionChange: setResourceVersion,
+    });
   const filteredItems = useMemo(
     () =>
       sortEventsByTime(
@@ -241,6 +231,7 @@ const GlobalEvents = () => {
     {
       title: '消息',
       dataIndex: 'message',
+      width: 360,
       ellipsis: true,
       search: false,
       render: (_, record) => {
@@ -367,16 +358,12 @@ const GlobalEvents = () => {
   return (
     <PageContainer title="事件中心">
       <div className={styles.content}>
-        <Alert
-          showIcon
-          type="info"
-          message="Kubernetes Events 通常只保留较短时间，适合排障和实时观察，不作为长期告警或审计历史。"
-        />
         <ProTable<API.ClusterEventItem>
           rowKey={(record) => getEventItemKey(record)}
           columns={columns}
           dataSource={filteredItems}
           loading={loading}
+          scroll={{ x: 1510 }}
           search={{
             defaultCollapsed: false,
             labelWidth: 'auto',
@@ -394,7 +381,7 @@ const GlobalEvents = () => {
             reload: () => loadEvents(filtersRef.current),
           }}
           pagination={{
-            defaultPageSize: 20,
+            defaultPageSize: 10,
             showSizeChanger: true,
           }}
           headerTitle={
