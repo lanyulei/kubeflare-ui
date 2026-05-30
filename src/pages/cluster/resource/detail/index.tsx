@@ -8,13 +8,24 @@ import {
   GlobalOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
+  QuestionCircleOutlined,
   ReloadOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
 import { history, useParams } from '@umijs/max';
-import { App, Button, Card, Drawer, Dropdown, Empty, Spin, Tabs } from 'antd';
+import {
+  App,
+  Button,
+  Card,
+  Drawer,
+  Dropdown,
+  Empty,
+  Spin,
+  Tabs,
+  Tooltip,
+} from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parse, stringify } from 'yaml';
@@ -84,8 +95,8 @@ import {
 } from './components/PersistentVolumeClaimEditDrawers';
 import PersistentVolumeClaimResourceStatus from './components/PersistentVolumeClaimResourceStatus';
 import PersistentVolumeClaimTable from './components/PersistentVolumeClaimTable';
-import PodResourceStatus from './components/PodResourceStatus';
 import PodResizeDrawer from './components/PodResizeDrawer';
+import PodResourceStatus from './components/PodResourceStatus';
 import PodSchedulingInfo from './components/PodSchedulingInfo';
 import {
   buildPersistentVolumeClaimBasicInfo,
@@ -278,7 +289,62 @@ const useStyles = createStyles(({ token }) => ({
     justifyContent: 'flex-end',
     gap: token.marginSM,
   },
+  qosTitle: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: token.marginXXS,
+  },
+  qosHelpIcon: {
+    color: token.colorTextTertiary,
+    cursor: 'help',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  qosTooltip: {
+    display: 'grid',
+    gap: token.marginXXS,
+    maxWidth: 360,
+    lineHeight: token.lineHeight,
+  },
 }));
+
+const QosClassTitle = () => {
+  const { styles } = useStyles();
+
+  return (
+    <span className={styles.qosTitle}>
+      QoS 类别
+      <Tooltip
+        placement="top"
+        title={
+          <div className={styles.qosTooltip}>
+            <div>
+              <strong>Guaranteed：</strong>
+              CPU/内存 request 与 limit
+              都设置且相等，资源保障最高，节点资源紧张时最后被驱逐。
+            </div>
+            <div>
+              <strong>Burstable：</strong>
+              至少设置了一个 request 或 limit，但不满足 Guaranteed
+              条件，可在空闲资源上突发使用。
+            </div>
+            <div>
+              <strong>BestEffort：</strong>
+              未设置 CPU/内存 request 和
+              limit，无资源保障，节点资源紧张时最先被驱逐。
+            </div>
+          </div>
+        }
+      >
+        <QuestionCircleOutlined
+          aria-label="QoS 类别说明"
+          className={styles.qosHelpIcon}
+          tabIndex={0}
+        />
+      </Tooltip>
+    </span>
+  );
+};
 
 const isResourceType = (type?: string): type is API.ClusterResourceCreateType =>
   resourceTypes.includes(type as API.ClusterResourceCreateType);
@@ -755,7 +821,7 @@ const podBasicInfoColumns: ProDescriptionsItemProps<PodBasicInfo>[] = [
     renderText: (value) => formatValue(value),
   },
   {
-    title: 'QoS 类别',
+    title: <QosClassTitle />,
     dataIndex: 'qos_class',
     renderText: (value) => formatValue(value),
   },

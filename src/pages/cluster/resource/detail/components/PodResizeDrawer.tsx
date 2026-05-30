@@ -1,8 +1,13 @@
-import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Alert, Button, Drawer, Form, Spin, Tag, Typography } from 'antd';
+import {
+  CodeSandboxOutlined,
+  DatabaseOutlined,
+  DockerOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
+import { Alert, Form, Modal, Spin } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo } from 'react';
-import { ComputeQuotaFields, SectionTitle } from '@/components';
+import ContainerResourceFields from '../../../workloads/workloads/components/CreateWorkloadDrawer/ContainerConfigModal/ContainerResourceFields';
 import {
   getPodResizeDisabledReason,
   getResizeFormValues,
@@ -24,43 +29,161 @@ type PodResizeDrawerProps = {
 };
 
 const useStyles = createStyles(({ token }) => ({
-  drawer: {
-    '.ant-drawer-header': {
-      padding: `${token.paddingMD}px ${token.paddingLG}px`,
+  modal: {
+    '.ant-modal-content': {
+      padding: 0,
+      overflow: 'hidden',
     },
-    '.ant-drawer-body': {
+    '.ant-modal-header': {
+      marginBottom: 0,
+      padding: `${token.paddingMD}px ${token.paddingLG}px`,
+      borderBottom: `1px solid ${token.colorBorderSecondary}`,
+    },
+    '.ant-modal-body': {
+      maxHeight: 'calc(100vh - 210px)',
+      overflow: 'auto',
       padding: token.paddingLG,
       background: token.colorBgContainer,
     },
-    '.ant-drawer-footer': {
+    '.ant-modal-footer': {
+      marginTop: 0,
       padding: `${token.paddingSM}px ${token.paddingLG}px`,
+      borderTop: `1px solid ${token.colorBorderSecondary}`,
       background: token.colorBgContainer,
     },
   },
-  footer: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: token.marginSM,
-  },
-  body: {
+  stack: {
     display: 'flex',
     flexDirection: 'column',
+    gap: token.marginSM,
+  },
+  sectionTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginXS,
+    marginBottom: 8,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  sectionPanel: {
+    padding: `${token.paddingSM}px ${token.padding}px`,
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+  },
+  sectionDescription: {
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  sectionContent: {
+    marginTop: token.marginSM,
+  },
+  containerCard: {
+    display: 'grid',
+    minHeight: 64,
+    gridTemplateColumns: 'minmax(260px, 1fr) minmax(260px, auto)',
+    alignItems: 'center',
     gap: token.marginLG,
+    padding: `${token.paddingSM}px ${token.paddingLG}px`,
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+    color: token.colorText,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+      alignItems: 'flex-start',
+      gap: token.marginSM,
+    },
+  },
+  containerMain: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: token.marginMD,
+  },
+  containerIcon: {
+    flex: '0 0 auto',
+    color: token.colorText,
+    fontSize: 34,
+    lineHeight: 1,
+  },
+  containerContent: {
+    minWidth: 0,
+  },
+  containerName: {
+    overflow: 'hidden',
+    color: token.colorText,
+    fontSize: token.fontSize,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  containerImage: {
+    overflow: 'hidden',
+    marginTop: 2,
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeightSM,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  containerMetrics: {
+    display: 'flex',
+    minWidth: 0,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: `${token.marginSM}px ${token.marginLG}px`,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+
+    '@media (max-width: 768px)': {
+      justifyContent: 'flex-start',
+      paddingLeft: 48,
+    },
+
+    '@media (max-width: 576px)': {
+      paddingLeft: 0,
+    },
+  },
+  metric: {
+    display: 'inline-flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: token.marginXS,
+    whiteSpace: 'nowrap',
+  },
+  metricIcon: {
+    color: token.colorTextSecondary,
+    fontSize: 16,
+  },
+  memoryIcon: {
+    transform: 'rotate(-45deg)',
   },
   summary: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
     gap: token.marginSM,
+    marginTop: token.marginSM,
 
     '@media (max-width: 768px)': {
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    },
+
+    '@media (max-width: 576px)': {
       gridTemplateColumns: '1fr',
     },
   },
   summaryItem: {
     minWidth: 0,
-    padding: `${token.paddingSM}px ${token.padding}px`,
+    padding: `${token.paddingXS}px ${token.paddingSM}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusLG,
+    borderRadius: token.borderRadiusSM,
     background: token.colorFillQuaternary,
   },
   summaryLabel: {
@@ -76,15 +199,42 @@ const useStyles = createStyles(({ token }) => ({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.marginSM,
-  },
   policy: {
-    display: 'flex',
-    flexWrap: 'wrap',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: token.marginXS,
+
+    '@media (max-width: 576px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  policyItem: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: token.marginXS,
+    padding: `${token.paddingXS}px ${token.paddingSM}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorFillQuaternary,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  policyIcon: {
+    flex: '0 0 auto',
+    color: token.colorTextSecondary,
+  },
+  policyLabel: {
+    flex: '0 0 auto',
+    color: token.colorTextSecondary,
+  },
+  policyValue: {
+    minWidth: 0,
+    overflow: 'hidden',
+    fontWeight: 600,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
 }));
 
@@ -96,7 +246,7 @@ const formatResourcePair = (
   const limit = resources?.limits?.[resourceName];
 
   if (!request && !limit) {
-    return '未设置';
+    return '-';
   }
 
   return `${request || '无预留'} / ${limit || '无上限'}`;
@@ -161,32 +311,25 @@ const PodResizeDrawer = ({
   };
 
   return (
-    <Drawer
-      className={styles.drawer}
-      closeIcon={<CloseOutlined />}
+    <Modal
+      cancelText="取消"
+      className={styles.modal}
       destroyOnHidden
-      footer={
-        <div className={styles.footer}>
-          <Button onClick={onCancel}>取消</Button>
-          <Button
-            disabled={Boolean(disabledReason)}
-            loading={loading}
-            type="primary"
-            onClick={handleSubmit}
-          >
-            提交调整
-          </Button>
-        </div>
-      }
       keyboard={false}
       maskClosable={false}
+      okButtonProps={{
+        disabled: Boolean(disabledReason),
+        loading,
+      }}
+      okText="提交调整"
       open={open}
       title="调整容器资源"
-      width="64vw"
-      onClose={onCancel}
+      width={960}
+      onCancel={onCancel}
+      onOk={handleSubmit}
     >
       <Spin spinning={!container}>
-        <div className={styles.body}>
+        <div className={styles.stack}>
           {disabledReason ? (
             <Alert message={disabledReason} showIcon type="warning" />
           ) : null}
@@ -202,101 +345,115 @@ const PodResizeDrawer = ({
               type="warning"
             />
           ) : null}
-          <div className={styles.section}>
-            <SectionTitle color={'#36435C'} fontSize={12}>
-              当前资源
-            </SectionTitle>
-            <div className={styles.summary}>
-              <div className={styles.summaryItem}>
-                <div className={styles.summaryLabel}>容器</div>
-                <div className={styles.summaryValue}>
-                  {container?.name || '-'}
+          <section>
+            <div className={styles.sectionTitle}>当前容器</div>
+            <div className={styles.sectionPanel}>
+              <div className={styles.containerCard}>
+                <div className={styles.containerMain}>
+                  <DockerOutlined className={styles.containerIcon} />
+                  <div className={styles.containerContent}>
+                    <div className={styles.containerName}>
+                      {container?.name || '-'}
+                    </div>
+                    <div className={styles.containerImage}>
+                      镜像： {container?.image || '-'}
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.containerMetrics}>
+                  <span className={styles.metric}>
+                    <CodeSandboxOutlined className={styles.metricIcon} />
+                    {formatResourcePair(container?.resources, 'cpu')}
+                  </span>
+                  <span className={styles.metric}>
+                    <DatabaseOutlined
+                      className={`${styles.metricIcon} ${styles.memoryIcon}`}
+                    />
+                    {formatResourcePair(container?.resources, 'memory')}
+                  </span>
                 </div>
               </div>
-              <div className={styles.summaryItem}>
-                <div className={styles.summaryLabel}>QoS 等级</div>
-                <div className={styles.summaryValue}>
-                  {pod?.qos_class || '-'}
+              <div className={styles.summary}>
+                <div className={styles.summaryItem}>
+                  <div className={styles.summaryLabel}>QoS 等级</div>
+                  <div className={styles.summaryValue}>
+                    {pod?.qos_class || '-'}
+                  </div>
                 </div>
+                {[
+                  {
+                    label: '期望 CPU',
+                    value: formatResourcePair(container?.resources, 'cpu'),
+                  },
+                  {
+                    label: '实际 CPU',
+                    value: formatResourcePair(
+                      container?.status_resources,
+                      'cpu',
+                    ),
+                  },
+                  {
+                    label: '期望内存',
+                    value: formatResourcePair(container?.resources, 'memory'),
+                  },
+                  {
+                    label: '实际内存',
+                    value: formatResourcePair(
+                      container?.status_resources,
+                      'memory',
+                    ),
+                  },
+                ].map((item) => (
+                  <div className={styles.summaryItem} key={item.label}>
+                    <div className={styles.summaryLabel}>{item.label}</div>
+                    <div className={styles.summaryValue}>{item.value}</div>
+                  </div>
+                ))}
               </div>
-              <div className={styles.summaryItem}>
-                <div className={styles.summaryLabel}>期望 CPU</div>
-                <div className={styles.summaryValue}>
-                  {formatResourcePair(container?.resources, 'cpu')}
-                </div>
+            </div>
+          </section>
+          <section>
+            <div className={styles.sectionTitle}>Resize 策略</div>
+            <div className={styles.sectionPanel}>
+              <div className={styles.sectionDescription}>
+                根据容器的 resizePolicy 判断资源变更是否需要重启容器。
               </div>
-              <div className={styles.summaryItem}>
-                <div className={styles.summaryLabel}>实际 CPU</div>
-                <div className={styles.summaryValue}>
-                  {formatResourcePair(container?.status_resources, 'cpu')}
-                </div>
-              </div>
-              <div className={styles.summaryItem}>
-                <div className={styles.summaryLabel}>期望内存</div>
-                <div className={styles.summaryValue}>
-                  {formatResourcePair(container?.resources, 'memory')}
-                </div>
-              </div>
-              <div className={styles.summaryItem}>
-                <div className={styles.summaryLabel}>实际内存</div>
-                <div className={styles.summaryValue}>
-                  {formatResourcePair(container?.status_resources, 'memory')}
+              <div className={styles.sectionContent}>
+                <div className={styles.policy}>
+                  <div className={styles.policyItem}>
+                    <InfoCircleOutlined className={styles.policyIcon} />
+                    <span className={styles.policyLabel}>CPU</span>
+                    <span className={styles.policyValue}>
+                      {getPolicyText(getResizePolicy(container, 'cpu'))}
+                    </span>
+                  </div>
+                  <div className={styles.policyItem}>
+                    <InfoCircleOutlined className={styles.policyIcon} />
+                    <span className={styles.policyLabel}>内存</span>
+                    <span className={styles.policyValue}>
+                      {getPolicyText(getResizePolicy(container, 'memory'))}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className={styles.section}>
-            <SectionTitle color={'#36435C'} fontSize={12}>
-              Resize 策略
-            </SectionTitle>
-            <div className={styles.policy}>
-              <Tag icon={<InfoCircleOutlined />}>
-                CPU：{getPolicyText(getResizePolicy(container, 'cpu'))}
-              </Tag>
-              <Tag icon={<InfoCircleOutlined />}>
-                内存：{getPolicyText(getResizePolicy(container, 'memory'))}
-              </Tag>
+          </section>
+          <section>
+            <div className={styles.sectionTitle}>目标资源</div>
+            <div className={styles.sectionPanel}>
+              <div className={styles.sectionDescription}>
+                CPU 单位为 Core，内存单位为 Mi。留空表示不声明对应资源。
+              </div>
+              <div className={styles.sectionContent}>
+                <Form form={form} layout="vertical" requiredMark>
+                  <ContainerResourceFields />
+                </Form>
+              </div>
             </div>
-          </div>
-          <div className={styles.section}>
-            <SectionTitle color={'#36435C'} fontSize={12}>
-              目标资源
-            </SectionTitle>
-            <Typography.Text type="secondary">
-              CPU 单位为 Core，内存单位为 Mi。留空表示不声明对应资源。
-            </Typography.Text>
-            <Form form={form} layout="vertical" requiredMark>
-              <ComputeQuotaFields
-                cpuFields={[
-                  {
-                    label: 'CPU 预留',
-                    name: 'cpuRequest',
-                    placeholder: '无预留',
-                  },
-                  {
-                    label: 'CPU 限制',
-                    name: 'cpuLimit',
-                    placeholder: '无上限',
-                  },
-                ]}
-                memoryFields={[
-                  {
-                    label: '内存预留',
-                    name: 'memoryRequest',
-                    placeholder: '无预留',
-                  },
-                  {
-                    label: '内存限制',
-                    name: 'memoryLimit',
-                    placeholder: '无上限',
-                  },
-                ]}
-              />
-            </Form>
-          </div>
+          </section>
         </div>
       </Spin>
-    </Drawer>
+    </Modal>
   );
 };
 

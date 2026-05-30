@@ -330,6 +330,11 @@ const getPodResizeDisabledReason = (
   if (container.type && container.type !== 'container') {
     return '初始化容器和临时容器不支持原地调整资源';
   }
+  if (
+    (pod.qos_class || getPodQosClass(pod.containers || [])) === 'BestEffort'
+  ) {
+    return 'BestEffort 容器组未声明资源，原地调整新增资源会改变 QoS 等级，请通过上层工作负载模板调整后重建 Pod';
+  }
 
   return undefined;
 };
@@ -361,7 +366,7 @@ const validatePodResizeValues = (
   }
 
   const nextResources = buildContainerResourcesFromForm(values);
-  const currentQosClass = pod.qos_class;
+  const currentQosClass = pod.qos_class || getPodQosClass(pod.containers || []);
   const nextQosClass = getNextPodQosClass(
     pod,
     container.name || '',

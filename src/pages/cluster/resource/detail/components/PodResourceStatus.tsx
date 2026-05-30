@@ -7,14 +7,12 @@ import {
   HddOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import { Button, Empty, Tag, Tooltip } from 'antd';
+import { Button, Empty, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { SectionTitle } from '@/components';
 import { formatValue } from './helpers';
 import {
   getPodResizeDisabledReason,
-  getPodResizeMessage,
-  getPodResizeStatus,
   getResizePolicy,
   hasSameResourceValue,
 } from './podResizeHelpers';
@@ -32,7 +30,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   containerItem: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(280px, 1fr) 140px 140px 180px 120px',
+    gridTemplateColumns: 'minmax(280px, 1fr) 140px 140px 180px',
     gap: token.marginLG,
     alignItems: 'center',
     minHeight: 64,
@@ -78,12 +76,6 @@ const useStyles = createStyles(({ token }) => ({
   },
   resourceChanged: {
     color: token.colorWarning,
-  },
-  resizeInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: token.marginXXS,
   },
   containerMain: {
     display: 'flex',
@@ -136,12 +128,26 @@ const useStyles = createStyles(({ token }) => ({
     justifyContent: 'center',
     width: 20,
     height: 20,
+    padding: 0,
     border: 0,
     backgroundColor: 'transparent',
     color: token.colorTextSecondary,
     cursor: 'default',
     fontSize: 13,
     lineHeight: 1,
+  },
+  triggerButton: {
+    '&.ant-btn': {
+      minWidth: 20,
+      color: token.colorTextSecondary,
+      boxShadow: 'none',
+    },
+    '&.ant-btn-icon-only': {
+      width: 20,
+    },
+    '&:not(:disabled)': {
+      cursor: 'pointer',
+    },
   },
   image: {
     marginTop: 2,
@@ -275,7 +281,7 @@ const getResourcePair = (
   const limit = resources?.limits?.[resourceName];
 
   if (!request && !limit) {
-    return '未设置';
+    return '-';
   }
 
   return `${request || '无预留'} / ${limit || '无上限'}`;
@@ -302,20 +308,6 @@ const isResourceSynced = (
     pickSingleResource(container.status_resources, resourceName),
   );
 
-const resizeStatusLabels: Record<
-  API.ClusterPodResizeStatus,
-  { color: string; label: string }
-> = {
-  synced: { color: 'success', label: '已生效' },
-  pending: { color: 'processing', label: '等待调整' },
-  inProgress: { color: 'processing', label: '调整中' },
-  deferred: { color: 'warning', label: '等待重试' },
-  infeasible: { color: 'error', label: '不可行' },
-  error: { color: 'error', label: '异常' },
-  observing: { color: 'processing', label: '待确认' },
-  unknown: { color: 'default', label: '未知' },
-};
-
 const PodResourceStatus = ({ pod, onResize }: PodResourceStatusProps) => {
   const { styles } = useStyles();
 
@@ -332,10 +324,6 @@ const PodResourceStatus = ({ pod, onResize }: PodResourceStatusProps) => {
         {pod.containers && pod.containers.length > 0 ? (
           <div className={styles.list}>
             {pod.containers.map((container) => {
-              const resizeStatus =
-                container.resize_status || getPodResizeStatus(pod, container);
-              const resizeStatusMeta = resizeStatusLabels[resizeStatus];
-              const resizeMessage = getPodResizeMessage(pod);
               const resizeDisabledReason = getPodResizeDisabledReason(
                 pod,
                 container,
@@ -369,6 +357,24 @@ const PodResourceStatus = ({ pod, onResize }: PodResourceStatusProps) => {
                             <span className={styles.trigger}>
                               <CodeOutlined />
                             </span>
+                          </Tooltip>
+                          <Tooltip
+                            title={
+                              resizeDisabledReason ||
+                              (onResize ? '调整容器资源' : '当前页面不支持调整')
+                            }
+                          >
+                            <Button
+                              aria-label="调整容器资源"
+                              className={[
+                                styles.trigger,
+                                styles.triggerButton,
+                              ].join(' ')}
+                              disabled={resizeActionDisabled}
+                              icon={<EditOutlined />}
+                              type="text"
+                              onClick={() => onResize?.(container)}
+                            />
                           </Tooltip>
                           {container.probes && container.probes.length > 0 ? (
                             <Tooltip title="已配置探针">
@@ -404,28 +410,6 @@ const PodResourceStatus = ({ pod, onResize }: PodResourceStatusProps) => {
                         </div>
                       </Tooltip>
                       <div className={styles.metricLabel}>端口</div>
-                    </div>
-                    <div className={styles.resizeInfo}>
-                      <Tooltip title={resizeMessage || resizeStatusMeta.label}>
-                        <Tag color={resizeStatusMeta.color}>
-                          {resizeStatusMeta.label}
-                        </Tag>
-                      </Tooltip>
-                      <Tooltip
-                        title={
-                          resizeDisabledReason ||
-                          (onResize ? '调整容器资源' : '当前页面不支持调整')
-                        }
-                      >
-                        <Button
-                          disabled={resizeActionDisabled}
-                          icon={<EditOutlined />}
-                          size="small"
-                          onClick={() => onResize?.(container)}
-                        >
-                          调整
-                        </Button>
-                      </Tooltip>
                     </div>
                   </div>
                   <div className={styles.resourceGrid}>
