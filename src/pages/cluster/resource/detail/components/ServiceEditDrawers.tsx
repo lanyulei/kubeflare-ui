@@ -1,6 +1,6 @@
 import { CloseOutlined, CloudOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import { Button, Drawer, Form, message, Select } from 'antd';
+import { Button, Checkbox, Drawer, Form, Input, message, Select } from 'antd';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo } from 'react';
@@ -11,7 +11,10 @@ import {
   buildServiceSettingsSpecPatch,
   createKeyValueItem,
 } from '../../../workloads/services/components/CreateServiceDrawer/helpers';
-import { ServiceSessionAffinitySection } from '../../../workloads/services/components/CreateServiceDrawer/ServiceAdvancedSettings';
+import {
+  ServiceNetworkingSection,
+  ServiceSessionAffinitySection,
+} from '../../../workloads/services/components/CreateServiceDrawer/ServiceAdvancedSettings';
 import ServiceSettings from '../../../workloads/services/components/CreateServiceDrawer/ServiceSettings';
 import type { CreateServiceFormValues } from '../../../workloads/services/components/CreateServiceDrawer/types';
 
@@ -174,6 +177,7 @@ const ServiceSettingsEditDrawer = (props: ServiceEditDrawerProps) => {
         >
           <ServiceSettings form={form} showInternalAccess={false} />
           <ServiceSessionAffinitySection form={form} />
+          <ServiceNetworkingSection form={form} />
         </Form>
       )}
     </ServiceEditDrawerShell>
@@ -273,6 +277,54 @@ const ServiceExternalAccessForm = ({
               className={styles.externalAccessField}
               options={providerOptions}
               placeholder="请选择负载均衡器提供商"
+            />
+          </Form.Item>
+        </ServiceEditSection>
+      )}
+
+      {externalAccessMode === 'LoadBalancer' && (
+        <ServiceEditSection
+          description="指定由哪类负载均衡器实现接管该 Service。"
+          title="LoadBalancer Class"
+        >
+          <Form.Item name="loadBalancerClass">
+            <Input
+              className={styles.externalAccessField}
+              placeholder="例如 service.k8s.aws/nlb"
+            />
+          </Form.Item>
+        </ServiceEditSection>
+      )}
+
+      {externalAccessMode === 'LoadBalancer' && (
+        <ServiceEditSection
+          description="控制 LoadBalancer 是否自动分配 NodePort。"
+          title="NodePort 分配"
+        >
+          <Form.Item
+            name="allocateLoadBalancerNodePorts"
+            valuePropName="checked"
+          >
+            <Checkbox>为 LoadBalancer 服务自动分配 NodePort</Checkbox>
+          </Form.Item>
+        </ServiceEditSection>
+      )}
+
+      {(externalAccessMode === 'NodePort' ||
+        externalAccessMode === 'LoadBalancer') && (
+        <ServiceEditSection
+          description="Local 可保留客户端源 IP，Cluster 会在集群范围内转发。"
+          title="外部流量策略"
+        >
+          <Form.Item name="externalTrafficPolicy">
+            <Select
+              allowClear
+              className={styles.externalAccessField}
+              options={[
+                { label: 'Cluster', value: 'Cluster' },
+                { label: 'Local', value: 'Local' },
+              ]}
+              placeholder="默认由集群决定"
             />
           </Form.Item>
         </ServiceEditSection>

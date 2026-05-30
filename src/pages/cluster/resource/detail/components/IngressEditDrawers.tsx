@@ -191,7 +191,13 @@ const IngressRouteRulesEditDrawer = ({
       return;
     }
 
-    await form.validateFields(['rules', 'enablePathRewrite', 'rewriteTarget']);
+    await form.validateFields([
+      'rules',
+      'ingressClassName',
+      'tlsSecretName',
+      'enablePathRewrite',
+      'rewriteTarget',
+    ]);
     const values = form.getFieldsValue(true);
     await onSubmit(buildIngressRouteManifest(values, manifest));
   };

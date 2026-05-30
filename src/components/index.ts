@@ -5,6 +5,13 @@
 /**
  * 布局组件
  */
+
+import {
+  EventDetailDrawer,
+  EventTypeBadge,
+  EventTypeTag,
+  useClusterEventWatch,
+} from './ClusterEventCenter';
 import ClusterEventTable from './ClusterEventTable';
 import ClusterMetadata from './ClusterMetadata';
 import ClusterPodList from './ClusterPodList';
@@ -13,6 +20,7 @@ import ComputeQuotaFields from './ComputeQuotaFields';
 import Footer from './Footer';
 import KeyValueEditor from './KeyValueEditor';
 import KeyValueList from './KeyValueList';
+import KubernetesCompatibilityNotice from './KubernetesCompatibilityNotice';
 import ReplicaSummary from './ReplicaSummary';
 import { ClusterSwitch, Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
@@ -24,6 +32,7 @@ import TaintEditor from './TaintEditor';
 import UnitInputNumber from './UnitInputNumber';
 import YamlEditor from './YamlEditor';
 
+export type { WatchStatus } from './ClusterEventCenter';
 export type { SettingsNavDrawerSection } from './SettingsNavDrawer';
 export {
   AvatarDropdown,
@@ -34,9 +43,13 @@ export {
   ClusterSwitch,
   ClusterTableSearch,
   ComputeQuotaFields,
+  EventDetailDrawer,
+  EventTypeBadge,
+  EventTypeTag,
   Footer,
   KeyValueEditor,
   KeyValueList,
+  KubernetesCompatibilityNotice,
   Question,
   ReplicaSummary,
   SectionTitle,
@@ -46,5 +59,6 @@ export {
   SettingsNavDrawer,
   TaintEditor,
   UnitInputNumber,
+  useClusterEventWatch,
   YamlEditor,
 };

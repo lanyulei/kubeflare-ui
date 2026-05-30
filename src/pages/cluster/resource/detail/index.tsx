@@ -158,6 +158,32 @@ import {
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 
+type IngressServicePortOption = NonNullable<
+  IngressServiceOption['ports']
+>[number];
+
+const buildIngressServicePortOptions = (
+  ports?: API.ClusterServiceItem['ports'],
+): IngressServicePortOption[] =>
+  (ports || []).flatMap((port) => {
+    const options: IngressServicePortOption[] = [];
+
+    if (port.name) {
+      options.push({
+        label: port.port ? `${port.name} (${port.port})` : port.name,
+        value: port.name,
+      });
+    }
+    if (port.port) {
+      options.push({
+        label: String(port.port),
+        value: port.port,
+      });
+    }
+
+    return options;
+  });
+
 const resourceTypeLabels: Record<API.ClusterResourceCreateType, string> = {
   Job: '任务',
   CronJob: '定时任务',
@@ -674,6 +700,36 @@ const serviceBasicInfoColumns: ProDescriptionsItemProps<ServiceBasicInfo>[] = [
   {
     title: '外部 IP 地址',
     dataIndex: 'external_ip',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: 'IP Family 策略',
+    dataIndex: 'ip_family_policy',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: 'IP Families',
+    dataIndex: 'ip_families',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '内部流量策略',
+    dataIndex: 'internal_traffic_policy',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '外部流量策略',
+    dataIndex: 'external_traffic_policy',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: '流量分布',
+    dataIndex: 'traffic_distribution',
+    renderText: (value) => formatValue(value),
+  },
+  {
+    title: 'LoadBalancer Class',
+    dataIndex: 'load_balancer_class',
     renderText: (value) => formatValue(value),
   },
   {
@@ -1233,9 +1289,7 @@ const ClusterResourceDetail = () => {
           ? [
               {
                 label: item.name,
-                ports: (item.ports || []).flatMap((port) =>
-                  port.port ? [port.port] : [],
-                ),
+                ports: buildIngressServicePortOptions(item.ports),
                 value: item.name,
               },
             ]

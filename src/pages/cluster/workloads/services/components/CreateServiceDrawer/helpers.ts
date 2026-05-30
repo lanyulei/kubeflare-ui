@@ -48,6 +48,13 @@ export const getInitialCreateServiceValues = (
   sessionAffinityTimeoutSeconds: 10800,
   externalAccessAnnotations: [createKeyValueItem()],
   loadBalancerProvider: undefined,
+  loadBalancerClass: undefined,
+  allocateLoadBalancerNodePorts: true,
+  externalTrafficPolicy: undefined,
+  internalTrafficPolicy: undefined,
+  ipFamilyPolicy: undefined,
+  ipFamilies: undefined,
+  trafficDistribution: undefined,
   labels: [createKeyValueItem()],
 });
 
@@ -63,6 +70,13 @@ export const getServiceStepFields = (step: number) => {
     'externalAccessMode',
     'enableSessionAffinity',
     'sessionAffinityTimeoutSeconds',
+    'loadBalancerClass',
+    'allocateLoadBalancerNodePorts',
+    'externalTrafficPolicy',
+    'internalTrafficPolicy',
+    'ipFamilyPolicy',
+    'ipFamilies',
+    'trafficDistribution',
     'labels',
   ];
 };
@@ -119,6 +133,9 @@ const getStringValue = (value: unknown) =>
 
 const getNumberValue = (value: unknown) =>
   typeof value === 'number' && !Number.isNaN(value) ? value : undefined;
+
+const getBooleanValue = (value: unknown) =>
+  typeof value === 'boolean' ? value : undefined;
 
 const getKubernetesProtocol = (protocol: ServicePortProtocol) =>
   protocol === 'UDP' ? 'UDP' : 'TCP';
@@ -177,6 +194,21 @@ const getServicePorts = (ports?: ServicePortItem[]) =>
       return servicePort;
     });
 
+const setIfDefined = (
+  target: Record<string, unknown>,
+  key: string,
+  value?: boolean | string | string[],
+) => {
+  if (
+    value === undefined ||
+    value === '' ||
+    (Array.isArray(value) && value.length === 0)
+  ) {
+    return;
+  }
+  target[key] = value;
+};
+
 export const buildCreateServiceManifest = (values: CreateServiceFormValues) => {
   const labels = toRecord(values.labels);
   const selectors = toRecord(values.selectors);
@@ -202,6 +234,21 @@ export const buildCreateServiceManifest = (values: CreateServiceFormValues) => {
         timeoutSeconds: values.sessionAffinityTimeoutSeconds || 10800,
       },
     };
+  }
+  setIfDefined(spec, 'ipFamilyPolicy', values.ipFamilyPolicy);
+  setIfDefined(spec, 'ipFamilies', values.ipFamilies);
+  setIfDefined(spec, 'internalTrafficPolicy', values.internalTrafficPolicy);
+  setIfDefined(spec, 'trafficDistribution', values.trafficDistribution);
+  if (spec.type === 'NodePort' || spec.type === 'LoadBalancer') {
+    setIfDefined(spec, 'externalTrafficPolicy', values.externalTrafficPolicy);
+  }
+  if (spec.type === 'LoadBalancer') {
+    setIfDefined(spec, 'loadBalancerClass', values.loadBalancerClass?.trim());
+    setIfDefined(
+      spec,
+      'allocateLoadBalancerNodePorts',
+      values.allocateLoadBalancerNodePorts,
+    );
   }
 
   return {
@@ -270,6 +317,40 @@ export const buildServiceFormValuesFromManifest = (
         'kubeflare.io/load-balancer-provider'
       ],
     ),
+    loadBalancerClass: getStringValue(spec?.loadBalancerClass),
+    allocateLoadBalancerNodePorts:
+      getBooleanValue(spec?.allocateLoadBalancerNodePorts) ?? true,
+    externalTrafficPolicy:
+      getStringValue(spec?.externalTrafficPolicy) === 'Local'
+        ? 'Local'
+        : getStringValue(spec?.externalTrafficPolicy) === 'Cluster'
+          ? 'Cluster'
+          : undefined,
+    internalTrafficPolicy:
+      getStringValue(spec?.internalTrafficPolicy) === 'Local'
+        ? 'Local'
+        : getStringValue(spec?.internalTrafficPolicy) === 'Cluster'
+          ? 'Cluster'
+          : undefined,
+    ipFamilyPolicy:
+      getStringValue(spec?.ipFamilyPolicy) === 'PreferDualStack'
+        ? 'PreferDualStack'
+        : getStringValue(spec?.ipFamilyPolicy) === 'RequireDualStack'
+          ? 'RequireDualStack'
+          : getStringValue(spec?.ipFamilyPolicy) === 'SingleStack'
+            ? 'SingleStack'
+            : undefined,
+    ipFamilies: getArrayValue(spec?.ipFamilies).filter(
+      (item): item is 'IPv4' | 'IPv6' => item === 'IPv4' || item === 'IPv6',
+    ),
+    trafficDistribution:
+      getStringValue(spec?.trafficDistribution) === 'PreferClose'
+        ? 'PreferClose'
+        : getStringValue(spec?.trafficDistribution) === 'PreferSameZone'
+          ? 'PreferSameZone'
+          : getStringValue(spec?.trafficDistribution) === 'PreferSameNode'
+            ? 'PreferSameNode'
+            : undefined,
     labels: toKeyValueItems(getRecordValue(metadata?.labels)),
   };
 };
@@ -293,6 +374,10 @@ export const buildServiceSettingsSpecPatch = (
     spec.sessionAffinity = 'None';
     spec.sessionAffinityConfig = null;
   }
+  setIfDefined(spec, 'ipFamilyPolicy', values.ipFamilyPolicy);
+  setIfDefined(spec, 'ipFamilies', values.ipFamilies);
+  setIfDefined(spec, 'internalTrafficPolicy', values.internalTrafficPolicy);
+  setIfDefined(spec, 'trafficDistribution', values.trafficDistribution);
 
   return spec;
 };
@@ -323,6 +408,20 @@ export const buildServiceExternalAccessSpecPatch = (
           enabled ? port : { ...port, nodePort: undefined },
         ),
       ),
+      ...(enabled && externalAccessMode === 'LoadBalancer'
+        ? {
+            ...(values.loadBalancerClass?.trim()
+              ? { loadBalancerClass: values.loadBalancerClass.trim() }
+              : {}),
+            allocateLoadBalancerNodePorts:
+              values.allocateLoadBalancerNodePorts ?? true,
+          }
+        : {
+            allocateLoadBalancerNodePorts: null,
+          }),
+      ...(enabled && values.externalTrafficPolicy
+        ? { externalTrafficPolicy: values.externalTrafficPolicy }
+        : { externalTrafficPolicy: null }),
     },
     ...(externalAccessMode === 'LoadBalancer'
       ? {

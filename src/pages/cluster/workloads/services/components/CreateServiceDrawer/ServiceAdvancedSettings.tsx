@@ -1,10 +1,10 @@
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import { Checkbox, Form, InputNumber, message, Select } from 'antd';
+import { Checkbox, Form, Input, InputNumber, message, Select } from 'antd';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { KeyValueEditor } from '@/components';
+import { KeyValueEditor, KubernetesCompatibilityNotice } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 import { createKeyValueItem } from './helpers';
 import type { CreateServiceFormValues } from './types';
@@ -149,6 +149,28 @@ const SERVICE_EXTERNAL_ACCESS_OPTIONS = [
   { label: 'LoadBalancer', value: 'LoadBalancer' },
 ];
 
+const SERVICE_IP_FAMILY_POLICY_OPTIONS = [
+  { label: 'SingleStack', value: 'SingleStack' },
+  { label: 'PreferDualStack', value: 'PreferDualStack' },
+  { label: 'RequireDualStack', value: 'RequireDualStack' },
+];
+
+const SERVICE_IP_FAMILY_OPTIONS = [
+  { label: 'IPv4', value: 'IPv4' },
+  { label: 'IPv6', value: 'IPv6' },
+];
+
+const SERVICE_TRAFFIC_DISTRIBUTION_OPTIONS = [
+  { label: 'PreferClose', value: 'PreferClose' },
+  { label: 'PreferSameZone', value: 'PreferSameZone' },
+  { label: 'PreferSameNode', value: 'PreferSameNode' },
+];
+
+const SERVICE_TRAFFIC_POLICY_OPTIONS = [
+  { label: 'Cluster', value: 'Cluster' },
+  { label: 'Local', value: 'Local' },
+];
+
 type ServiceExternalAccessSectionProps = {
   form: FormInstance<CreateServiceFormValues>;
 };
@@ -158,6 +180,7 @@ const ServiceExternalAccessSection = ({
 }: ServiceExternalAccessSectionProps) => {
   const { styles } = useStyles();
   const enableExternalAccess = Form.useWatch('enableExternalAccess', form);
+  const externalAccessMode = Form.useWatch('externalAccessMode', form);
 
   return (
     <div>
@@ -175,9 +198,118 @@ const ServiceExternalAccessSection = ({
                 options={SERVICE_EXTERNAL_ACCESS_OPTIONS}
               />
             </Form.Item>
+            {(externalAccessMode === 'NodePort' ||
+              externalAccessMode === 'LoadBalancer') && (
+              <Form.Item
+                label="外部流量策略"
+                name="externalTrafficPolicy"
+                extra="Local 可保留客户端源 IP，Cluster 会在集群范围内转发。"
+              >
+                <Select
+                  allowClear
+                  className={styles.field}
+                  options={SERVICE_TRAFFIC_POLICY_OPTIONS}
+                  placeholder="默认由集群决定"
+                />
+              </Form.Item>
+            )}
+            {externalAccessMode === 'LoadBalancer' && (
+              <>
+                <Form.Item
+                  label="LoadBalancer Class"
+                  name="loadBalancerClass"
+                  extra="指定由哪类负载均衡器实现接管该 Service。"
+                >
+                  <Input
+                    className={styles.field}
+                    placeholder="例如 service.k8s.aws/nlb"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="分配 NodePort"
+                  name="allocateLoadBalancerNodePorts"
+                  valuePropName="checked"
+                >
+                  <Checkbox>为 LoadBalancer 服务自动分配 NodePort</Checkbox>
+                </Form.Item>
+              </>
+            )}
           </div>
         )}
       </ServiceAdvancedOption>
+    </div>
+  );
+};
+
+const ServiceNetworkingSection = ({
+  form,
+}: ServiceExternalAccessSectionProps) => {
+  const { styles } = useStyles();
+  const ipFamilyPolicy = Form.useWatch('ipFamilyPolicy', form);
+
+  useEffect(() => {
+    if (!ipFamilyPolicy) {
+      form.setFieldValue('ipFamilies', undefined);
+    }
+  }, [form, ipFamilyPolicy]);
+
+  return (
+    <div>
+      <div className={styles.sectionTitle}>网络策略</div>
+      <div className={styles.option}>
+        <KubernetesCompatibilityNotice
+          message="Kubernetes 1.35+ Service 网络能力"
+          items={[
+            '双栈集群建议显式设置 IP Family Policy 与 IP Families。',
+            'trafficDistribution 会通过 EndpointSlice 影响就近转发偏好。',
+          ]}
+        />
+        <div className={styles.metadataBody}>
+          <Form.Item label="IP Family Policy" name="ipFamilyPolicy">
+            <Select
+              allowClear
+              className={styles.field}
+              options={SERVICE_IP_FAMILY_POLICY_OPTIONS}
+              placeholder="默认由集群决定"
+            />
+          </Form.Item>
+          {ipFamilyPolicy && (
+            <Form.Item label="IP Families" name="ipFamilies">
+              <Select
+                allowClear
+                className={styles.field}
+                mode="multiple"
+                options={SERVICE_IP_FAMILY_OPTIONS}
+                placeholder="请选择 IP 协议族"
+              />
+            </Form.Item>
+          )}
+          <Form.Item
+            label="内部流量策略"
+            name="internalTrafficPolicy"
+            extra="Local 仅转发到节点本地端点，Cluster 在集群范围内转发。"
+          >
+            <Select
+              allowClear
+              className={styles.field}
+              options={SERVICE_TRAFFIC_POLICY_OPTIONS}
+              placeholder="默认 Cluster"
+            />
+          </Form.Item>
+          <Form.Item
+            label="流量分布"
+            name="trafficDistribution"
+            extra="在支持的集群中用于表达就近或同节点转发偏好。"
+          >
+            <Select
+              allowClear
+              className={styles.field}
+              options={SERVICE_TRAFFIC_DISTRIBUTION_OPTIONS}
+              placeholder="默认不指定"
+            />
+          </Form.Item>
+        </div>
+      </div>
     </div>
   );
 };
@@ -242,6 +374,7 @@ const ServiceAdvancedSettings = ({ form }: ServiceAdvancedSettingsProps) => {
     <div className={styles.stack}>
       <ServiceExternalAccessSection form={form} />
       <ServiceSessionAffinitySection form={form} />
+      <ServiceNetworkingSection form={form} />
 
       <div>
         <div className={styles.sectionTitle}>元数据</div>
@@ -283,5 +416,9 @@ const ServiceAdvancedSettings = ({ form }: ServiceAdvancedSettingsProps) => {
   );
 };
 
-export { ServiceExternalAccessSection, ServiceSessionAffinitySection };
+export {
+  ServiceExternalAccessSection,
+  ServiceNetworkingSection,
+  ServiceSessionAffinitySection,
+};
 export default ServiceAdvancedSettings;

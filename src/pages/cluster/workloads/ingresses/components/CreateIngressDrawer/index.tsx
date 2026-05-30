@@ -202,9 +202,23 @@ const CreateIngressDrawer = ({
           ? [
               {
                 label: item.name,
-                ports: (item.ports || []).flatMap((port) =>
-                  port.port ? [port.port] : [],
-                ),
+                ports: (item.ports || []).flatMap((port) => {
+                  const options: { label: string; value: number | string }[] =
+                    [];
+                  if (port.name) {
+                    options.push({
+                      label: `${port.name} (${port.port || '-'})`,
+                      value: port.name,
+                    });
+                  }
+                  if (port.port) {
+                    options.push({
+                      label: String(port.port),
+                      value: port.port,
+                    });
+                  }
+                  return options;
+                }),
                 value: item.name,
               },
             ]

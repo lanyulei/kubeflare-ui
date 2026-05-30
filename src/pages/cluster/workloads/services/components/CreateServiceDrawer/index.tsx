@@ -139,6 +139,10 @@ const hasServiceSettingsContent = (values: CreateServiceFormValues) =>
 const hasAdvancedSettingsContent = (values: CreateServiceFormValues) =>
   values.enableExternalAccess ||
   values.enableSessionAffinity ||
+  values.ipFamilyPolicy ||
+  values.ipFamilies?.length ||
+  values.internalTrafficPolicy ||
+  values.trafficDistribution ||
   hasKeyValueContent(values.labels);
 
 const getStepStatusText = (

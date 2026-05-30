@@ -3,7 +3,7 @@ import {
   DownOutlined,
   UpOutlined,
 } from '@ant-design/icons';
-import { Checkbox, Form, Input } from 'antd';
+import { Checkbox, Form, Input, Select } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
@@ -216,6 +216,7 @@ const ContainerAdvancedOptions = () => {
     'enableContainerSecurityContext',
     form,
   );
+  const enableResizePolicy = Form.useWatch('enableResizePolicy', form);
   const syncHostTimezone = Form.useWatch('syncHostTimezone', form);
   const imagePullPolicy =
     (Form.useWatch('imagePullPolicy', form) as ImagePullPolicyType) ||
@@ -340,6 +341,44 @@ const ContainerAdvancedOptions = () => {
         title="容器安全上下文"
       >
         <ContainerSecurityContextFields />
+      </ToggleOptionCard>
+
+      <ToggleOptionCard
+        description="声明 Kubernetes 1.35+ 原地调整 CPU 或内存时是否需要重启容器。"
+        enabled={enableResizePolicy}
+        name="enableResizePolicy"
+        title="Resize 策略"
+      >
+        <div className={styles.fieldStack}>
+          <div className={styles.fieldBlock}>
+            <Form.Item label="CPU 调整策略" name="cpuResizeRestartPolicy">
+              <Select
+                allowClear
+                options={[
+                  { label: '无需重启', value: 'NotRequired' },
+                  { label: '重启容器', value: 'RestartContainer' },
+                ]}
+                placeholder="默认无需重启"
+              />
+            </Form.Item>
+          </div>
+          <div className={styles.fieldBlock}>
+            <Form.Item label="内存调整策略" name="memoryResizeRestartPolicy">
+              <Select
+                allowClear
+                options={[
+                  { label: '无需重启', value: 'NotRequired' },
+                  { label: '重启容器', value: 'RestartContainer' },
+                ]}
+                placeholder="默认无需重启"
+              />
+            </Form.Item>
+            <div className={styles.fieldHelp}>
+              当 Pod restartPolicy 为 Never 时，容器 resizePolicy
+              必须保持无需重启。
+            </div>
+          </div>
+        </div>
       </ToggleOptionCard>
 
       <ToggleOptionCard

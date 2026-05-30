@@ -9,7 +9,7 @@ export type IngressRoutePathItem = {
   path?: string;
   pathType: IngressPathType;
   serviceName?: string;
-  servicePort?: number;
+  servicePort?: number | string;
 };
 
 export type IngressRouteRuleItem = {
@@ -23,7 +23,10 @@ export type IngressRouteRuleItem = {
 
 export type IngressServiceOption = {
   label: string;
-  ports?: number[];
+  ports?: {
+    label: string;
+    value: number | string;
+  }[];
   value: string;
 };
 
@@ -31,6 +34,8 @@ export type CreateIngressFormValues = {
   name?: string;
   namespace?: string;
   rules: IngressRouteRuleItem[];
+  ingressClassName?: string;
+  tlsSecretName?: string;
   enablePathRewrite: boolean;
   rewriteTarget?: string;
   labels: KeyValueEditorItem[];

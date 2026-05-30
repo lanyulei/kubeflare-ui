@@ -1,5 +1,5 @@
 import { ClusterOutlined } from '@ant-design/icons';
-import { Checkbox, Empty, Modal, Spin, message } from 'antd';
+import { Checkbox, Empty, Modal, message, Spin } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useState } from 'react';
 import {

@@ -6,6 +6,7 @@ import {
   Input,
   InputNumber,
   Row,
+  Select,
   Switch,
   Tooltip,
 } from 'antd';
@@ -176,6 +177,48 @@ const PodSecurityContextFields = () => {
                     precision={0}
                     style={{ width: '100%' }}
                     placeholder="请输入用户组 ID"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="文件系统组"
+                  name="fsGroup"
+                  tooltip="挂载卷时使用的 FSGroup。"
+                >
+                  <InputNumber
+                    min={0}
+                    precision={0}
+                    style={{ width: '100%' }}
+                    placeholder="请输入文件系统组 ID"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="附加组策略"
+                  name="supplementalGroupsPolicy"
+                  tooltip="Kubernetes 1.35 GA。Strict 仅附加显式声明的组，避免镜像 /etc/group 隐式组影响卷权限。"
+                >
+                  <Select
+                    allowClear
+                    options={[
+                      { label: 'Merge', value: 'Merge' },
+                      { label: 'Strict', value: 'Strict' },
+                    ]}
+                    placeholder="默认 Merge"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item
+                  label="附加用户组"
+                  name="supplementalGroups"
+                  tooltip="多个 GID 可使用英文逗号或换行分隔。"
+                >
+                  <Input.TextArea
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                    placeholder="例如 3000,4000"
                   />
                 </Form.Item>
               </Col>

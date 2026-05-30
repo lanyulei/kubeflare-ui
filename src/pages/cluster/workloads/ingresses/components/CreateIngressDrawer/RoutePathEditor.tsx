@@ -10,15 +10,6 @@ import type {
   IngressServiceOption,
 } from './types';
 
-const PORT_NUMBER_RULES = [
-  {
-    type: 'number' as const,
-    min: 1,
-    max: 65535,
-    message: '端口范围为 1-65535',
-  },
-];
-
 const useStyles = createStyles(({ token }) => ({
   pathRows: {
     display: 'flex',
@@ -82,10 +73,8 @@ type RoutePathEditorProps = {
   serviceOptions: IngressServiceOption[];
 };
 
-const getServicePortOptions = (ports?: number[]) =>
-  Array.from(new Set(ports || []))
-    .sort((current, next) => current - next)
-    .map((port) => ({ label: String(port), value: port }));
+const getServicePortOptions = (ports?: IngressServiceOption['ports']) =>
+  Array.from(new Map((ports || []).map((port) => [port.value, port])).values());
 
 const RoutePathEditor = ({ form, serviceOptions }: RoutePathEditorProps) => {
   const { styles } = useStyles();
@@ -176,7 +165,20 @@ const RoutePathEditor = ({ form, serviceOptions }: RoutePathEditorProps) => {
                     name={[field.name, 'servicePort']}
                     rules={[
                       { required: true, message: '请选择端口' },
-                      ...PORT_NUMBER_RULES,
+                      {
+                        validator: async (_, value?: number | string) => {
+                          if (typeof value === 'number') {
+                            if (value >= 1 && value <= 65535) {
+                              return;
+                            }
+                            throw new Error('端口范围为 1-65535');
+                          }
+                          if (value?.trim()) {
+                            return;
+                          }
+                          throw new Error('请选择端口');
+                        },
+                      },
                     ]}
                   >
                     <Select

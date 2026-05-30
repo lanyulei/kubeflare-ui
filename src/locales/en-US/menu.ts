@@ -9,6 +9,7 @@ export default {
   'menu.cluster.clusterNode.clusterNodeDetail': 'Node Detail',
   'menu.cluster.clusterNamespaces': 'Namespaces',
   'menu.cluster.clusterNamespacesDetail': 'Namespace Detail',
+  'menu.cluster.clusterEvents': 'Event Center',
   'menu.cluster.clusterResourceDetail': 'Resource Detail',
   'menu.cluster.clusterWorkloads': 'Application Workloads',
   'menu.cluster.clusterWorkloads.clusterWorkloadsList': 'Workloads',

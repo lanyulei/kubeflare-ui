@@ -133,6 +133,7 @@ type ClusterResourceListPageProps<
   resourceTypeName?: string;
   searchPlaceholder?: string;
   showNamespaceFilter?: boolean;
+  extraContent?: ReactNode;
   onCreate?: (namespace?: string) => void;
   request: (
     params?: API.ClusterResourceListParams,
@@ -336,6 +337,7 @@ const ClusterResourceListPage = <
   rowKey = (record) => record.id || record.name,
   createButtonText = '新建',
   createConfig,
+  extraContent,
   renderCreateDrawer,
   reloadKey,
   resourceType,
@@ -548,6 +550,7 @@ const ClusterResourceListPage = <
 
   return (
     <PageContainer title={title}>
+      {extraContent}
       <ProTable<T>
         rowKey={rowKey}
         actionRef={actionRef}

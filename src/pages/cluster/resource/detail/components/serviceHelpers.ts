@@ -10,6 +10,12 @@ type ServiceBasicInfo = {
   type?: string;
   cluster_ip?: string;
   external_ip?: string;
+  ip_family_policy?: string;
+  ip_families?: string;
+  internal_traffic_policy?: string;
+  external_traffic_policy?: string;
+  traffic_distribution?: string;
+  load_balancer_class?: string;
   session_affinity?: string;
   selector?: string;
   dns?: string;
@@ -61,6 +67,12 @@ const getServiceClusterIP = (manifest?: Record<string, unknown>) => {
 
   return getStringValue(spec?.clusterIP);
 };
+
+const formatArrayValues = (value: unknown) =>
+  getArrayValue(value)
+    .map((item) => getStringValue(item))
+    .filter(Boolean)
+    .join('、');
 
 const getServiceExternalIP = (manifest?: Record<string, unknown>) => {
   const spec = getServiceSpec(manifest);
@@ -125,6 +137,12 @@ const buildServiceBasicInfo = (
     type: getStringValue(spec?.type) || 'ClusterIP',
     cluster_ip: getServiceClusterIP(manifest),
     external_ip: getServiceExternalIP(manifest),
+    ip_family_policy: getStringValue(spec?.ipFamilyPolicy),
+    ip_families: formatArrayValues(spec?.ipFamilies),
+    internal_traffic_policy: getStringValue(spec?.internalTrafficPolicy),
+    external_traffic_policy: getStringValue(spec?.externalTrafficPolicy),
+    traffic_distribution: getStringValue(spec?.trafficDistribution),
+    load_balancer_class: getStringValue(spec?.loadBalancerClass),
     session_affinity: getStringValue(spec?.sessionAffinity),
     selector: formatRecordEntries(getServiceSelector(manifest)),
     dns: getServiceDNS(manifest),

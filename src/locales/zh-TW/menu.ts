@@ -9,6 +9,7 @@ export default {
   'menu.cluster.clusterNode.clusterNodeDetail': '節點詳情',
   'menu.cluster.clusterNamespaces': '命名空間',
   'menu.cluster.clusterNamespacesDetail': '命名空間詳情',
+  'menu.cluster.clusterEvents': '事件中心',
   'menu.cluster.clusterResourceDetail': '資源詳情',
   'menu.cluster.clusterWorkloads': '應用負載',
   'menu.cluster.clusterWorkloads.clusterWorkloadsList': '工作負載',

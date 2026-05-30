@@ -224,6 +224,64 @@ declare namespace API {
     continue?: string
   }
 
+  type ClusterEventObjectRef = {
+    apiVersion?: string
+    kind?: string
+    namespace?: string
+    name?: string
+    uid?: string
+  }
+
+  type ClusterEventItem = {
+    id?: string
+    uid?: string
+    name?: string
+    namespace?: string
+    resource_version?: string
+    type?: string
+    reason?: string
+    action?: string
+    note?: string
+    message?: string
+    event_time?: string
+    first_timestamp?: string
+    last_timestamp?: string
+    source?: string
+    reporting_controller?: string
+    reporting_instance?: string
+    regarding?: ClusterEventObjectRef
+    related?: ClusterEventObjectRef
+    series_count?: number
+    series_last_observed_time?: string
+    expired?: boolean
+    raw?: Record<string, unknown>
+  }
+
+  type ClusterEventListData = {
+    items: ClusterEventItem[]
+    continue?: string
+    remainingItemCount?: number
+    resourceVersion?: string
+  }
+
+  type ClusterEventListParams = {
+    namespace?: string
+    limit?: number
+    continue?: string
+    resourceVersion?: string
+    type?: string
+    regardingKind?: string
+    regardingName?: string
+    keyword?: string
+  }
+
+  type ClusterEventWatchEvent = {
+    type?: 'ADDED' | 'MODIFIED' | 'DELETED' | 'BOOKMARK' | 'ERROR' | string
+    object?: ClusterEventItem
+    resourceVersion?: string
+    errorMessage?: string
+  }
+
   type ClusterNodePodItem = {
     id?: string
     name: string
@@ -802,6 +860,8 @@ declare namespace API {
     namespace?: string
     roles: string[]
     secrets: string[]
+    imagePullSecrets?: string[]
+    mountableSecrets?: string[]
     create_time?: string
   }
 

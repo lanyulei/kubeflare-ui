@@ -39,6 +39,8 @@ type ContainerSeccompProfileType =
   | 'RuntimeDefault'
   | 'Localhost'
   | 'Unconfined';
+type ContainerResizeRestartPolicy = 'NotRequired' | 'RestartContainer';
+type PodSupplementalGroupsPolicy = 'Merge' | 'Strict';
 
 type ContainerEnvItem = {
   id: string;
@@ -158,6 +160,9 @@ type CreateWorkloadContainerValues = {
   containerCapabilitiesDrop?: string[];
   containerSeccompProfileType?: ContainerSeccompProfileType;
   containerSeccompProfileLocalhost?: string;
+  enableResizePolicy?: boolean;
+  cpuResizeRestartPolicy?: ContainerResizeRestartPolicy;
+  memoryResizeRestartPolicy?: ContainerResizeRestartPolicy;
   syncHostTimezone?: boolean;
 };
 
@@ -174,6 +179,9 @@ type CreateWorkloadFormValues = CreateWorkloadContainerValues & {
   runAsNonRoot?: boolean;
   runAsUser?: number;
   runAsGroup?: number;
+  fsGroup?: number;
+  supplementalGroups?: string;
+  supplementalGroupsPolicy?: PodSupplementalGroupsPolicy;
   seLinuxLevel?: string;
   seLinuxRole?: string;
   seLinuxType?: string;
@@ -228,10 +236,12 @@ export type {
   ContainerProbeFormValue,
   ContainerProbeHandlerType,
   ContainerProbeKind,
+  ContainerResizeRestartPolicy,
   ContainerSeccompProfileType,
   ContainerType,
   CreateWorkloadContainerValues,
   CreateWorkloadFormValues,
+  PodSupplementalGroupsPolicy,
   WorkloadConfigResourceType,
   WorkloadContainerMountItem,
   WorkloadMountMode,

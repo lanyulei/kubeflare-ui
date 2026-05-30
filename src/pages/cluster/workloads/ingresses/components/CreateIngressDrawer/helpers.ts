@@ -74,6 +74,8 @@ export const getInitialCreateIngressValues = (
   name: undefined,
   namespace,
   rules: [],
+  ingressClassName: undefined,
+  tlsSecretName: undefined,
   enablePathRewrite: false,
   rewriteTarget: '/',
   annotations: [createKeyValueItem()],
@@ -85,7 +87,13 @@ export const getIngressStepFields = (step: number) => {
     return ['name', 'namespace'];
   }
   if (step === 1) {
-    return ['rules', 'enablePathRewrite', 'rewriteTarget'];
+    return [
+      'rules',
+      'ingressClassName',
+      'tlsSecretName',
+      'enablePathRewrite',
+      'rewriteTarget',
+    ];
   }
   return ['annotations', 'labels'];
 };
@@ -120,9 +128,14 @@ const buildIngressRouteRules = (values: CreateIngressFormValues) => {
         backend: {
           service: {
             name: path.serviceName,
-            port: {
-              number: path.servicePort,
-            },
+            port:
+              typeof path.servicePort === 'number'
+                ? {
+                    number: path.servicePort,
+                  }
+                : {
+                    name: path.servicePort,
+                  },
           },
         },
       })),
@@ -137,6 +150,9 @@ const buildIngressTls = (values: CreateIngressFormValues) => {
     ? [
         {
           hosts: tlsHosts,
+          ...(values.tlsSecretName?.trim()
+            ? { secretName: values.tlsSecretName.trim() }
+            : {}),
         },
       ]
     : undefined;
@@ -148,6 +164,9 @@ export const buildIngressRouteSpec = (values: CreateIngressFormValues) => {
   };
   const tls = buildIngressTls(values);
 
+  if (values.ingressClassName?.trim()) {
+    spec.ingressClassName = values.ingressClassName.trim();
+  }
   if (tls) {
     spec.tls = tls;
   }
@@ -190,6 +209,11 @@ export const buildIngressRouteManifest = (
   } else {
     delete nextSpec.tls;
   }
+  if (values.ingressClassName?.trim()) {
+    nextSpec.ingressClassName = values.ingressClassName.trim();
+  } else {
+    delete nextSpec.ingressClassName;
+  }
   if (values.enablePathRewrite) {
     annotations['nginx.ingress.kubernetes.io/use-regex'] ||= 'true';
     annotations['nginx.ingress.kubernetes.io/rewrite-target'] =
@@ -222,8 +246,9 @@ export const isValidIngressPath = (path?: IngressRoutePathItem) =>
       path.pathType &&
       path.serviceName?.trim() &&
       path.servicePort &&
-      path.servicePort >= 1 &&
-      path.servicePort <= 65535,
+      (typeof path.servicePort === 'number'
+        ? path.servicePort >= 1 && path.servicePort <= 65535
+        : path.servicePort.trim()),
   );
 
 export const isValidIngressRule = (rule?: IngressRouteRuleItem) =>
@@ -283,7 +308,13 @@ export const buildIngressFormValuesFromManifest = (
   const rewriteTarget = getStringValue(
     annotations['nginx.ingress.kubernetes.io/rewrite-target'],
   );
+  const tlsItems = getArrayValue(spec?.tls)
+    .map((item) => getRecordValue(item))
+    .filter(Boolean);
   const tlsHosts = getIngressTlsHosts(manifest);
+  const tlsSecretName = getStringValue(
+    tlsItems.find((item) => getStringValue(item?.secretName))?.secretName,
+  );
   const rules = getArrayValue(spec?.rules).flatMap((ruleItem) => {
     const rule = getRecordValue(ruleItem);
     const host = getStringValue(rule?.host);
@@ -293,7 +324,8 @@ export const buildIngressFormValuesFromManifest = (
         const backend = getRecordValue(pathRecord?.backend);
         const service = getRecordValue(backend?.service);
         const port = getRecordValue(service?.port);
-        const servicePort = getNumberValue(port?.number);
+        const servicePort =
+          getNumberValue(port?.number) || getStringValue(port?.name);
 
         if (!servicePort) {
           return undefined;
@@ -330,6 +362,8 @@ export const buildIngressFormValuesFromManifest = (
     name: getStringValue(metadata?.name),
     namespace: getStringValue(metadata?.namespace) || fallbackNamespace,
     rules,
+    ingressClassName: getStringValue(spec?.ingressClassName),
+    tlsSecretName,
     enablePathRewrite: Boolean(rewriteTarget),
     rewriteTarget: rewriteTarget || '/',
     annotations: mapRecordToKeyValueItems(annotations),

@@ -4,6 +4,22 @@ export type ServiceInternalAccessMode = 'ClusterIP' | 'Headless';
 
 export type ServiceExternalAccessMode = 'None' | 'NodePort' | 'LoadBalancer';
 
+export type ServiceIpFamilyPolicy =
+  | 'SingleStack'
+  | 'PreferDualStack'
+  | 'RequireDualStack';
+
+export type ServiceIpFamily = 'IPv4' | 'IPv6';
+
+export type ServiceTrafficPolicy = 'Cluster' | 'Local';
+
+export type ServiceInternalTrafficPolicy = 'Cluster' | 'Local';
+
+export type ServiceTrafficDistribution =
+  | 'PreferClose'
+  | 'PreferSameZone'
+  | 'PreferSameNode';
+
 export type ServicePortProtocol =
   | 'GRPC'
   | 'HTTP'
@@ -37,5 +53,12 @@ export type CreateServiceFormValues = {
   sessionAffinityTimeoutSeconds?: number;
   externalAccessAnnotations?: KeyValueEditorItem[];
   loadBalancerProvider?: string;
+  loadBalancerClass?: string;
+  allocateLoadBalancerNodePorts?: boolean;
+  externalTrafficPolicy?: ServiceTrafficPolicy;
+  internalTrafficPolicy?: ServiceInternalTrafficPolicy;
+  ipFamilyPolicy?: ServiceIpFamilyPolicy;
+  ipFamilies?: ServiceIpFamily[];
+  trafficDistribution?: ServiceTrafficDistribution;
   labels: KeyValueEditorItem[];
 };

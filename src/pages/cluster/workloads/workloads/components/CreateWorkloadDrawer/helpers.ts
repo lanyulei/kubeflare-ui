@@ -106,6 +106,9 @@ const getInitialCreateWorkloadValues = (
   containerCapabilitiesDrop: [''],
   containerSeccompProfileType: undefined,
   containerSeccompProfileLocalhost: '',
+  enableResizePolicy: false,
+  cpuResizeRestartPolicy: undefined,
+  memoryResizeRestartPolicy: undefined,
   syncHostTimezone: false,
   containers: [],
   protocol: 'TCP',
@@ -170,6 +173,12 @@ const splitCommandText = (value?: string) =>
 
 const normalizeStringList = (value?: string[]) =>
   (value || []).map((item) => item.trim()).filter(Boolean);
+
+const normalizeNumberListText = (value?: string) =>
+  (value || '')
+    .split(/\n|,/)
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item >= 0);
 
 const normalizeContainerPortProtocol = (protocol?: string) => {
   if (protocol === 'UDP' || protocol === 'SCTP') {
@@ -463,6 +472,28 @@ const getContainerSecurityContext = (values: CreateWorkloadContainerValues) => {
   return Object.keys(securityContext).length > 0 ? securityContext : undefined;
 };
 
+const getContainerResizePolicy = (values: CreateWorkloadContainerValues) => {
+  if (!values.enableResizePolicy) {
+    return undefined;
+  }
+  const resizePolicy = [
+    values.cpuResizeRestartPolicy
+      ? {
+          resourceName: 'cpu',
+          restartPolicy: values.cpuResizeRestartPolicy,
+        }
+      : undefined,
+    values.memoryResizeRestartPolicy
+      ? {
+          resourceName: 'memory',
+          restartPolicy: values.memoryResizeRestartPolicy,
+        }
+      : undefined,
+  ].filter(Boolean);
+
+  return resizePolicy.length > 0 ? resizePolicy : undefined;
+};
+
 const normalizeProbeNumber = (value: number | undefined, fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
@@ -646,6 +677,13 @@ const getWorkloadStepFields = (
       'podSchedulingCustomStrategy',
       'podSchedulingCustomTarget',
       'podSchedulingCustomRules',
+      'enablePodSecurityContext',
+      'runAsNonRoot',
+      'runAsUser',
+      'runAsGroup',
+      'fsGroup',
+      'supplementalGroups',
+      'supplementalGroupsPolicy',
       'enablePodGracefulTermination',
       'terminationGracePeriodSeconds',
       'podAnnotations',
@@ -953,6 +991,7 @@ const getContainerManifest = (
     ? splitCommandText(values.startupArgs)
     : [];
   const securityContext = getContainerSecurityContext(values);
+  const resizePolicy = getContainerResizePolicy(values);
   const storageVolumeMount = getContainerStorageMount(formValues, values);
   const storageVolumeMounts = getConfiguredStorageItems(formValues).flatMap(
     (item) => {
@@ -990,6 +1029,7 @@ const getContainerManifest = (
     livenessProbe,
     startupProbe,
     securityContext,
+    resizePolicy,
     volumeMounts: volumeMounts.length > 0 ? volumeMounts : undefined,
   };
 };
@@ -1047,6 +1087,12 @@ const buildCreateWorkloadManifest = (
     );
     setIfDefined(securityContext, 'runAsUser', values.runAsUser);
     setIfDefined(securityContext, 'runAsGroup', values.runAsGroup);
+    setIfDefined(securityContext, 'fsGroup', values.fsGroup);
+    setIfDefined(
+      securityContext,
+      'supplementalGroupsPolicy',
+      values.supplementalGroupsPolicy,
+    );
     setIfDefined(seLinuxOptions, 'level', normalizeName(values.seLinuxLevel));
     setIfDefined(seLinuxOptions, 'role', normalizeName(values.seLinuxRole));
     setIfDefined(seLinuxOptions, 'type', normalizeName(values.seLinuxType));
@@ -1054,6 +1100,12 @@ const buildCreateWorkloadManifest = (
 
     if (Object.keys(seLinuxOptions).length > 0) {
       securityContext.seLinuxOptions = seLinuxOptions;
+    }
+    const supplementalGroups = normalizeNumberListText(
+      values.supplementalGroups,
+    );
+    if (supplementalGroups.length > 0) {
+      securityContext.supplementalGroups = supplementalGroups;
     }
     if (Object.keys(securityContext).length > 0) {
       podSpec.securityContext = securityContext;

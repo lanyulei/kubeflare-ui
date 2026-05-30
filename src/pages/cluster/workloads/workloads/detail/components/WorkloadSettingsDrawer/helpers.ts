@@ -72,6 +72,14 @@ const getStringArray = (value: unknown) =>
     ? value.filter((item): item is string => typeof item === 'string')
     : [];
 
+const getNumberArray = (value: unknown) =>
+  Array.isArray(value)
+    ? value.flatMap((item) => {
+        const numberValue = getNumberValue(item);
+        return numberValue === undefined ? [] : [numberValue];
+      })
+    : [];
+
 const createId = (prefix: string, index: number) => `${prefix}-${index}`;
 
 const cloneManifest = (manifest: ManifestRecord): ManifestRecord =>
@@ -301,6 +309,16 @@ const parseContainerValues = (
   const seccompProfile = getRecordValue(securityContext.seccompProfile) || {};
   const seccompType = getStringValue(seccompProfile.type);
   const volumeMounts = getRecordArray(manifest.volumeMounts);
+  const resizePolicy = getRecordArray(manifest.resizePolicy);
+  const getResizePolicy = (resourceName: string) =>
+    resizePolicy
+      .map((item) => ({
+        resourceName: getStringValue(item.resourceName),
+        restartPolicy: getStringValue(item.restartPolicy),
+      }))
+      .find((item) => item.resourceName === resourceName)?.restartPolicy;
+  const cpuResizeRestartPolicy = getResizePolicy('cpu');
+  const memoryResizeRestartPolicy = getResizePolicy('memory');
 
   return {
     id: createId(`${containerType}-container`, index),
@@ -351,6 +369,21 @@ const parseContainerValues = (
     containerSeccompProfileLocalhost: getStringValue(
       seccompProfile.localhostProfile,
     ),
+    enableResizePolicy: Boolean(
+      cpuResizeRestartPolicy || memoryResizeRestartPolicy,
+    ),
+    cpuResizeRestartPolicy:
+      cpuResizeRestartPolicy === 'RestartContainer'
+        ? 'RestartContainer'
+        : cpuResizeRestartPolicy === 'NotRequired'
+          ? 'NotRequired'
+          : undefined,
+    memoryResizeRestartPolicy:
+      memoryResizeRestartPolicy === 'RestartContainer'
+        ? 'RestartContainer'
+        : memoryResizeRestartPolicy === 'NotRequired'
+          ? 'NotRequired'
+          : undefined,
     syncHostTimezone: volumeMounts.some(
       (mount) =>
         mount.name === HOST_TIME_VOLUME_NAME ||
@@ -786,6 +819,12 @@ const getWorkloadSettingsFormValues = (
   const terminationGracePeriodSeconds = getNumberValue(
     podSpec.terminationGracePeriodSeconds,
   );
+  const podSecurityContext = getRecordValue(podSpec.securityContext) || {};
+  const podSeLinuxOptions =
+    getRecordValue(podSecurityContext.seLinuxOptions) || {};
+  const supplementalGroupsPolicy = getStringValue(
+    podSecurityContext.supplementalGroupsPolicy,
+  );
 
   return {
     ...initialValues,
@@ -798,6 +837,24 @@ const getWorkloadSettingsFormValues = (
     ...getUpdateStrategyValues(type, spec),
     containers: containers.map((container) => container.values),
     storageItems: getStorageItemsFromManifest(type, manifest, containers),
+    enablePodSecurityContext: Object.keys(podSecurityContext).length > 0,
+    runAsNonRoot: getBooleanValue(podSecurityContext.runAsNonRoot) || false,
+    runAsUser: getNumberValue(podSecurityContext.runAsUser),
+    runAsGroup: getNumberValue(podSecurityContext.runAsGroup),
+    fsGroup: getNumberValue(podSecurityContext.fsGroup),
+    supplementalGroups: getNumberArray(
+      podSecurityContext.supplementalGroups,
+    ).join(','),
+    supplementalGroupsPolicy:
+      supplementalGroupsPolicy === 'Strict'
+        ? 'Strict'
+        : supplementalGroupsPolicy === 'Merge'
+          ? 'Merge'
+          : undefined,
+    seLinuxLevel: getStringValue(podSeLinuxOptions.level),
+    seLinuxRole: getStringValue(podSeLinuxOptions.role),
+    seLinuxType: getStringValue(podSeLinuxOptions.type),
+    seLinuxUser: getStringValue(podSeLinuxOptions.user),
     enablePodGracefulTermination: terminationGracePeriodSeconds !== undefined,
     terminationGracePeriodSeconds:
       terminationGracePeriodSeconds ??

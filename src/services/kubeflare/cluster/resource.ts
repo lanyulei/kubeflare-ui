@@ -117,6 +117,26 @@ type KubernetesEndpoints = {
   }[]
 }
 
+type KubernetesEndpointSlice = {
+  addressType?: string
+  endpoints?: {
+    addresses?: string[]
+    conditions?: {
+      ready?: boolean
+      serving?: boolean
+      terminating?: boolean
+    }
+    hostname?: string
+    nodeName?: string
+    targetRef?: {
+      kind?: string
+      name?: string
+      namespace?: string
+    }
+  }[]
+  ports?: KubernetesEndpointPort[]
+}
+
 type KubernetesEndpointAddress = {
   ip?: string
   hostname?: string
@@ -641,6 +661,30 @@ const toServiceEndpointItem = (
   })),
 })
 
+const toServiceEndpointSliceItem = (
+  endpoint: NonNullable<KubernetesEndpointSlice['endpoints']>[number],
+  ports: KubernetesEndpointPort[],
+  index: number,
+): API.ClusterServiceEndpointItem => {
+  const ready = endpoint.conditions?.ready !== false
+  const address = endpoint.addresses?.[0] || endpoint.hostname
+
+  return {
+    id: `${address || endpoint.targetRef?.name || '-'}-${index}`,
+    ip: address,
+    nodeName: endpoint.nodeName,
+    targetKind: endpoint.targetRef?.kind,
+    targetName: endpoint.targetRef?.name,
+    targetNamespace: endpoint.targetRef?.namespace,
+    ready,
+    ports: ports.map((port) => ({
+      name: port.name,
+      port: port.port,
+      protocol: port.protocol,
+    })),
+  }
+}
+
 const getIngressGatewayAddress = (ingress: KubernetesIngress) =>
   uniqueText(
     (ingress.status?.loadBalancer?.ingress || []).map(
@@ -846,17 +890,21 @@ const toServiceAccountItem = (
 ): API.ClusterServiceAccountItem => {
   const namespace = serviceAccount.metadata?.namespace
   const name = serviceAccount.metadata?.name || '-'
-  const secrets = uniqueText([
-    ...(serviceAccount.secrets || []).map((secret) => secret.name),
-    ...(serviceAccount.imagePullSecrets || []).map((secret) => secret.name),
-  ])
+  const mountableSecrets = uniqueText(
+    (serviceAccount.secrets || []).map((secret) => secret.name),
+  )
+  const imagePullSecrets = uniqueText(
+    (serviceAccount.imagePullSecrets || []).map((secret) => secret.name),
+  )
 
   return {
     id: serviceAccount.metadata?.uid || `${namespace || '-'}-${name}`,
     name,
     namespace,
     roles: Array.from(roleMap.get(`${namespace}/${name}`) || []),
-    secrets,
+    secrets: uniqueText([...mountableSecrets, ...imagePullSecrets]),
+    mountableSecrets,
+    imagePullSecrets,
     create_time: serviceAccount.metadata?.creationTimestamp,
   }
 }
@@ -1372,6 +1420,36 @@ export async function getClusterServiceEndpoints(
         items: [],
       },
     } as API.ApiResponse<API.ClusterServiceEndpointsData>
+  }
+
+  try {
+    const endpointSliceRes = await request<API.ApiResponse<KubernetesList<KubernetesEndpointSlice>>>(
+      `/kapis/discovery.k8s.io/v1/namespaces/${encodeURIComponent(namespace)}/endpointslices`,
+      {
+        method: 'GET',
+        params: {
+          labelSelector: `kubernetes.io/service-name=${name}`,
+        },
+        ...(options || {}),
+        headers: getClusterHeaders(clusterId, options),
+      },
+    )
+    let sliceIndex = 0
+    const sliceItems = (endpointSliceRes.data?.items || []).flatMap((slice) => {
+      const ports = slice.ports || []
+      return (slice.endpoints || []).map((endpoint) =>
+        toServiceEndpointSliceItem(endpoint, ports, sliceIndex++),
+      )
+    })
+
+    return {
+      ...endpointSliceRes,
+      data: {
+        items: sliceItems,
+      },
+    } as API.ApiResponse<API.ClusterServiceEndpointsData>
+  } catch {
+    // Older or aggregated clusters might not expose discovery.k8s.io through the proxy.
   }
 
   const res = await request<API.ApiResponse<KubernetesEndpoints>>(

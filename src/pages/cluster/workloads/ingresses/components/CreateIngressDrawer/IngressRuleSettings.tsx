@@ -9,6 +9,7 @@ import type { FormInstance } from 'antd';
 import { Button, Checkbox, Form, Input, message, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { KubernetesCompatibilityNotice } from '@/components';
 import {
   createIngressRuleItem,
   isValidIngressPath,
@@ -148,6 +149,16 @@ const useStyles = createStyles(({ token }) => ({
 
     '.ant-form-item': {
       marginBottom: 0,
+    },
+  },
+  ingressOptions: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: token.marginMD,
+    marginBottom: token.marginSM,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
     },
   },
   rewriteHeader: {
@@ -331,6 +342,29 @@ const IngressRuleSettings = ({
     <div className={styles.stack}>
       <div className={styles.section}>
         <div className={styles.sectionTitle}>路由规则</div>
+        <KubernetesCompatibilityNotice
+          message="Kubernetes 1.35+ 路由建议"
+          items={[
+            'Ingress 资源仍可使用；新建复杂流量治理能力时建议评估 Gateway API。',
+            'HTTPS 路由建议显式指定 TLS Secret，后端端口支持端口号或命名端口。',
+          ]}
+        />
+        <div className={styles.ingressOptions}>
+          <Form.Item
+            label="Ingress Class"
+            name="ingressClassName"
+            tooltip="指定处理该 Ingress 的控制器类。"
+          >
+            <Input placeholder="例如 nginx、alb、traefik" />
+          </Form.Item>
+          <Form.Item
+            label="TLS Secret"
+            name="tlsSecretName"
+            tooltip="HTTPS 路由使用的 TLS Secret，需包含 tls.crt 与 tls.key。"
+          >
+            <Input placeholder="例如 example-com-tls" />
+          </Form.Item>
+        </div>
         <Form.Item
           name="rules"
           required
