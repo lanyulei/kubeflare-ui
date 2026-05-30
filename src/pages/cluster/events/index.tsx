@@ -1,27 +1,8 @@
-import {
-  ClearOutlined,
-  LinkOutlined,
-  ReloadOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons';
+import { LinkOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Link } from '@umijs/max';
-import {
-  Alert,
-  App,
-  Button,
-  Col,
-  Form,
-  Input,
-  Row,
-  Select,
-  Space,
-  Statistic,
-  Switch,
-  Tag,
-  Tooltip,
-} from 'antd';
+import { Alert, App, Select, Space, Switch, Tag, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -35,21 +16,18 @@ import {
   getEventMessage,
   getEventObjectDetailPath,
   getEventObjectText,
-  getNormalCount,
-  getWarningCount,
   mergeEventItems,
   resourceKindLabels,
   sortEventsByTime,
 } from '@/components/ClusterEventCenter/eventHelpers';
-import { getClusterNamespaceList } from '@/services/kubeflare/cluster/namespace';
 import {
   getClusterEventList,
   matchClusterEvent,
 } from '@/services/kubeflare/cluster/event';
+import { getClusterNamespaceList } from '@/services/kubeflare/cluster/namespace';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 const DEFAULT_LIMIT = 300;
-const ALL_NAMESPACES_VALUE = '__all__';
 
 type EventFilterFormValues = {
   keyword?: string;
@@ -65,35 +43,9 @@ const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     gap: token.marginMD,
   },
-  filters: {
-    padding: token.padding,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusLG,
-    background: token.colorBgContainer,
-  },
-  summary: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-    gap: token.marginSM,
-
-    '@media (max-width: 992px)': {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
-
-    '@media (max-width: 576px)': {
-      gridTemplateColumns: '1fr',
-    },
-  },
-  summaryItem: {
-    padding: `${token.paddingSM}px ${token.padding}px`,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusLG,
-    background: token.colorBgContainer,
-  },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: token.marginSM,
     flexWrap: 'wrap',
   },
@@ -101,6 +53,7 @@ const useStyles = createStyles(({ token }) => ({
     display: 'inline-flex',
     alignItems: 'center',
     gap: token.marginXS,
+    marginRight: 10,
   },
   object: {
     display: 'flex',
@@ -110,6 +63,13 @@ const useStyles = createStyles(({ token }) => ({
   },
 }));
 
+const watchStatusText: Record<string, string> = {
+  connected: '实时中',
+  connecting: '连接中',
+  error: '重连等待',
+  reconnecting: '重连中',
+};
+
 const kindOptions = Object.entries(resourceKindLabels).map(
   ([value, label]) => ({
     label: `${label}（${value}）`,
@@ -117,22 +77,11 @@ const kindOptions = Object.entries(resourceKindLabels).map(
   }),
 );
 
-const watchStatusText: Record<string, string> = {
-  connected: '实时中',
-  connecting: '连接中',
-  error: '重连等待',
-  idle: '已暂停',
-  reconnecting: '重连中',
-};
-
 const normalizeFilters = (
   values: EventFilterFormValues,
 ): API.ClusterEventListParams => ({
   keyword: values.keyword?.trim() || undefined,
-  namespace:
-    values.namespace && values.namespace !== ALL_NAMESPACES_VALUE
-      ? values.namespace
-      : undefined,
+  namespace: values.namespace,
   regardingKind: values.regardingKind,
   regardingName: values.regardingName?.trim() || undefined,
   type: values.type,
@@ -142,7 +91,6 @@ const normalizeFilters = (
 const GlobalEvents = () => {
   const { message } = App.useApp();
   const { styles } = useStyles();
-  const [form] = Form.useForm<EventFilterFormValues>();
   const [filters, setFilters] = useState<API.ClusterEventListParams>({
     limit: DEFAULT_LIMIT,
   });
@@ -154,6 +102,10 @@ const GlobalEvents = () => {
   const [namespaceOptions, setNamespaceOptions] = useState<
     { label: string; value: string }[]
   >([]);
+  const [searchValues, setSearchValues] = useState<EventFilterFormValues>({});
+  const [toolbarFilters, setToolbarFilters] = useState<EventFilterFormValues>(
+    {},
+  );
   const [resourceVersion, setResourceVersion] = useState<string>();
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<API.ClusterEventItem>();
@@ -185,15 +137,35 @@ const GlobalEvents = () => {
   );
   const columns: ProColumns<API.ClusterEventItem>[] = [
     {
+      title: '对象名称',
+      dataIndex: 'regardingName',
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: '输入对象名称',
+      },
+    },
+    {
+      title: '关键词',
+      dataIndex: 'keyword',
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: '原因 / 消息 / 来源',
+      },
+    },
+    {
       title: '类型',
       dataIndex: 'type',
       width: 100,
+      search: false,
       render: (_, record) => <EventTypeBadge type={record.type} />,
     },
     {
       title: '发生时间',
       dataIndex: 'event_time',
       width: 150,
+      search: false,
       renderText: (_, record) => formatRelativeTime(record.event_time),
     },
     {
@@ -201,6 +173,7 @@ const GlobalEvents = () => {
       dataIndex: 'namespace',
       width: 150,
       ellipsis: true,
+      search: false,
       renderText: (_, record) => record.namespace || '-',
     },
     {
@@ -208,6 +181,7 @@ const GlobalEvents = () => {
       dataIndex: 'regarding',
       width: 230,
       ellipsis: true,
+      search: false,
       render: (_, record) => {
         const objectText = getEventObjectText(record.regarding);
         const path = getEventObjectDetailPath(record.regarding);
@@ -241,6 +215,7 @@ const GlobalEvents = () => {
       dataIndex: 'reason',
       width: 210,
       ellipsis: true,
+      search: false,
       render: (_, record) => (
         <Space size={4} wrap>
           <Tag>{record.reason || '-'}</Tag>
@@ -252,6 +227,7 @@ const GlobalEvents = () => {
       title: '次数',
       dataIndex: 'series_count',
       width: 90,
+      search: false,
       renderText: (_, record) => record.series_count || '-',
     },
     {
@@ -259,12 +235,14 @@ const GlobalEvents = () => {
       dataIndex: 'source',
       width: 220,
       ellipsis: true,
+      search: false,
       renderText: (_, record) => record.source || '-',
     },
     {
       title: '消息',
       dataIndex: 'message',
       ellipsis: true,
+      search: false,
       render: (_, record) => {
         const eventMessage = getEventMessage(record);
 
@@ -348,16 +326,39 @@ const GlobalEvents = () => {
     );
   }, [watchItems]);
 
-  const handleSearch = async () => {
-    const nextFilters = normalizeFilters(form.getFieldsValue());
+  const handleSearch = async (values: EventFilterFormValues) => {
+    setSearchValues(values);
+    const nextFilters = normalizeFilters({
+      ...values,
+      ...toolbarFilters,
+    });
     filtersRef.current = nextFilters;
     setFilters(nextFilters);
     await loadEvents(nextFilters);
   };
 
   const handleReset = async () => {
-    form.resetFields();
+    setSearchValues({});
+    setToolbarFilters({});
     const nextFilters = { limit: DEFAULT_LIMIT };
+    filtersRef.current = nextFilters;
+    setFilters(nextFilters);
+    await loadEvents(nextFilters);
+  };
+
+  const handleToolbarFilterChange = async (
+    name: keyof EventFilterFormValues,
+    value?: string,
+  ) => {
+    const nextToolbarFilters = {
+      ...toolbarFilters,
+      [name]: value,
+    };
+    setToolbarFilters(nextToolbarFilters);
+    const nextFilters = normalizeFilters({
+      ...searchValues,
+      ...nextToolbarFilters,
+    });
     filtersRef.current = nextFilters;
     setFilters(nextFilters);
     await loadEvents(nextFilters);
@@ -371,117 +372,72 @@ const GlobalEvents = () => {
           type="info"
           message="Kubernetes Events 通常只保留较短时间，适合排障和实时观察，不作为长期告警或审计历史。"
         />
-        <div className={styles.filters}>
-          <Form form={form} layout="vertical">
-            <Row gutter={16}>
-              <Col lg={6} md={12} xs={24}>
-                <Form.Item label="命名空间" name="namespace">
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    options={[
-                      { label: '全部命名空间', value: ALL_NAMESPACES_VALUE },
-                      ...namespaceOptions,
-                    ]}
-                    placeholder="全部命名空间"
-                  />
-                </Form.Item>
-              </Col>
-              <Col lg={4} md={12} xs={24}>
-                <Form.Item label="类型" name="type">
-                  <Select
-                    allowClear
-                    options={[
-                      { label: '正常', value: 'Normal' },
-                      { label: '警告', value: 'Warning' },
-                    ]}
-                    placeholder="全部类型"
-                  />
-                </Form.Item>
-              </Col>
-              <Col lg={5} md={12} xs={24}>
-                <Form.Item label="对象类型" name="regardingKind">
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    options={kindOptions}
-                    placeholder="全部对象"
-                  />
-                </Form.Item>
-              </Col>
-              <Col lg={5} md={12} xs={24}>
-                <Form.Item label="对象名称" name="regardingName">
-                  <Input allowClear placeholder="输入对象名称" />
-                </Form.Item>
-              </Col>
-              <Col lg={4} md={12} xs={24}>
-                <Form.Item label="关键词" name="keyword">
-                  <Input allowClear placeholder="原因 / 消息 / 来源" />
-                </Form.Item>
-              </Col>
-            </Row>
-            <div className={styles.toolbar}>
-              <Space>
-                <Button type="primary" onClick={handleSearch}>
-                  查询
-                </Button>
-                <Button icon={<ClearOutlined />} onClick={handleReset}>
-                  重置
-                </Button>
-                <Button
-                  icon={<ReloadOutlined />}
-                  loading={loading}
-                  onClick={() => loadEvents(filters)}
-                >
-                  刷新
-                </Button>
-              </Space>
-              <Space className={styles.live}>
-                <ThunderboltOutlined />
-                <span>实时 Watch</span>
-                <Switch checked={liveEnabled} onChange={setLiveEnabled} />
-                <Tag color={liveEnabled ? 'processing' : 'default'}>
-                  {watchStatusText[watchStatus]}
-                </Tag>
-              </Space>
-            </div>
-          </Form>
-        </div>
-        <div className={styles.summary}>
-          <div className={styles.summaryItem}>
-            <Statistic title="当前事件" value={filteredItems.length} />
-          </div>
-          <div className={styles.summaryItem}>
-            <Statistic
-              title="警告事件"
-              value={getWarningCount(filteredItems)}
-              valueStyle={{ color: '#d48806' }}
-            />
-          </div>
-          <div className={styles.summaryItem}>
-            <Statistic title="正常事件" value={getNormalCount(filteredItems)} />
-          </div>
-          <div className={styles.summaryItem}>
-            <Statistic
-              title="ResourceVersion"
-              value={resourceVersion || '-'}
-              valueStyle={{ fontSize: 18 }}
-            />
-          </div>
-        </div>
         <ProTable<API.ClusterEventItem>
           rowKey={(record) => getEventItemKey(record)}
           columns={columns}
           dataSource={filteredItems}
           loading={loading}
-          search={false}
-          options={false}
+          search={{
+            defaultCollapsed: false,
+            labelWidth: 'auto',
+            span: 12,
+            optionRender: (_searchConfig, _formProps, dom) => [
+              <Space className={styles.live} key="live-watch">
+                <ThunderboltOutlined />
+                <span>实时 Watch</span>
+                <Switch checked={liveEnabled} onChange={setLiveEnabled} />
+              </Space>,
+              ...dom,
+            ],
+          }}
+          options={{
+            reload: () => loadEvents(filtersRef.current),
+          }}
           pagination={{
-            pageSize: 20,
+            defaultPageSize: 20,
             showSizeChanger: true,
           }}
+          headerTitle={
+            <Space className={styles.toolbar}>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                options={namespaceOptions}
+                placeholder="全部命名空间"
+                style={{ width: 180 }}
+                value={toolbarFilters.namespace}
+                onChange={(value) =>
+                  handleToolbarFilterChange('namespace', value)
+                }
+              />
+              <Select
+                allowClear
+                options={[
+                  { label: '正常', value: 'Normal' },
+                  { label: '警告', value: 'Warning' },
+                ]}
+                placeholder="全部类型"
+                style={{ width: 130 }}
+                value={toolbarFilters.type}
+                onChange={(value) => handleToolbarFilterChange('type', value)}
+              />
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                options={kindOptions}
+                placeholder="全部资源对象"
+                style={{ width: 220 }}
+                value={toolbarFilters.regardingKind}
+                onChange={(value) =>
+                  handleToolbarFilterChange('regardingKind', value)
+                }
+              />
+            </Space>
+          }
+          onSubmit={handleSearch}
+          onReset={handleReset}
           onRow={(record) => ({
             onClick: () => {
               setSelectedEvent(record);
