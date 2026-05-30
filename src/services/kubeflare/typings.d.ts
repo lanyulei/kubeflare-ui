@@ -652,10 +652,6 @@ declare namespace API {
     | 'Pod'
     | 'Service'
     | 'Ingress'
-    | 'HorizontalPodAutoscaler'
-    | 'VerticalPodAutoscaler'
-    | 'PodDisruptionBudget'
-    | 'NetworkPolicy'
     | 'Secret'
     | 'ConfigMap'
     | 'ServiceAccount'
@@ -757,59 +753,6 @@ declare namespace API {
     namespace?: string
     gateway_address?: string
     ingress_class?: string
-    create_time?: string
-  }
-
-  type ClusterHorizontalPodAutoscalerItem = {
-    id?: string
-    name: string
-    namespace?: string
-    target_kind?: string
-    target_name?: string
-    min_replicas?: number
-    max_replicas?: number
-    current_replicas?: number
-    desired_replicas?: number
-    metrics?: string[]
-    status?: string
-    create_time?: string
-  }
-
-  type ClusterVerticalPodAutoscalerItem = {
-    id?: string
-    name: string
-    namespace?: string
-    target_kind?: string
-    target_name?: string
-    update_mode?: string
-    recommendation?: string
-    status?: string
-    create_time?: string
-  }
-
-  type ClusterPodDisruptionBudgetItem = {
-    id?: string
-    name: string
-    namespace?: string
-    min_available?: string
-    max_unavailable?: string
-    allowed_disruptions?: number
-    current_healthy?: number
-    desired_healthy?: number
-    expected_pods?: number
-    selector?: string
-    status?: string
-    create_time?: string
-  }
-
-  type ClusterNetworkPolicyItem = {
-    id?: string
-    name: string
-    namespace?: string
-    pod_selector?: string
-    policy_types?: string[]
-    ingress_rules?: number
-    egress_rules?: number
     create_time?: string
   }
 

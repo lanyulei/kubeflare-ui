@@ -18,13 +18,6 @@ export default {
   'menu.cluster.clusterWorkloads.clusterWorkloadsPods': 'Pods',
   'menu.cluster.clusterWorkloads.clusterWorkloadsServices': 'Services',
   'menu.cluster.clusterWorkloads.clusterWorkloadsIngresses': 'Ingresses',
-  'menu.cluster.clusterPolicies': 'Policy Governance',
-  'menu.cluster.clusterPolicies.clusterPoliciesAutoscaling': 'Autoscaling',
-  'menu.cluster.clusterPolicies.clusterPoliciesVerticalPodAutoscalers':
-    'Resource Recommendations',
-  'menu.cluster.clusterPolicies.clusterPoliciesAvailability':
-    'Availability Protection',
-  'menu.cluster.clusterPolicies.clusterPoliciesNetwork': 'Network Policies',
   'menu.cluster.clusterConfig': 'Configuration',
   'menu.cluster.clusterConfig.clusterConfigSecrets': 'Secrets',
   'menu.cluster.clusterConfig.clusterConfigConfigMaps': 'ConfigMaps',

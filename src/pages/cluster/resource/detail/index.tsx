@@ -144,10 +144,6 @@ const resourceTypeLabels: Record<API.ClusterResourceCreateType, string> = {
   Pod: '容器组',
   Service: '服务',
   Ingress: '应用路由',
-  HorizontalPodAutoscaler: '弹性伸缩',
-  VerticalPodAutoscaler: '资源建议',
-  PodDisruptionBudget: '可用性保护',
-  NetworkPolicy: '网络策略',
   Secret: '保密字典',
   ConfigMap: '配置字典',
   ServiceAccount: '服务账户',
@@ -162,10 +158,6 @@ const resourceListPaths: Record<API.ClusterResourceCreateType, string> = {
   Pod: '/cluster/workloads/pods',
   Service: '/cluster/workloads/services',
   Ingress: '/cluster/workloads/ingresses',
-  HorizontalPodAutoscaler: '/cluster/policies/autoscaling',
-  VerticalPodAutoscaler: '/cluster/policies/vertical-pod-autoscalers',
-  PodDisruptionBudget: '/cluster/policies/availability',
-  NetworkPolicy: '/cluster/policies/network',
   Secret: '/cluster/config/secrets',
   ConfigMap: '/cluster/config/config-maps',
   ServiceAccount: '/cluster/config/service-accounts',
@@ -180,10 +172,6 @@ const namespacedResourceTypes = new Set<API.ClusterResourceCreateType>([
   'Pod',
   'Service',
   'Ingress',
-  'HorizontalPodAutoscaler',
-  'VerticalPodAutoscaler',
-  'PodDisruptionBudget',
-  'NetworkPolicy',
   'Secret',
   'ConfigMap',
   'ServiceAccount',
@@ -402,162 +390,6 @@ const buildServiceAccountBasicInfo = (
   };
 };
 
-const buildPolicyTargetText = (targetRef?: Record<string, unknown>) => {
-  const kind = getStringValue(targetRef?.kind);
-  const name = getStringValue(targetRef?.name);
-
-  return kind && name ? `${kind} / ${name}` : '-';
-};
-
-const buildHorizontalPodAutoscalerMetricsText = (
-  manifest?: Record<string, unknown>,
-) => {
-  const spec = getRecordValue(manifest?.spec);
-  const metrics = getArrayValue(spec?.metrics)
-    .map((item) => getRecordValue(item))
-    .filter(Boolean)
-    .map((metric) => {
-      const type = getStringValue(metric?.type);
-      const resource = getRecordValue(metric?.resource);
-      const resourceTarget = getRecordValue(resource?.target);
-      const resourceName = getStringValue(resource?.name);
-
-      if (type === 'Resource' && resourceName) {
-        const averageUtilization = getNumberValue(
-          resourceTarget?.averageUtilization,
-        );
-        const averageValue = getStringValue(resourceTarget?.averageValue);
-        const value = getStringValue(resourceTarget?.value);
-
-        if (averageUtilization !== undefined) {
-          return `${resourceName.toUpperCase()} ${averageUtilization}%`;
-        }
-        return `${resourceName.toUpperCase()} ${averageValue || value || '-'}`;
-      }
-
-      return type || '-';
-    });
-
-  return metrics.join('、') || '-';
-};
-
-const buildHorizontalPodAutoscalerBasicInfo = (
-  manifest?: Record<string, unknown>,
-  fallbackNamespace?: string,
-) => {
-  const metadata = getRecordValue(manifest?.metadata);
-  const spec = getRecordValue(manifest?.spec);
-  const status = getRecordValue(manifest?.status);
-
-  return {
-    namespace: getStringValue(metadata?.namespace) || fallbackNamespace || '-',
-    target: buildPolicyTargetText(getRecordValue(spec?.scaleTargetRef)),
-    min_replicas: spec?.minReplicas,
-    max_replicas: spec?.maxReplicas,
-    current_replicas: status?.currentReplicas,
-    desired_replicas: status?.desiredReplicas,
-    metrics: buildHorizontalPodAutoscalerMetricsText(manifest),
-    create_time: getStringValue(metadata?.creationTimestamp),
-  };
-};
-
-const buildVerticalPodAutoscalerBasicInfo = (
-  manifest?: Record<string, unknown>,
-  fallbackNamespace?: string,
-) => {
-  const metadata = getRecordValue(manifest?.metadata);
-  const spec = getRecordValue(manifest?.spec);
-  const updatePolicy = getRecordValue(spec?.updatePolicy);
-  const status = getRecordValue(manifest?.status);
-  const recommendation = getRecordValue(status?.recommendation);
-  const containerRecommendations = getArrayValue(
-    recommendation?.containerRecommendations,
-  )
-    .map((item) => getRecordValue(item))
-    .filter(Boolean);
-  const firstTarget = getRecordValue(
-    getRecordValue(containerRecommendations[0])?.target,
-  );
-  const cpu = getStringValue(firstTarget?.cpu);
-  const memory = getStringValue(firstTarget?.memory);
-
-  return {
-    namespace: getStringValue(metadata?.namespace) || fallbackNamespace || '-',
-    target: buildPolicyTargetText(getRecordValue(spec?.targetRef)),
-    update_mode: getStringValue(updatePolicy?.updateMode) || '-',
-    recommendation:
-      cpu && memory
-        ? `CPU ${cpu} / 内存 ${memory}`
-        : cpu
-          ? `CPU ${cpu}`
-          : memory
-            ? `内存 ${memory}`
-            : '-',
-    create_time: getStringValue(metadata?.creationTimestamp),
-  };
-};
-
-const buildLabelSelectorText = (selector?: Record<string, unknown>) => {
-  const matchLabels = getRecordValue(selector?.matchLabels);
-  const labels = Object.entries(matchLabels || {}).map(
-    ([key, value]) => `${key}=${formatValue(value)}`,
-  );
-  const expressions = getArrayValue(selector?.matchExpressions)
-    .map((item) => getRecordValue(item))
-    .filter(Boolean)
-    .map((item) => {
-      const key = getStringValue(item?.key) || '-';
-      const operator = getStringValue(item?.operator) || '-';
-      const values = getArrayValue(item?.values).join(',');
-
-      return values ? `${key} ${operator} (${values})` : `${key} ${operator}`;
-    });
-
-  return [...labels, ...expressions].join('、') || '全部容器组';
-};
-
-const buildPodDisruptionBudgetBasicInfo = (
-  manifest?: Record<string, unknown>,
-  fallbackNamespace?: string,
-) => {
-  const metadata = getRecordValue(manifest?.metadata);
-  const spec = getRecordValue(manifest?.spec);
-  const status = getRecordValue(manifest?.status);
-
-  return {
-    namespace: getStringValue(metadata?.namespace) || fallbackNamespace || '-',
-    min_available: formatValue(spec?.minAvailable),
-    max_unavailable: formatValue(spec?.maxUnavailable),
-    allowed_disruptions: formatValue(status?.disruptionsAllowed),
-    current_healthy: formatValue(status?.currentHealthy),
-    desired_healthy: formatValue(status?.desiredHealthy),
-    expected_pods: formatValue(status?.expectedPods),
-    selector: buildLabelSelectorText(getRecordValue(spec?.selector)),
-    create_time: getStringValue(metadata?.creationTimestamp),
-  };
-};
-
-const buildNetworkPolicyBasicInfo = (
-  manifest?: Record<string, unknown>,
-  fallbackNamespace?: string,
-) => {
-  const metadata = getRecordValue(manifest?.metadata);
-  const spec = getRecordValue(manifest?.spec);
-  const policyTypes = getArrayValue(spec?.policyTypes)
-    .map((item) => formatValue(item))
-    .filter(Boolean)
-    .join('、');
-
-  return {
-    namespace: getStringValue(metadata?.namespace) || fallbackNamespace || '-',
-    pod_selector: buildLabelSelectorText(getRecordValue(spec?.podSelector)),
-    policy_types: policyTypes || '-',
-    ingress_rules: getArrayValue(spec?.ingress).length,
-    egress_rules: getArrayValue(spec?.egress).length,
-    create_time: getStringValue(metadata?.creationTimestamp),
-  };
-};
-
 const buildJobReplicaSummary = (manifest?: Record<string, unknown>) => {
   const spec = getRecordValue(manifest?.spec);
   const status = getRecordValue(manifest?.status);
@@ -599,16 +431,6 @@ const getJobPodSelectors = (name?: string) =>
 type JobBasicInfo = ReturnType<typeof buildJobBasicInfo>;
 type CronJobBasicInfo = ReturnType<typeof buildCronJobBasicInfo>;
 type ServiceAccountBasicInfo = ReturnType<typeof buildServiceAccountBasicInfo>;
-type HorizontalPodAutoscalerBasicInfo = ReturnType<
-  typeof buildHorizontalPodAutoscalerBasicInfo
->;
-type VerticalPodAutoscalerBasicInfo = ReturnType<
-  typeof buildVerticalPodAutoscalerBasicInfo
->;
-type PodDisruptionBudgetBasicInfo = ReturnType<
-  typeof buildPodDisruptionBudgetBasicInfo
->;
-type NetworkPolicyBasicInfo = ReturnType<typeof buildNetworkPolicyBasicInfo>;
 
 const customResourceDefinitionBasicInfoColumns: ProDescriptionsItemProps<CustomResourceDefinitionBasicInfo>[] =
   [
@@ -805,134 +627,6 @@ const serviceAccountBasicInfoColumns: ProDescriptionsItemProps<ServiceAccountBas
     {
       title: '命名空间',
       dataIndex: 'namespace',
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      valueType: 'dateTime',
-    },
-  ];
-
-const horizontalPodAutoscalerBasicInfoColumns: ProDescriptionsItemProps<HorizontalPodAutoscalerBasicInfo>[] =
-  [
-    {
-      title: '命名空间',
-      dataIndex: 'namespace',
-    },
-    {
-      title: '目标工作负载',
-      dataIndex: 'target',
-    },
-    {
-      title: '副本范围',
-      dataIndex: 'min_replicas',
-      render: (_, record) =>
-        `${formatValue(record.min_replicas)} - ${formatValue(record.max_replicas)}`,
-    },
-    {
-      title: '当前/期望副本',
-      dataIndex: 'current_replicas',
-      render: (_, record) =>
-        `${formatValue(record.current_replicas)} / ${formatValue(record.desired_replicas)}`,
-    },
-    {
-      title: '触发指标',
-      dataIndex: 'metrics',
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      valueType: 'dateTime',
-    },
-  ];
-
-const verticalPodAutoscalerBasicInfoColumns: ProDescriptionsItemProps<VerticalPodAutoscalerBasicInfo>[] =
-  [
-    {
-      title: '命名空间',
-      dataIndex: 'namespace',
-    },
-    {
-      title: '目标工作负载',
-      dataIndex: 'target',
-    },
-    {
-      title: '更新模式',
-      dataIndex: 'update_mode',
-    },
-    {
-      title: '资源建议',
-      dataIndex: 'recommendation',
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      valueType: 'dateTime',
-    },
-  ];
-
-const podDisruptionBudgetBasicInfoColumns: ProDescriptionsItemProps<PodDisruptionBudgetBasicInfo>[] =
-  [
-    {
-      title: '命名空间',
-      dataIndex: 'namespace',
-    },
-    {
-      title: '至少可用',
-      dataIndex: 'min_available',
-    },
-    {
-      title: '最多不可用',
-      dataIndex: 'max_unavailable',
-    },
-    {
-      title: '允许中断',
-      dataIndex: 'allowed_disruptions',
-    },
-    {
-      title: '健康/期望',
-      dataIndex: 'current_healthy',
-      render: (_, record) =>
-        `${record.current_healthy} / ${record.desired_healthy}`,
-    },
-    {
-      title: '期望容器组',
-      dataIndex: 'expected_pods',
-    },
-    {
-      title: '选择器',
-      dataIndex: 'selector',
-      span: 3,
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      valueType: 'dateTime',
-    },
-  ];
-
-const networkPolicyBasicInfoColumns: ProDescriptionsItemProps<NetworkPolicyBasicInfo>[] =
-  [
-    {
-      title: '命名空间',
-      dataIndex: 'namespace',
-    },
-    {
-      title: '策略方向',
-      dataIndex: 'policy_types',
-    },
-    {
-      title: '作用对象',
-      dataIndex: 'pod_selector',
-      span: 3,
-    },
-    {
-      title: '入站规则',
-      dataIndex: 'ingress_rules',
-    },
-    {
-      title: '出站规则',
-      dataIndex: 'egress_rules',
     },
     {
       title: '创建时间',
@@ -1142,27 +836,19 @@ const ClusterResourceDetail = () => {
                 ? buildConfigMapBasicInfo(manifest, namespace)
                 : detailType === 'Ingress'
                   ? buildIngressBasicInfo(manifest, namespace)
-                  : detailType === 'HorizontalPodAutoscaler'
-                    ? buildHorizontalPodAutoscalerBasicInfo(manifest, namespace)
-                    : detailType === 'VerticalPodAutoscaler'
-                      ? buildVerticalPodAutoscalerBasicInfo(manifest, namespace)
-                      : detailType === 'PodDisruptionBudget'
-                        ? buildPodDisruptionBudgetBasicInfo(manifest, namespace)
-                        : detailType === 'NetworkPolicy'
-                          ? buildNetworkPolicyBasicInfo(manifest, namespace)
-                          : detailType === 'CronJob'
-                            ? buildCronJobBasicInfo(manifest, namespace)
-                            : detailType === 'CustomResourceDefinition'
-                              ? buildCustomResourceDefinitionBasicInfo(manifest)
-                              : detailType === 'PersistentVolumeClaim'
-                                ? buildPersistentVolumeClaimBasicInfo(
-                                    manifest,
-                                    namespace,
-                                    pvcStorageClassProvisioner,
-                                  )
-                                : detailType === 'StorageClass'
-                                  ? buildStorageClassBasicInfo(manifest)
-                                  : buildJobBasicInfo(manifest, namespace),
+                  : detailType === 'CronJob'
+                    ? buildCronJobBasicInfo(manifest, namespace)
+                    : detailType === 'CustomResourceDefinition'
+                      ? buildCustomResourceDefinitionBasicInfo(manifest)
+                      : detailType === 'PersistentVolumeClaim'
+                        ? buildPersistentVolumeClaimBasicInfo(
+                            manifest,
+                            namespace,
+                            pvcStorageClassProvisioner,
+                          )
+                        : detailType === 'StorageClass'
+                          ? buildStorageClassBasicInfo(manifest)
+                          : buildJobBasicInfo(manifest, namespace),
     [
       detailType,
       manifest,
@@ -2144,15 +1830,6 @@ const ClusterResourceDetail = () => {
       ];
     }
 
-    if (
-      detailType === 'HorizontalPodAutoscaler' ||
-      detailType === 'VerticalPodAutoscaler' ||
-      detailType === 'PodDisruptionBudget' ||
-      detailType === 'NetworkPolicy'
-    ) {
-      return [metadataTab, eventsTab];
-    }
-
     if (detailType === 'PersistentVolumeClaim') {
       return [
         {
@@ -2376,34 +2053,6 @@ const ClusterResourceDetail = () => {
                     column={2}
                     columns={ingressBasicInfoColumns}
                     dataSource={basicInfo as IngressBasicInfo}
-                  />
-                ) : detailType === 'HorizontalPodAutoscaler' ? (
-                  <ResourceBasicInfo<HorizontalPodAutoscalerBasicInfo>
-                    className={styles.description}
-                    column={3}
-                    columns={horizontalPodAutoscalerBasicInfoColumns}
-                    dataSource={basicInfo as HorizontalPodAutoscalerBasicInfo}
-                  />
-                ) : detailType === 'VerticalPodAutoscaler' ? (
-                  <ResourceBasicInfo<VerticalPodAutoscalerBasicInfo>
-                    className={styles.description}
-                    column={2}
-                    columns={verticalPodAutoscalerBasicInfoColumns}
-                    dataSource={basicInfo as VerticalPodAutoscalerBasicInfo}
-                  />
-                ) : detailType === 'PodDisruptionBudget' ? (
-                  <ResourceBasicInfo<PodDisruptionBudgetBasicInfo>
-                    className={styles.description}
-                    column={3}
-                    columns={podDisruptionBudgetBasicInfoColumns}
-                    dataSource={basicInfo as PodDisruptionBudgetBasicInfo}
-                  />
-                ) : detailType === 'NetworkPolicy' ? (
-                  <ResourceBasicInfo<NetworkPolicyBasicInfo>
-                    className={styles.description}
-                    column={3}
-                    columns={networkPolicyBasicInfoColumns}
-                    dataSource={basicInfo as NetworkPolicyBasicInfo}
                   />
                 ) : detailType === 'ConfigMap' ? (
                   <ResourceBasicInfo<ConfigMapBasicInfo>

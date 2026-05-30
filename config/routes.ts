@@ -165,36 +165,6 @@ export default [
         ],
       },
       {
-        path: '/cluster/policies',
-        name: 'clusterPolicies',
-        routes: [
-          {
-            path: '/cluster/policies',
-            redirect: '/cluster/policies/autoscaling',
-          },
-          {
-            path: '/cluster/policies/autoscaling',
-            name: 'clusterPoliciesAutoscaling',
-            component: './cluster/policies/autoscaling',
-          },
-          {
-            path: '/cluster/policies/vertical-pod-autoscalers',
-            name: 'clusterPoliciesVerticalPodAutoscalers',
-            component: './cluster/policies/vertical-pod-autoscalers',
-          },
-          {
-            path: '/cluster/policies/availability',
-            name: 'clusterPoliciesAvailability',
-            component: './cluster/policies/availability',
-          },
-          {
-            path: '/cluster/policies/network',
-            name: 'clusterPoliciesNetwork',
-            component: './cluster/policies/network',
-          },
-        ],
-      },
-      {
         path: '/cluster/custom-resource-definitions',
         name: 'clusterCustomResourceDefinitions',
         component: './cluster/custom-resource-definitions',
