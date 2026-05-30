@@ -16,11 +16,13 @@ const HorizontalPodAutoscalers = () => {
     {
       title: '命名空间',
       dataIndex: 'namespace',
+      ellipsis: true,
       renderText: (_, record) => record.namespace || '-',
     },
     {
       title: '目标工作负载',
       dataIndex: 'target_name',
+      ellipsis: true,
       render: (_, record) =>
         renderFallbackText(
           record.target_name
@@ -31,27 +33,33 @@ const HorizontalPodAutoscalers = () => {
     {
       title: '副本范围',
       dataIndex: 'replicas',
+      ellipsis: true,
       render: (_, record) =>
         `${record.min_replicas ?? '-'} - ${record.max_replicas ?? '-'}`,
     },
     {
       title: '当前/期望',
       dataIndex: 'current_replicas',
+      ellipsis: true,
       render: (_, record) =>
         `${record.current_replicas ?? '-'} / ${record.desired_replicas ?? '-'}`,
     },
     {
       title: '指标',
       dataIndex: 'metrics',
+      ellipsis: true,
       render: (_, record) => renderTextList(record.metrics),
     },
     createStatusColumn<API.ClusterHorizontalPodAutoscalerItem>('状态', {
+      ellipsis: true,
       width: 120,
     }),
     {
       title: '创建时间',
       dataIndex: 'create_time',
+      ellipsis: true,
       valueType: 'dateTime',
+      width: 180,
     },
   ];
 

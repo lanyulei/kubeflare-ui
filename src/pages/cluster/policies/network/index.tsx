@@ -12,6 +12,7 @@ const NetworkPolicies = () => {
     {
       title: '命名空间',
       dataIndex: 'namespace',
+      ellipsis: true,
       renderText: (_, record) => record.namespace || '-',
     },
     {
@@ -23,22 +24,27 @@ const NetworkPolicies = () => {
     {
       title: '策略方向',
       dataIndex: 'policy_types',
+      ellipsis: true,
       render: (_, record) => renderTextList(record.policy_types),
     },
     {
       title: '入站规则',
       dataIndex: 'ingress_rules',
+      ellipsis: true,
       render: (_, record) => `${record.ingress_rules ?? '-'}`,
     },
     {
       title: '出站规则',
       dataIndex: 'egress_rules',
+      ellipsis: true,
       render: (_, record) => `${record.egress_rules ?? '-'}`,
     },
     {
       title: '创建时间',
       dataIndex: 'create_time',
+      ellipsis: true,
       valueType: 'dateTime',
+      width: 180,
     },
   ];
 
