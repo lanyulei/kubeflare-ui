@@ -341,6 +341,15 @@ const namespacedResourceListPaths: Partial<
     all: '/kapi/v1/serviceaccounts',
     namespaced: '/kapi/v1/namespaces/:namespace/serviceaccounts',
   },
+  Role: {
+    all: '/kapis/rbac.authorization.k8s.io/v1/roles',
+    namespaced: '/kapis/rbac.authorization.k8s.io/v1/namespaces/:namespace/roles',
+  },
+  RoleBinding: {
+    all: '/kapis/rbac.authorization.k8s.io/v1/rolebindings',
+    namespaced:
+      '/kapis/rbac.authorization.k8s.io/v1/namespaces/:namespace/rolebindings',
+  },
   PersistentVolumeClaim: {
     all: '/kapi/v1/persistentvolumeclaims',
     namespaced:
@@ -359,6 +368,12 @@ const clusterResourceCreatePaths: Record<API.ClusterResourceCreateType, string> 
     Secret: '/kapi/v1/namespaces/:namespace/secrets',
     ConfigMap: '/kapi/v1/namespaces/:namespace/configmaps',
     ServiceAccount: '/kapi/v1/namespaces/:namespace/serviceaccounts',
+    Role: '/kapis/rbac.authorization.k8s.io/v1/namespaces/:namespace/roles',
+    ClusterRole: '/kapis/rbac.authorization.k8s.io/v1/clusterroles',
+    RoleBinding:
+      '/kapis/rbac.authorization.k8s.io/v1/namespaces/:namespace/rolebindings',
+    ClusterRoleBinding:
+      '/kapis/rbac.authorization.k8s.io/v1/clusterrolebindings',
     CustomResourceDefinition:
       '/kapis/apiextensions.k8s.io/v1/customresourcedefinitions',
     PersistentVolumeClaim:
@@ -378,6 +393,13 @@ const clusterResourceDetailPaths: Record<API.ClusterResourceCreateType, string> 
     ConfigMap: '/kapi/v1/namespaces/:namespace/configmaps/:name',
     ServiceAccount:
       '/kapi/v1/namespaces/:namespace/serviceaccounts/:name',
+    Role:
+      '/kapis/rbac.authorization.k8s.io/v1/namespaces/:namespace/roles/:name',
+    ClusterRole: '/kapis/rbac.authorization.k8s.io/v1/clusterroles/:name',
+    RoleBinding:
+      '/kapis/rbac.authorization.k8s.io/v1/namespaces/:namespace/rolebindings/:name',
+    ClusterRoleBinding:
+      '/kapis/rbac.authorization.k8s.io/v1/clusterrolebindings/:name',
     CustomResourceDefinition:
       '/kapis/apiextensions.k8s.io/v1/customresourcedefinitions/:name',
     PersistentVolumeClaim:

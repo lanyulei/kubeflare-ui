@@ -28,6 +28,16 @@ export default {
   'menu.cluster.clusterStorage.clusterStoragePersistentVolumeClaims':
     '持久卷聲明',
   'menu.cluster.clusterStorage.clusterStorageStorageClasses': '存儲類',
+  'menu.cluster.clusterAccessControl': '訪問控制',
+  'menu.cluster.clusterAccessControl.clusterAccessControlOverview': '概覽',
+  'menu.cluster.clusterAccessControl.clusterAccessControlRoles': '角色',
+  'menu.cluster.clusterAccessControl.clusterAccessControlBindings': '綁定',
+  'menu.cluster.clusterAccessControl.clusterAccessControlSubjects': '主體',
+  'menu.cluster.clusterAccessControl.clusterAccessControlPermissions':
+    '權限反查',
+  'menu.cluster.clusterAccessControl.clusterAccessControlSimulator': '權限模擬',
+  'menu.cluster.clusterAccessControl.clusterAccessControlRisks': '風險分析',
+  'menu.cluster.clusterAccessControl.clusterAccessControlAudit': '審計日誌',
   'menu.system': '系統管理',
   'menu.system.sub-page': '二級管理頁',
   'menu.system.systemUser': '使用者管理',

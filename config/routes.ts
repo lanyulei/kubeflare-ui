@@ -174,6 +174,57 @@ export default [
         name: 'clusterCustomResourceDefinitions',
         component: './cluster/custom-resource-definitions',
       },
+      {
+        path: '/cluster/access-control',
+        name: 'clusterAccessControl',
+        icon: 'safety',
+        routes: [
+          {
+            path: '/cluster/access-control',
+            redirect: '/cluster/access-control/overview',
+          },
+          {
+            path: '/cluster/access-control/overview',
+            name: 'clusterAccessControlOverview',
+            component: './access-control/overview',
+          },
+          {
+            path: '/cluster/access-control/roles',
+            name: 'clusterAccessControlRoles',
+            component: './access-control/roles',
+          },
+          {
+            path: '/cluster/access-control/bindings',
+            name: 'clusterAccessControlBindings',
+            component: './access-control/bindings',
+          },
+          {
+            path: '/cluster/access-control/subjects',
+            name: 'clusterAccessControlSubjects',
+            component: './access-control/subjects',
+          },
+          {
+            path: '/cluster/access-control/permissions',
+            name: 'clusterAccessControlPermissions',
+            component: './access-control/permissions',
+          },
+          {
+            path: '/cluster/access-control/simulator',
+            name: 'clusterAccessControlSimulator',
+            component: './access-control/simulator',
+          },
+          {
+            path: '/cluster/access-control/risks',
+            name: 'clusterAccessControlRisks',
+            component: './access-control/risks',
+          },
+          {
+            path: '/cluster/access-control/audit',
+            name: 'clusterAccessControlAudit',
+            component: './access-control/audit',
+          },
+        ],
+      },
     ],
   },
   {

@@ -747,6 +747,10 @@ declare namespace API {
     | 'Secret'
     | 'ConfigMap'
     | 'ServiceAccount'
+    | 'Role'
+    | 'ClusterRole'
+    | 'RoleBinding'
+    | 'ClusterRoleBinding'
     | 'CustomResourceDefinition'
     | 'PersistentVolumeClaim'
     | 'StorageClass'
@@ -863,6 +867,166 @@ declare namespace API {
     imagePullSecrets?: string[]
     mountableSecrets?: string[]
     create_time?: string
+  }
+
+  type RbacSubjectKind = 'ServiceAccount' | 'User' | 'Group'
+
+  type RbacRiskLevel = 'Critical' | 'High' | 'Medium' | 'Low' | 'Info'
+
+  type RbacPolicyRule = {
+    apiGroups?: string[]
+    resources?: string[]
+    verbs: string[]
+    resourceNames?: string[]
+    nonResourceURLs?: string[]
+  }
+
+  type RbacSubject = {
+    kind: RbacSubjectKind
+    name: string
+    namespace?: string
+    apiGroup?: string
+  }
+
+  type RbacRoleRef = {
+    kind: 'Role' | 'ClusterRole'
+    name: string
+    apiGroup?: string
+  }
+
+  type RbacRoleItem = {
+    id?: string
+    name: string
+    namespace?: string
+    type: 'Role' | 'ClusterRole'
+    rules: RbacPolicyRule[]
+    rule_count: number
+    binding_count: number
+    subject_count: number
+    risk_level: RbacRiskLevel
+    risk_reasons: string[]
+    system: boolean
+    aggregated: boolean
+    labels?: Record<string, string>
+    annotations?: Record<string, string>
+    create_time?: string
+    raw?: Record<string, unknown>
+  }
+
+  type RbacBindingItem = {
+    id?: string
+    name: string
+    namespace?: string
+    type: 'RoleBinding' | 'ClusterRoleBinding'
+    subjects: RbacSubject[]
+    roleRef?: RbacRoleRef
+    role_name?: string
+    role_kind?: string
+    scope: 'Cluster' | 'Namespace'
+    rule_count: number
+    risk_level: RbacRiskLevel
+    risk_reasons: string[]
+    system: boolean
+    create_time?: string
+    raw?: Record<string, unknown>
+  }
+
+  type RbacSubjectItem = {
+    id: string
+    kind: RbacSubjectKind
+    name: string
+    namespace?: string
+    binding_count: number
+    cluster_binding_count: number
+    permission_count: number
+    risk_level: RbacRiskLevel
+    risk_reasons: string[]
+  }
+
+  type RbacResolvedPermission = {
+    id: string
+    subject: RbacSubject
+    scope: 'Cluster' | 'Namespace'
+    namespace?: string
+    rule: RbacPolicyRule
+    source: {
+      bindingKind: 'RoleBinding' | 'ClusterRoleBinding'
+      bindingName: string
+      bindingNamespace?: string
+      roleKind: 'Role' | 'ClusterRole'
+      roleName: string
+      roleNamespace?: string
+    }
+    risk_level: RbacRiskLevel
+    risk_reasons: string[]
+  }
+
+  type RbacSubjectQuery = {
+    kind: RbacSubjectKind
+    name: string
+    namespace?: string
+    scopeNamespace?: string
+  }
+
+  type RbacOverviewData = {
+    roles: number
+    clusterRoles: number
+    roleBindings: number
+    clusterRoleBindings: number
+    subjects: number
+    criticalRisks: number
+    highRisks: number
+  }
+
+  type RbacListData<T> = {
+    items: T[]
+  }
+
+  type RbacGraphData = {
+    nodes: {
+      id: string
+      label: string
+      type: string
+      risk_level?: RbacRiskLevel
+    }[]
+    edges: {
+      source: string
+      target: string
+      label: string
+    }[]
+  }
+
+  type RbacSimulatorParams = {
+    subjectKind: 'Self' | RbacSubjectKind
+    subjectName?: string
+    subjectNamespace?: string
+    groups?: string[]
+    namespace?: string
+    apiGroup?: string
+    resource?: string
+    subresource?: string
+    resourceName?: string
+    verb: string
+    nonResourceURL?: string
+  }
+
+  type RbacSimulatorResult = {
+    allowed?: boolean
+    denied?: boolean
+    reason?: string
+    evaluationError?: string
+    matchedPermissions?: RbacResolvedPermission[]
+  }
+
+  type RbacAuditItem = {
+    id: string
+    action: string
+    resource: string
+    namespace?: string
+    operator?: string
+    risk_level?: RbacRiskLevel
+    time?: string
+    status?: string
   }
 
   type ClusterCustomResourceDefinitionItem = {
