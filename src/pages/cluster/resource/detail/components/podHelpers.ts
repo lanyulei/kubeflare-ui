@@ -5,6 +5,11 @@ import {
   getRecordValue,
   getStringValue,
 } from './helpers';
+import {
+  getPodOsName,
+  getPodResizeStatus,
+  getResizePolicyItems,
+} from './podResizeHelpers';
 
 type PodBasicInfo = {
   namespace?: string;
@@ -244,7 +249,9 @@ const toPodVolume = (
   };
 };
 
-const buildPodContainers = (manifest?: Record<string, unknown>) => {
+const buildPodContainers = (
+  manifest?: Record<string, unknown>,
+): API.ClusterNodePodContainer[] => {
   const podSpec = getPodSpec(manifest);
   const status = getRecordValue(manifest?.status);
   const containerStatuses = getArrayValue(status?.containerStatuses)
@@ -262,11 +269,19 @@ const buildPodContainers = (manifest?: Record<string, unknown>) => {
 
       return {
         name,
+        type: 'container' as const,
         image: getStringValue(container?.image),
         image_pull_policy: getStringValue(container?.imagePullPolicy),
         resources: getRecordValue(container?.resources) as
           | API.ClusterNodePodContainerResources
           | undefined,
+        status_resources: getRecordValue(containerStatus?.resources) as
+          | API.ClusterNodePodContainerResources
+          | undefined,
+        allocated_resources: getRecordValue(
+          containerStatus?.allocatedResources,
+        ) as Record<string, string> | undefined,
+        resize_policy: getResizePolicyItems(container?.resizePolicy),
         status: getContainerStatus(containerStatus),
         ready: containerStatus?.ready === true,
         restart_count: getNumberValue(containerStatus?.restartCount) || 0,
@@ -325,6 +340,7 @@ const buildPodConditions = (manifest?: Record<string, unknown>) => {
       status: getStringValue(condition?.status),
       reason: getStringValue(condition?.reason),
       message: getStringValue(condition?.message),
+      observed_generation: getNumberValue(condition?.observedGeneration),
       last_transition_time: getStringValue(condition?.lastTransitionTime),
     }));
 };
@@ -363,15 +379,29 @@ const buildPodDetail = (
   const metadata = getRecordValue(manifest.metadata);
   const spec = getPodSpec(manifest);
   const status = getRecordValue(manifest.status);
+  const containers = buildPodContainers(manifest);
+  const pod = {
+    generation: getNumberValue(metadata?.generation),
+    observed_generation: getNumberValue(status?.observedGeneration),
+    qos_class: getStringValue(status?.qosClass),
+    resize_conditions: buildPodConditions(manifest).filter((condition) =>
+      condition.type?.startsWith('PodResize'),
+    ),
+  };
 
   return {
     id: getStringValue(metadata?.uid) || getStringValue(metadata?.name),
     name: getStringValue(metadata?.name) || '-',
     namespace: getStringValue(metadata?.namespace),
+    generation: pod.generation,
+    observed_generation: pod.observed_generation,
+    os_name: getPodOsName(manifest),
     node_name: getStringValue(spec?.nodeName),
     node_ip: getStringValue(status?.hostIP),
     pod_ip: getStringValue(status?.podIP),
     phase: getStringValue(status?.phase),
+    qos_class: pod.qos_class,
+    resize_conditions: pod.resize_conditions,
     ready:
       getArrayValue(status?.containerStatuses).length > 0 &&
       getArrayValue(status?.containerStatuses).every(
@@ -381,7 +411,17 @@ const buildPodDetail = (
         : 'NotReady',
     status: getPodStatus(manifest),
     create_time: getStringValue(metadata?.creationTimestamp),
-    containers: buildPodContainers(manifest),
+    containers: containers.map((container) => ({
+      ...container,
+      resize_status: getPodResizeStatus(
+        {
+          ...pod,
+          name: getStringValue(metadata?.name) || '-',
+          containers,
+        },
+        container,
+      ),
+    })),
     volumes: buildPodVolumes(manifest),
   };
 };

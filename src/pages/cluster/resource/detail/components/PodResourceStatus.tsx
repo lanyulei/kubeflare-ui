@@ -2,14 +2,22 @@ import {
   ClusterOutlined,
   CodeOutlined,
   DatabaseOutlined,
+  EditOutlined,
   FileTextOutlined,
   HddOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import { Empty, Tooltip } from 'antd';
+import { Button, Empty, Tag, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import { SectionTitle } from '@/components';
 import { formatValue } from './helpers';
+import {
+  getPodResizeDisabledReason,
+  getPodResizeMessage,
+  getPodResizeStatus,
+  getResizePolicy,
+  hasSameResourceValue,
+} from './podResizeHelpers';
 
 const useStyles = createStyles(({ token }) => ({
   resourceStatus: {
@@ -24,7 +32,7 @@ const useStyles = createStyles(({ token }) => ({
   },
   containerItem: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(280px, 1fr) 160px 160px 180px',
+    gridTemplateColumns: 'minmax(280px, 1fr) 140px 140px 180px 120px',
     gap: token.marginLG,
     alignItems: 'center',
     minHeight: 64,
@@ -41,6 +49,41 @@ const useStyles = createStyles(({ token }) => ({
     '@media (max-width: 576px)': {
       gridTemplateColumns: '1fr',
     },
+  },
+  resourceGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: token.marginSM,
+    marginTop: token.marginSM,
+    padding: `${token.paddingSM}px ${token.padding}px`,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusLG,
+    backgroundColor: token.colorBgContainer,
+
+    '@media (max-width: 576px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  resourceItem: {
+    minWidth: 0,
+  },
+  resourceValue: {
+    overflow: 'hidden',
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  resourceChanged: {
+    color: token.colorWarning,
+  },
+  resizeInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: token.marginXXS,
   },
   containerMain: {
     display: 'flex',
@@ -193,6 +236,7 @@ const useStyles = createStyles(({ token }) => ({
 
 type PodResourceStatusProps = {
   pod?: API.ClusterNodePodItem;
+  onResize?: (container: API.ClusterNodePodContainer) => void;
 };
 
 const formatContainerPorts = (ports?: API.ClusterNodePodContainerPort[]) => {
@@ -223,7 +267,56 @@ const getVolumeMounts = (pod: API.ClusterNodePodItem, volumeName?: string) =>
       })),
   );
 
-const PodResourceStatus = ({ pod }: PodResourceStatusProps) => {
+const getResourcePair = (
+  resources: API.ClusterNodePodContainerResources | undefined,
+  resourceName: 'cpu' | 'memory',
+) => {
+  const request = resources?.requests?.[resourceName];
+  const limit = resources?.limits?.[resourceName];
+
+  if (!request && !limit) {
+    return '未设置';
+  }
+
+  return `${request || '无预留'} / ${limit || '无上限'}`;
+};
+
+const pickSingleResource = (
+  resources: API.ClusterNodePodContainerResources | undefined,
+  resourceName: 'cpu' | 'memory',
+) => ({
+  requests: {
+    [resourceName]: resources?.requests?.[resourceName] || '',
+  },
+  limits: {
+    [resourceName]: resources?.limits?.[resourceName] || '',
+  },
+});
+
+const isResourceSynced = (
+  container: API.ClusterNodePodContainer,
+  resourceName: 'cpu' | 'memory',
+) =>
+  hasSameResourceValue(
+    pickSingleResource(container.resources, resourceName),
+    pickSingleResource(container.status_resources, resourceName),
+  );
+
+const resizeStatusLabels: Record<
+  API.ClusterPodResizeStatus,
+  { color: string; label: string }
+> = {
+  synced: { color: 'success', label: '已生效' },
+  pending: { color: 'processing', label: '等待调整' },
+  inProgress: { color: 'processing', label: '调整中' },
+  deferred: { color: 'warning', label: '等待重试' },
+  infeasible: { color: 'error', label: '不可行' },
+  error: { color: 'error', label: '异常' },
+  observing: { color: 'processing', label: '待确认' },
+  unknown: { color: 'default', label: '未知' },
+};
+
+const PodResourceStatus = ({ pod, onResize }: PodResourceStatusProps) => {
   const { styles } = useStyles();
 
   if (!pod) {
@@ -238,67 +331,176 @@ const PodResourceStatus = ({ pod }: PodResourceStatusProps) => {
         </SectionTitle>
         {pod.containers && pod.containers.length > 0 ? (
           <div className={styles.list}>
-            {pod.containers.map((container) => (
-              <div className={styles.containerItem} key={container.name}>
-                <div className={styles.containerMain}>
-                  <div className={styles.iconWrap}>
-                    <ClusterOutlined />
-                    <span className={styles.statusBadge} />
-                  </div>
-                  <div className={styles.content}>
-                    <div className={styles.titleRow}>
-                      <Tooltip title={container.name || '-'}>
-                        <div className={styles.name}>
-                          {container.name || '-'}
+            {pod.containers.map((container) => {
+              const resizeStatus =
+                container.resize_status || getPodResizeStatus(pod, container);
+              const resizeStatusMeta = resizeStatusLabels[resizeStatus];
+              const resizeMessage = getPodResizeMessage(pod);
+              const resizeDisabledReason = getPodResizeDisabledReason(
+                pod,
+                container,
+              );
+              const resizeActionDisabled =
+                Boolean(resizeDisabledReason) || !onResize;
+              const cpuSynced = isResourceSynced(container, 'cpu');
+              const memorySynced = isResourceSynced(container, 'memory');
+
+              return (
+                <div key={container.name}>
+                  <div className={styles.containerItem}>
+                    <div className={styles.containerMain}>
+                      <div className={styles.iconWrap}>
+                        <ClusterOutlined />
+                        <span className={styles.statusBadge} />
+                      </div>
+                      <div className={styles.content}>
+                        <div className={styles.titleRow}>
+                          <Tooltip title={container.name || '-'}>
+                            <div className={styles.name}>
+                              {container.name || '-'}
+                            </div>
+                          </Tooltip>
+                          <Tooltip title="容器日志">
+                            <span className={styles.trigger}>
+                              <FileTextOutlined />
+                            </span>
+                          </Tooltip>
+                          <Tooltip title="终端">
+                            <span className={styles.trigger}>
+                              <CodeOutlined />
+                            </span>
+                          </Tooltip>
+                          {container.probes && container.probes.length > 0 ? (
+                            <Tooltip title="已配置探针">
+                              <span className={styles.trigger}>
+                                <SettingOutlined />
+                              </span>
+                            </Tooltip>
+                          ) : null}
+                        </div>
+                        <Tooltip title={container.image || '-'}>
+                          <div className={styles.image}>
+                            镜像：{container.image || '-'}
+                          </div>
+                        </Tooltip>
+                      </div>
+                    </div>
+                    <div>
+                      <div className={styles.metricValue}>
+                        {container.status || '-'}
+                      </div>
+                      <div className={styles.metricLabel}>状态</div>
+                    </div>
+                    <div>
+                      <div className={styles.metricValue}>
+                        {container.restart_count || 0}
+                      </div>
+                      <div className={styles.metricLabel}>重启次数</div>
+                    </div>
+                    <div>
+                      <Tooltip title={formatContainerPorts(container.ports)}>
+                        <div className={styles.metricValue}>
+                          {formatContainerPorts(container.ports)}
                         </div>
                       </Tooltip>
-                      <Tooltip title="容器日志">
-                        <span className={styles.trigger}>
-                          <FileTextOutlined />
-                        </span>
-                      </Tooltip>
-                      <Tooltip title="终端">
-                        <span className={styles.trigger}>
-                          <CodeOutlined />
-                        </span>
-                      </Tooltip>
-                      {container.probes && container.probes.length > 0 ? (
-                        <Tooltip title="已配置探针">
-                          <span className={styles.trigger}>
-                            <SettingOutlined />
-                          </span>
-                        </Tooltip>
-                      ) : null}
+                      <div className={styles.metricLabel}>端口</div>
                     </div>
-                    <Tooltip title={container.image || '-'}>
-                      <div className={styles.image}>
-                        镜像：{container.image || '-'}
+                    <div className={styles.resizeInfo}>
+                      <Tooltip title={resizeMessage || resizeStatusMeta.label}>
+                        <Tag color={resizeStatusMeta.color}>
+                          {resizeStatusMeta.label}
+                        </Tag>
+                      </Tooltip>
+                      <Tooltip
+                        title={
+                          resizeDisabledReason ||
+                          (onResize ? '调整容器资源' : '当前页面不支持调整')
+                        }
+                      >
+                        <Button
+                          disabled={resizeActionDisabled}
+                          icon={<EditOutlined />}
+                          size="small"
+                          onClick={() => onResize?.(container)}
+                        >
+                          调整
+                        </Button>
+                      </Tooltip>
+                    </div>
+                  </div>
+                  <div className={styles.resourceGrid}>
+                    <div className={styles.resourceItem}>
+                      <div
+                        className={[
+                          styles.resourceValue,
+                          cpuSynced ? '' : styles.resourceChanged,
+                        ].join(' ')}
+                      >
+                        {getResourcePair(container.resources, 'cpu')}
                       </div>
-                    </Tooltip>
-                  </div>
-                </div>
-                <div>
-                  <div className={styles.metricValue}>
-                    {container.status || '-'}
-                  </div>
-                  <div className={styles.metricLabel}>状态</div>
-                </div>
-                <div>
-                  <div className={styles.metricValue}>
-                    {container.restart_count || 0}
-                  </div>
-                  <div className={styles.metricLabel}>重启次数</div>
-                </div>
-                <div>
-                  <Tooltip title={formatContainerPorts(container.ports)}>
-                    <div className={styles.metricValue}>
-                      {formatContainerPorts(container.ports)}
+                      <div className={styles.metricLabel}>期望 CPU</div>
                     </div>
-                  </Tooltip>
-                  <div className={styles.metricLabel}>端口</div>
+                    <div className={styles.resourceItem}>
+                      <div
+                        className={[
+                          styles.resourceValue,
+                          cpuSynced ? '' : styles.resourceChanged,
+                        ].join(' ')}
+                      >
+                        {getResourcePair(container.status_resources, 'cpu')}
+                      </div>
+                      <div className={styles.metricLabel}>实际 CPU</div>
+                    </div>
+                    <div className={styles.resourceItem}>
+                      <div
+                        className={[
+                          styles.resourceValue,
+                          memorySynced ? '' : styles.resourceChanged,
+                        ].join(' ')}
+                      >
+                        {getResourcePair(container.resources, 'memory')}
+                      </div>
+                      <div className={styles.metricLabel}>期望内存</div>
+                    </div>
+                    <div className={styles.resourceItem}>
+                      <div
+                        className={[
+                          styles.resourceValue,
+                          memorySynced ? '' : styles.resourceChanged,
+                        ].join(' ')}
+                      >
+                        {getResourcePair(container.status_resources, 'memory')}
+                      </div>
+                      <div className={styles.metricLabel}>实际内存</div>
+                    </div>
+                    <div className={styles.resourceItem}>
+                      <div className={styles.resourceValue}>
+                        {container.allocated_resources?.cpu || '-'}
+                      </div>
+                      <div className={styles.metricLabel}>分配 CPU</div>
+                    </div>
+                    <div className={styles.resourceItem}>
+                      <div className={styles.resourceValue}>
+                        {container.allocated_resources?.memory || '-'}
+                      </div>
+                      <div className={styles.metricLabel}>分配内存</div>
+                    </div>
+                    <div className={styles.resourceItem}>
+                      <div className={styles.resourceValue}>
+                        {getResizePolicy(container, 'cpu') || '-'}
+                      </div>
+                      <div className={styles.metricLabel}>CPU 策略</div>
+                    </div>
+                    <div className={styles.resourceItem}>
+                      <div className={styles.resourceValue}>
+                        {getResizePolicy(container, 'memory') || '-'}
+                      </div>
+                      <div className={styles.metricLabel}>内存策略</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无容器" />

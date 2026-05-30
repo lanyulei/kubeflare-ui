@@ -1257,6 +1257,33 @@ export async function updateClusterPersistentVolumeClaimPatch(
   })
 }
 
+export async function resizeClusterPodResources(
+  params: API.ResizeClusterPodResourcesParams,
+  options?: { [key: string]: any },
+) {
+  const clusterId = getCurrentClusterId()
+  const { namespace, name, patch } = params
+  const url = getDetailResourcePath('Pod', name, namespace)
+
+  if (!clusterId || !namespace || !url) {
+    return {
+      code: 20000,
+      message: '',
+      data: undefined,
+    } as API.ApiResponse<Record<string, unknown> | undefined>
+  }
+
+  return request<API.ApiResponse<Record<string, unknown>>>(`${url}/resize`, {
+    method: 'PATCH',
+    data: patch,
+    ...(options || {}),
+    headers: {
+      ...getClusterHeaders(clusterId, options),
+      'Content-Type': 'application/strategic-merge-patch+json',
+    },
+  })
+}
+
 export async function rerunClusterJob(
   params: API.RerunClusterJobParams,
   options?: { [key: string]: any },

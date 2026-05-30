@@ -228,22 +228,51 @@ declare namespace API {
     id?: string
     name: string
     namespace?: string
+    generation?: number
+    observed_generation?: number
     node_name?: string
     node_ip?: string
+    os_name?: string
     pod_ip?: string
     phase?: string
+    qos_class?: string
     ready?: string
     status?: string
     create_time?: string
     containers?: ClusterNodePodContainer[]
+    resize_conditions?: ClusterPodResizeCondition[]
     volumes?: ClusterNodePodVolume[]
+  }
+
+  type ClusterPodResizeStatus =
+    | 'synced'
+    | 'pending'
+    | 'inProgress'
+    | 'deferred'
+    | 'infeasible'
+    | 'error'
+    | 'observing'
+    | 'unknown'
+
+  type ClusterPodResizeCondition = {
+    type?: string
+    status?: string
+    reason?: string
+    message?: string
+    observed_generation?: number
+    last_transition_time?: string
   }
 
   type ClusterNodePodContainer = {
     name?: string
+    type?: 'container' | 'initContainer' | 'ephemeralContainer'
     image?: string
     image_pull_policy?: string
     resources?: ClusterNodePodContainerResources
+    status_resources?: ClusterNodePodContainerResources
+    allocated_resources?: Record<string, string>
+    resize_policy?: ClusterNodePodContainerResizePolicy[]
+    resize_status?: ClusterPodResizeStatus
     status?: string
     ready?: boolean
     restart_count?: number
@@ -256,6 +285,11 @@ declare namespace API {
   type ClusterNodePodContainerResources = {
     requests?: Record<string, string>
     limits?: Record<string, string>
+  }
+
+  type ClusterNodePodContainerResizePolicy = {
+    resourceName?: 'cpu' | 'memory'
+    restartPolicy?: string
   }
 
   type ClusterNodePodContainerEnv = {
@@ -694,6 +728,12 @@ declare namespace API {
   }
 
   type UpdateClusterPersistentVolumeClaimPatchParams = {
+    namespace: string
+    name: string
+    patch: Record<string, unknown>
+  }
+
+  type ResizeClusterPodResourcesParams = {
     namespace: string
     name: string
     patch: Record<string, unknown>

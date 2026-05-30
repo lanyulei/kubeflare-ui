@@ -16,7 +16,7 @@ import { PageContainer } from '@ant-design/pro-components';
 import { history, useParams } from '@umijs/max';
 import { App, Button, Card, Drawer, Dropdown, Empty, Spin, Tabs } from 'antd';
 import { createStyles } from 'antd-style';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parse, stringify } from 'yaml';
 import {
   ClusterEventTable,
@@ -35,6 +35,7 @@ import {
   getClusterServiceList,
   getClusterStorageClassList,
   rerunClusterJob,
+  resizeClusterPodResources,
   updateClusterCronJobSuspend,
   updateClusterJobReplicas,
   updateClusterPersistentVolumeClaimPatch,
@@ -84,6 +85,7 @@ import {
 import PersistentVolumeClaimResourceStatus from './components/PersistentVolumeClaimResourceStatus';
 import PersistentVolumeClaimTable from './components/PersistentVolumeClaimTable';
 import PodResourceStatus from './components/PodResourceStatus';
+import PodResizeDrawer from './components/PodResizeDrawer';
 import PodSchedulingInfo from './components/PodSchedulingInfo';
 import {
   buildPersistentVolumeClaimBasicInfo,
@@ -98,6 +100,13 @@ import {
   buildPodDetail,
   type PodBasicInfo,
 } from './components/podHelpers';
+import {
+  buildContainerResourcesFromForm,
+  buildPodResizePatch,
+  getPodResizeMessage,
+  getPodResizeStatus,
+  type PodResizeFormValues,
+} from './components/podResizeHelpers';
 import ResourceBasicInfo from './components/ResourceBasicInfo';
 import ResourceDataFields from './components/ResourceDataFields';
 import { SecretSettingsEditDrawer } from './components/SecretEditDrawers';
@@ -182,6 +191,11 @@ const resourceTypes = Object.keys(
   resourceTypeLabels,
 ) as API.ClusterResourceCreateType[];
 
+const sleep = (duration: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, duration);
+  });
+
 type ResourceActionKey =
   | 'yaml'
   | 'rerun'
@@ -192,6 +206,7 @@ type ResourceActionKey =
   | 'ingressAnnotations'
   | 'configMapSettings'
   | 'secretSettings'
+  | 'podResize'
   | 'pvcClone'
   | 'pvcExpand'
   | 'storageClassDefault'
@@ -788,6 +803,7 @@ const ClusterResourceDetail = () => {
     useState(false);
   const [secretSettingsDrawerOpen, setSecretSettingsDrawerOpen] =
     useState(false);
+  const [podResizeDrawerOpen, setPodResizeDrawerOpen] = useState(false);
   const [pvcCloneDrawerOpen, setPvcCloneDrawerOpen] = useState(false);
   const [pvcExpandDrawerOpen, setPvcExpandDrawerOpen] = useState(false);
   const [
@@ -802,6 +818,9 @@ const ClusterResourceDetail = () => {
   >([]);
   const [yamlValue, setYamlValue] = useState('');
   const [manifest, setManifest] = useState<Record<string, unknown>>();
+  const [resizeContainer, setResizeContainer] =
+    useState<API.ClusterNodePodContainer>();
+  const podResizePollingRef = useRef(0);
   const [detailType, setDetailType] = useState<
     API.ClusterResourceCreateType | undefined
   >(type);
@@ -1193,6 +1212,13 @@ const ClusterResourceDetail = () => {
     fetchPods();
   }, [fetchPods]);
 
+  useEffect(
+    () => () => {
+      podResizePollingRef.current += 1;
+    },
+    [],
+  );
+
   useEffect(() => {
     fetchServiceEndpoints();
   }, [fetchServiceEndpoints]);
@@ -1476,6 +1502,111 @@ const ClusterResourceDetail = () => {
     }
   };
 
+  const waitForPodResizeResult = async (
+    containerName: string,
+    expectedResources: API.ClusterNodePodContainerResources,
+    pollingId: number,
+  ) => {
+    if (!namespace || !name) {
+      return;
+    }
+
+    for (let count = 0; count < 30; count += 1) {
+      const res = await getClusterResourceManifest({
+        type: 'Pod',
+        namespace,
+        name,
+      });
+      if (podResizePollingRef.current !== pollingId) {
+        return;
+      }
+
+      const nextManifest = res.data;
+      const nextPod = buildPodDetail(nextManifest);
+      const nextContainer = nextPod?.containers?.find(
+        (item) => item.name === containerName,
+      );
+
+      setManifest(nextManifest);
+
+      if (!nextPod || !nextContainer) {
+        return;
+      }
+
+      const resizeStatus = getPodResizeStatus(nextPod, {
+        ...nextContainer,
+        resources: expectedResources,
+      });
+      const resizeMessage = getPodResizeMessage(nextPod);
+
+      if (resizeStatus === 'synced') {
+        message.success('容器资源调整已生效');
+        return;
+      }
+      if (resizeStatus === 'infeasible') {
+        message.error(resizeMessage || '资源调整不可行，请检查节点可用资源');
+        return;
+      }
+      if (resizeStatus === 'deferred') {
+        message.warning(
+          resizeMessage || '资源调整已提交，等待节点资源释放后重试',
+        );
+        return;
+      }
+      if (resizeStatus === 'error') {
+        message.error(resizeMessage || '资源调整失败，请查看容器组事件');
+        return;
+      }
+
+      await sleep(2000);
+      if (podResizePollingRef.current !== pollingId) {
+        return;
+      }
+    }
+
+    message.info('资源调整请求已提交，当前仍在等待 kubelet 应用');
+  };
+
+  const handleResizePodResources = async (
+    container: API.ClusterNodePodContainer,
+    values: PodResizeFormValues,
+  ) => {
+    if (detailType !== 'Pod' || !namespace || !name || !container.name) {
+      return;
+    }
+
+    const patch = buildPodResizePatch(container.name, values);
+    const expectedResources = buildContainerResourcesFromForm(values);
+    const pollingId = podResizePollingRef.current + 1;
+    podResizePollingRef.current = pollingId;
+
+    setActionLoading('podResize');
+    try {
+      const res = await resizeClusterPodResources({
+        namespace,
+        name,
+        patch,
+      });
+      message.success('资源调整请求已提交');
+      if (res.data) {
+        setManifest(res.data);
+      }
+      setPodResizeDrawerOpen(false);
+      setResizeContainer(undefined);
+      void waitForPodResizeResult(
+        container.name,
+        expectedResources,
+        pollingId,
+      ).catch(() => {
+        if (podResizePollingRef.current === pollingId) {
+          message.error('资源调整状态刷新失败，请稍后手动刷新');
+        }
+      });
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
   const handleSetDefaultStorageClass = () => {
     if (type !== 'StorageClass' || !name || !manifest) {
       return;
@@ -1576,6 +1707,11 @@ const ClusterResourceDetail = () => {
 
     setIngressAnnotationRows(rows.length > 0 ? rows : [createKeyValueItem()]);
     setIngressAnnotationModalOpen(true);
+  };
+
+  const openPodResizeDrawer = (container: API.ClusterNodePodContainer) => {
+    setResizeContainer(container);
+    setPodResizeDrawerOpen(true);
   };
 
   const handleSaveIngressAnnotations = async () => {
@@ -1779,7 +1915,9 @@ const ClusterResourceDetail = () => {
         {
           key: 'resourceStatus',
           label: '资源状态',
-          children: <PodResourceStatus pod={podDetail} />,
+          children: (
+            <PodResourceStatus pod={podDetail} onResize={openPodResizeDrawer} />
+          ),
         },
         {
           key: 'scheduling',
@@ -2205,6 +2343,17 @@ const ClusterResourceDetail = () => {
         open={configMapSettingsDrawerOpen}
         onCancel={() => setConfigMapSettingsDrawerOpen(false)}
         onSubmit={handleUpdateConfigMapManifest}
+      />
+      <PodResizeDrawer
+        container={resizeContainer}
+        loading={actionLoading === 'podResize'}
+        open={podResizeDrawerOpen}
+        pod={podDetail}
+        onCancel={() => {
+          setPodResizeDrawerOpen(false);
+          setResizeContainer(undefined);
+        }}
+        onSubmit={handleResizePodResources}
       />
       <PersistentVolumeClaimCloneDrawer
         currentSizeGi={persistentVolumeClaimSizeGi}
