@@ -12,12 +12,16 @@ import { useEffect, useRef, useState } from 'react';
 import { ClusterTableSearch } from '@/components';
 import { getClusterNamespaceList } from '@/services/kubeflare/cluster/namespace';
 import { getRbacRoleList } from '@/services/kubeflare/cluster/rbac';
-import { deleteClusterResource } from '@/services/kubeflare/cluster/resource';
+import {
+  createClusterResource,
+  deleteClusterResource,
+} from '@/services/kubeflare/cluster/resource';
 import RbacDetailDrawer from '../components/RbacDetailDrawer';
 import RbacYamlDrawer from '../components/RbacYamlDrawer';
 import RiskLevelTag from '../components/RiskLevelTag';
 import { ALL_NAMESPACES_VALUE } from '../constants';
 import { getRbacResourceType, getResourceNamespace, toYaml } from '../utils';
+import CreateRoleDrawer from './components/CreateRoleDrawer';
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '操作失败，请稍后重试';
@@ -36,27 +40,6 @@ const useStyles = createStyles(({ token }) => ({
   },
 }));
 
-const roleTemplate = `apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: example-reader
-  namespace: default
-rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list", "watch"]
-`;
-
-const clusterRoleTemplate = `apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: example-cluster-reader
-rules:
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-`;
-
 const Roles = () => {
   const { styles } = useStyles();
   const { message } = App.useApp();
@@ -68,6 +51,8 @@ const Roles = () => {
   const [typeValue, setTypeValue] = useState<'all' | 'Role' | 'ClusterRole'>(
     'all',
   );
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
   const [namespaceOptions, setNamespaceOptions] = useState<
     { label: string; value: string }[]
   >([]);
@@ -79,13 +64,39 @@ const Roles = () => {
     value: string;
   }>({ open: false, mode: 'view', value: '' });
 
+  const handleCreateRole = async (values: {
+    type: API.ClusterResourceCreateType;
+    namespace?: string;
+    manifest: Record<string, unknown>;
+  }) => {
+    setCreateLoading(true);
+    try {
+      await createClusterResource(values);
+      message.success('角色已创建');
+      setCreateOpen(false);
+      actionRef.current?.reloadAndRest?.();
+    } catch (error) {
+      message.error(getErrorMessage(error));
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   useEffect(() => {
     getClusterNamespaceList().then((res) => {
       setNamespaceOptions(
-        (res.data.items || []).map((item) => ({
-          label: item.name,
-          value: item.name,
-        })),
+        (res.data.items || []).flatMap((item) => {
+          if (!item.name || item.name === '-') {
+            return [];
+          }
+
+          return [
+            {
+              label: item.name,
+              value: item.name,
+            },
+          ];
+        }),
       );
     });
   }, []);
@@ -94,15 +105,17 @@ const Roles = () => {
     {
       title: '名称',
       dataIndex: 'name',
+      width: 220,
       ellipsis: true,
       render: (_, record) => (
         <a onClick={() => setDetailItem(record)}>{record.name}</a>
       ),
     },
-    { title: '类型', dataIndex: 'type', width: 130 },
+    { title: '类型', dataIndex: 'type', width: 130, ellipsis: true },
     {
       title: '命名空间',
       dataIndex: 'namespace',
+      width: 180,
       ellipsis: true,
       renderText: (_, record) => record.namespace || '全集群',
     },
@@ -111,6 +124,7 @@ const Roles = () => {
     {
       title: '标记',
       dataIndex: 'system',
+      width: 150,
       render: (_, record) => (
         <Space size={[0, 6]} wrap>
           {record.system ? <Tag color="blue">系统</Tag> : <Tag>自定义</Tag>}
@@ -136,6 +150,7 @@ const Roles = () => {
       title: '操作',
       valueType: 'option',
       width: 190,
+      fixed: 'right',
       render: (_, record) => [
         <a
           key="yaml"
@@ -199,6 +214,7 @@ const Roles = () => {
         actionRef={actionRef}
         search={false}
         columns={columns}
+        scroll={{ x: 1340 }}
         request={async (params) => {
           const res = await getRbacRoleList({
             keyword: keywordRef.current,
@@ -221,16 +237,7 @@ const Roles = () => {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() =>
-                setYamlState({
-                  open: true,
-                  mode: 'create',
-                  value:
-                    typeRef.current === 'ClusterRole'
-                      ? clusterRoleTemplate
-                      : roleTemplate,
-                })
-              }
+              onClick={() => setCreateOpen(true)}
             >
               新建
             </Button>
@@ -278,6 +285,17 @@ const Roles = () => {
         open={Boolean(detailItem)}
         item={detailItem}
         onClose={() => setDetailItem(undefined)}
+      />
+      <CreateRoleDrawer
+        defaultNamespace={
+          namespaceValue === ALL_NAMESPACES_VALUE ? undefined : namespaceValue
+        }
+        defaultType={typeRef.current || 'Role'}
+        loading={createLoading}
+        namespaceOptions={namespaceOptions}
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        onSubmit={handleCreateRole}
       />
       <RbacYamlDrawer
         open={yamlState.open}

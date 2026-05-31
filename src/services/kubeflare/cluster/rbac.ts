@@ -635,37 +635,6 @@ export async function getRbacSubjectList(
   } as API.ApiResponse<API.RbacListData<API.RbacSubjectItem>>
 }
 
-export async function getRbacOverview(
-  options?: { [key: string]: any },
-) {
-  const [rolesRes, bindingsRes, subjectsRes] = await Promise.all([
-    getRbacRoleList(undefined, options),
-    getRbacBindingList(undefined, options),
-    getRbacSubjectList(undefined, options),
-  ])
-  const roleItems = rolesRes.data.items || []
-  const bindingItems = bindingsRes.data.items || []
-  const allRiskItems = [...roleItems, ...bindingItems]
-
-  return {
-    code: 20000,
-    message: '',
-    data: {
-      roles: roleItems.filter((item) => item.type === 'Role').length,
-      clusterRoles: roleItems.filter((item) => item.type === 'ClusterRole').length,
-      roleBindings: bindingItems.filter((item) => item.type === 'RoleBinding').length,
-      clusterRoleBindings: bindingItems.filter(
-        (item) => item.type === 'ClusterRoleBinding',
-      ).length,
-      subjects: subjectsRes.data.items.length,
-      criticalRisks: allRiskItems.filter((item) => item.risk_level === 'Critical')
-        .length,
-      highRisks: allRiskItems.filter((item) => item.risk_level === 'High')
-        .length,
-    },
-  } as API.ApiResponse<API.RbacOverviewData>
-}
-
 export async function getRbacRiskList(
   params?: API.ClusterResourceListParams,
   options?: { [key: string]: any },
@@ -942,24 +911,6 @@ export async function simulateRbacAccess(
       },
     } as API.ApiResponse<API.RbacSimulatorResult>
   }
-}
-
-export async function getRbacAuditList(
-  params?: API.ClusterResourceListParams,
-  options?: { [key: string]: any },
-) {
-  const risks = await getRbacRiskList(params, options)
-
-  return {
-    ...risks,
-    data: {
-      items: risks.data.items.map((item) => ({
-        ...item,
-        action: `发现风险：${item.action}`,
-        operator: 'Kubernetes API',
-      })),
-    },
-  } as API.ApiResponse<API.RbacListData<API.RbacAuditItem>>
 }
 
 export async function dryRunRbacManifest(

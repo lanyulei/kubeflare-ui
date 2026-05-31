@@ -968,16 +968,6 @@ declare namespace API {
     scopeNamespace?: string
   }
 
-  type RbacOverviewData = {
-    roles: number
-    clusterRoles: number
-    roleBindings: number
-    clusterRoleBindings: number
-    subjects: number
-    criticalRisks: number
-    highRisks: number
-  }
-
   type RbacListData<T> = {
     items: T[]
   }

@@ -10,10 +10,12 @@ const Risks = () => {
   const keywordRef = useRef('');
 
   const columns: ProColumns<API.RbacAuditItem>[] = [
-    { title: '资源', dataIndex: 'resource', ellipsis: true },
+    { title: '资源', dataIndex: 'resource', width: 260, ellipsis: true },
     {
       title: '命名空间',
       dataIndex: 'namespace',
+      width: 180,
+      ellipsis: true,
       renderText: (_, record) => record.namespace || '全集群',
     },
     {
@@ -22,8 +24,8 @@ const Risks = () => {
       width: 110,
       render: (_, record) => <RiskLevelTag level={record.risk_level} />,
     },
-    { title: '说明', dataIndex: 'action', ellipsis: true },
-    { title: '状态', dataIndex: 'status', width: 120 },
+    { title: '说明', dataIndex: 'action', width: 360, ellipsis: true },
+    { title: '状态', dataIndex: 'status', width: 120, ellipsis: true },
     { title: '创建时间', dataIndex: 'time', valueType: 'dateTime', width: 180 },
   ];
 
@@ -34,6 +36,7 @@ const Risks = () => {
         actionRef={actionRef}
         search={false}
         columns={columns}
+        scroll={{ x: 1210 }}
         request={async (params) => {
           const res = await getRbacRiskList({ keyword: keywordRef.current });
           const current = params.current || 1;

@@ -6,7 +6,7 @@ import {
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { App, Button, Popconfirm, Select, Space, Tag } from 'antd';
+import { App, Button, Popconfirm, Select, Space } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useRef, useState } from 'react';
 import { ClusterTableSearch } from '@/components';
@@ -110,12 +110,13 @@ const Bindings = () => {
     {
       title: '名称',
       dataIndex: 'name',
+      width: 240,
       ellipsis: true,
       render: (_, record) => (
         <a onClick={() => setDetailItem(record)}>{record.name}</a>
       ),
     },
-    { title: '类型', dataIndex: 'type', width: 170 },
+    { title: '类型', dataIndex: 'type', width: 170, ellipsis: true },
     {
       title: '授权范围',
       dataIndex: 'scope',
@@ -125,20 +126,14 @@ const Bindings = () => {
     {
       title: '主体',
       dataIndex: 'subjects',
-      render: (_, record) => (
-        <Space size={[0, 6]} wrap>
-          {record.subjects.slice(0, 3).map((subject) => (
-            <Tag key={getSubjectText(subject)}>{getSubjectText(subject)}</Tag>
-          ))}
-          {record.subjects.length > 3 ? (
-            <Tag>+{record.subjects.length - 3}</Tag>
-          ) : null}
-        </Space>
-      ),
+      width: 260,
+      ellipsis: true,
+      renderText: (_, record) => record.subjects.map(getSubjectText).join('、'),
     },
     {
       title: '引用角色',
       dataIndex: 'role_name',
+      width: 260,
       ellipsis: true,
       renderText: (_, record) =>
         `${record.roleRef?.kind || '-'}:${record.roleRef?.name || '-'}`,
@@ -162,6 +157,7 @@ const Bindings = () => {
       title: '操作',
       valueType: 'option',
       width: 190,
+      fixed: 'right',
       render: (_, record) => [
         <a
           key="yaml"
@@ -225,6 +221,7 @@ const Bindings = () => {
         actionRef={actionRef}
         search={false}
         columns={columns}
+        scroll={{ x: 1660 }}
         request={async (params) => {
           const res = await getRbacBindingList({
             keyword: keywordRef.current,

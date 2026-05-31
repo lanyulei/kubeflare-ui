@@ -181,12 +181,7 @@ export default [
         routes: [
           {
             path: '/cluster/access-control',
-            redirect: '/cluster/access-control/overview',
-          },
-          {
-            path: '/cluster/access-control/overview',
-            name: 'clusterAccessControlOverview',
-            component: './access-control/overview',
+            redirect: '/cluster/access-control/roles',
           },
           {
             path: '/cluster/access-control/roles',
@@ -217,11 +212,6 @@ export default [
             path: '/cluster/access-control/risks',
             name: 'clusterAccessControlRisks',
             component: './access-control/risks',
-          },
-          {
-            path: '/cluster/access-control/audit',
-            name: 'clusterAccessControlAudit',
-            component: './access-control/audit',
           },
         ],
       },

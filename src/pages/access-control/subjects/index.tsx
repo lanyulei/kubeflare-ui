@@ -21,15 +21,18 @@ const Subjects = () => {
     {
       title: '主体',
       dataIndex: 'name',
+      width: 260,
       ellipsis: true,
       render: (_, record) => (
         <a onClick={() => setSelected(record)}>{record.name}</a>
       ),
     },
-    { title: '类型', dataIndex: 'kind', width: 150 },
+    { title: '类型', dataIndex: 'kind', width: 150, ellipsis: true },
     {
       title: '命名空间',
       dataIndex: 'namespace',
+      width: 180,
+      ellipsis: true,
       renderText: (_, record) => record.namespace || '-',
     },
     { title: '绑定数', dataIndex: 'binding_count', width: 100 },
@@ -52,6 +55,7 @@ const Subjects = () => {
         actionRef={actionRef}
         search={false}
         columns={columns}
+        scroll={{ x: 1020 }}
         request={async (params) => {
           const res = await getRbacSubjectList({
             keyword: keywordRef.current,

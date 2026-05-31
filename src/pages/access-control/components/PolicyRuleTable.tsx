@@ -1,6 +1,5 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { Tag } from 'antd';
 import { analyzeRbacRuleRisk } from '@/services/kubeflare/cluster/rbac';
 import { formatList, getRuleResourceText } from '../utils';
 import RiskLevelTag from './RiskLevelTag';
@@ -8,14 +7,6 @@ import RiskLevelTag from './RiskLevelTag';
 type PolicyRuleTableProps = {
   rules?: API.RbacPolicyRule[];
   showRisk?: boolean;
-};
-
-const renderTags = (values?: string[]) => {
-  if (!values?.length) {
-    return '-';
-  }
-
-  return values.map((value) => <Tag key={value}>{value}</Tag>);
 };
 
 const PolicyRuleTable = ({
@@ -26,23 +17,29 @@ const PolicyRuleTable = ({
     {
       title: 'API 组',
       dataIndex: 'apiGroups',
-      render: (_, record) =>
-        renderTags(record.apiGroups?.length ? record.apiGroups : ['core']),
+      width: 220,
+      ellipsis: true,
+      renderText: (_, record) =>
+        formatList(record.apiGroups?.length ? record.apiGroups : ['core']),
     },
     {
       title: '资源 / URL',
       dataIndex: 'resources',
+      width: 260,
       ellipsis: true,
       renderText: (_, record) => getRuleResourceText(record),
     },
     {
       title: '动作',
       dataIndex: 'verbs',
-      render: (_, record) => renderTags(record.verbs),
+      width: 260,
+      ellipsis: true,
+      renderText: (_, record) => formatList(record.verbs),
     },
     {
       title: '资源名限制',
       dataIndex: 'resourceNames',
+      width: 220,
       ellipsis: true,
       renderText: (_, record) => formatList(record.resourceNames),
     },
@@ -67,6 +64,7 @@ const PolicyRuleTable = ({
       options={false}
       pagination={false}
       columns={columns}
+      scroll={{ x: showRisk ? 1070 : 960 }}
       dataSource={rules}
       size="small"
     />

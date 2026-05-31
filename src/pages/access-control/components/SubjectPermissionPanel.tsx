@@ -28,6 +28,8 @@ const SubjectPermissionPanel = ({ query }: SubjectPermissionPanelProps) => {
     {
       title: 'API 组',
       dataIndex: ['rule', 'apiGroups'],
+      width: 180,
+      ellipsis: true,
       renderText: (_, record) =>
         formatList(
           record.rule.apiGroups?.length ? record.rule.apiGroups : ['core'],
@@ -36,18 +38,21 @@ const SubjectPermissionPanel = ({ query }: SubjectPermissionPanelProps) => {
     {
       title: '资源 / URL',
       dataIndex: ['rule', 'resources'],
+      width: 240,
       ellipsis: true,
       renderText: (_, record) => getRuleResourceText(record.rule),
     },
     {
       title: '动作',
       dataIndex: ['rule', 'verbs'],
+      width: 220,
       ellipsis: true,
       renderText: (_, record) => formatList(record.rule.verbs),
     },
     {
       title: '来源绑定',
       dataIndex: ['source', 'bindingName'],
+      width: 260,
       ellipsis: true,
       renderText: (_, record) =>
         `${record.source.bindingKind}:${record.source.bindingNamespace ? `${record.source.bindingNamespace}/` : ''}${record.source.bindingName}`,
@@ -55,6 +60,7 @@ const SubjectPermissionPanel = ({ query }: SubjectPermissionPanelProps) => {
     {
       title: '来源角色',
       dataIndex: ['source', 'roleName'],
+      width: 220,
       ellipsis: true,
       renderText: (_, record) =>
         `${record.source.roleKind}:${record.source.roleName}`,
@@ -75,6 +81,7 @@ const SubjectPermissionPanel = ({ query }: SubjectPermissionPanelProps) => {
       actionRef={actionRef}
       search={false}
       columns={columns}
+      scroll={{ x: 1380 }}
       expandable={{
         expandedRowRender: (record) => (
           <PolicyRuleTable rules={[record.rule]} showRisk={false} />
