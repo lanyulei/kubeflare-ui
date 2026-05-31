@@ -32,7 +32,6 @@ export default {
   'menu.cluster.clusterAccessControl': 'Access Control',
   'menu.cluster.clusterAccessControl.clusterAccessControlRoles': 'Roles',
   'menu.cluster.clusterAccessControl.clusterAccessControlBindings': 'Bindings',
-  'menu.cluster.clusterAccessControl.clusterAccessControlSubjects': 'Subjects',
   'menu.system': 'سیستم',
   'menu.system.sub-page': 'زیر صفحه',
   'menu.system.systemUser': 'کاربران',

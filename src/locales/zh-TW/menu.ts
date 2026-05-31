@@ -31,7 +31,6 @@ export default {
   'menu.cluster.clusterAccessControl': '訪問控制',
   'menu.cluster.clusterAccessControl.clusterAccessControlRoles': '角色',
   'menu.cluster.clusterAccessControl.clusterAccessControlBindings': '綁定',
-  'menu.cluster.clusterAccessControl.clusterAccessControlSubjects': '主體',
   'menu.system': '系統管理',
   'menu.system.sub-page': '二級管理頁',
   'menu.system.systemUser': '使用者管理',

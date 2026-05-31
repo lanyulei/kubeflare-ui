@@ -943,31 +943,6 @@ declare namespace API {
     risk_reasons: string[]
   }
 
-  type RbacResolvedPermission = {
-    id: string
-    subject: RbacSubject
-    scope: 'Cluster' | 'Namespace'
-    namespace?: string
-    rule: RbacPolicyRule
-    source: {
-      bindingKind: 'RoleBinding' | 'ClusterRoleBinding'
-      bindingName: string
-      bindingNamespace?: string
-      roleKind: 'Role' | 'ClusterRole'
-      roleName: string
-      roleNamespace?: string
-    }
-    risk_level: RbacRiskLevel
-    risk_reasons: string[]
-  }
-
-  type RbacSubjectQuery = {
-    kind: RbacSubjectKind
-    name: string
-    namespace?: string
-    scopeNamespace?: string
-  }
-
   type RbacListData<T> = {
     items: T[]
   }

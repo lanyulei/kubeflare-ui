@@ -188,11 +188,6 @@ export default [
             name: 'clusterAccessControlBindings',
             component: './access-control/bindings',
           },
-          {
-            path: '/cluster/access-control/subjects',
-            name: 'clusterAccessControlSubjects',
-            component: './access-control/subjects',
-          },
         ],
       },
       {

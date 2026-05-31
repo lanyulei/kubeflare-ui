@@ -32,7 +32,6 @@ export default {
   'menu.cluster.clusterAccessControl': 'Access Control',
   'menu.cluster.clusterAccessControl.clusterAccessControlRoles': 'Roles',
   'menu.cluster.clusterAccessControl.clusterAccessControlBindings': 'Bindings',
-  'menu.cluster.clusterAccessControl.clusterAccessControlSubjects': 'Subjects',
   'menu.system': 'সিস্টেম',
   'menu.system.sub-page': 'উপ-পৃষ্ঠা',
   'menu.system.systemUser': 'ব্যবহারকারী',
