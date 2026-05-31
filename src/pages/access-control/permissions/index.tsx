@@ -1,84 +1,89 @@
-import {
-  PageContainer,
-  ProCard,
-  ProForm,
-  ProFormSelect,
-  ProFormText,
-} from '@ant-design/pro-components';
+import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useSearchParams } from '@umijs/max';
-import { useEffect, useState } from 'react';
+import { App, Space, Spin } from 'antd';
+import { createStyles } from 'antd-style';
+import { useCallback, useEffect, useState } from 'react';
 import { getRbacGraph } from '@/services/kubeflare/cluster/rbac';
 import RbacGraphView from '../components/RbacGraphView';
+import RbacSubjectQueryForm from '../components/RbacSubjectQueryForm';
+import RbacSubjectQuerySummary from '../components/RbacSubjectQuerySummary';
 import SubjectPermissionPanel from '../components/SubjectPermissionPanel';
-import { SUBJECT_KIND_OPTIONS } from '../constants';
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : '查询失败，请稍后重试';
+
+const useStyles = createStyles(() => ({
+  stack: {
+    width: '100%',
+  },
+}));
 
 const Permissions = () => {
+  const { styles } = useStyles();
+  const { message } = App.useApp();
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState<API.RbacSubjectQuery>();
   const [graph, setGraph] = useState<API.RbacGraphData>();
+  const [graphLoading, setGraphLoading] = useState(false);
+
+  const handleQuery = useCallback(
+    async (nextQuery: API.RbacSubjectQuery) => {
+      setQuery(nextQuery);
+      setGraph(undefined);
+      setGraphLoading(true);
+      try {
+        const res = await getRbacGraph(nextQuery);
+        setGraph(res.data);
+      } catch (error) {
+        message.error(getErrorMessage(error));
+        setGraph(undefined);
+      } finally {
+        setGraphLoading(false);
+      }
+    },
+    [message],
+  );
+
+  const handleReset = () => {
+    setQuery(undefined);
+    setGraph(undefined);
+  };
 
   useEffect(() => {
     const kind = searchParams.get('kind') as API.RbacSubjectKind | null;
     const name = searchParams.get('name');
     const namespace = searchParams.get('namespace') || undefined;
+    const scopeNamespace = searchParams.get('scopeNamespace') || undefined;
 
     if (!kind || !name) {
+      setQuery(undefined);
+      setGraph(undefined);
       return;
     }
 
-    const nextQuery = { kind, name, namespace };
-    setQuery(nextQuery);
-    getRbacGraph(nextQuery).then((res) => setGraph(res.data));
-  }, [searchParams]);
+    void handleQuery({ kind, name, namespace, scopeNamespace });
+  }, [handleQuery, searchParams]);
 
   return (
     <PageContainer title="权限反查">
-      <ProCard direction="column" gutter={[16, 16]}>
+      <Space className={styles.stack} direction="vertical" size={16}>
         <ProCard>
-          <ProForm
+          <RbacSubjectQueryForm
             key={JSON.stringify(query || {})}
-            layout="horizontal"
             initialValues={query}
-            submitter={{ searchConfig: { submitText: '查询权限' } }}
-            onFinish={async (values) => {
-              const nextQuery = values as API.RbacSubjectQuery;
-              setQuery(nextQuery);
-              const res = await getRbacGraph(nextQuery);
-              setGraph(res.data);
-            }}
-          >
-            <ProFormSelect
-              name="kind"
-              label="主体类型"
-              width="md"
-              rules={[{ required: true }]}
-              options={SUBJECT_KIND_OPTIONS}
-            />
-            <ProFormText
-              name="namespace"
-              label="ServiceAccount 命名空间"
-              width="md"
-            />
-            <ProFormText
-              name="name"
-              label="主体名称"
-              width="md"
-              rules={[{ required: true }]}
-            />
-            <ProFormText
-              name="scopeNamespace"
-              label="限定命名空间"
-              width="md"
-            />
-          </ProForm>
+            loading={graphLoading}
+            onReset={handleReset}
+            onSubmit={handleQuery}
+          />
         </ProCard>
-        <ProCard title="最终权限">
-          <SubjectPermissionPanel query={query} />
-        </ProCard>
+        {query ? <RbacSubjectQuerySummary graph={graph} query={query} /> : null}
+        <SubjectPermissionPanel title="最终权限" query={query} />
         <ProCard title="权限来源关系">
-          <RbacGraphView graph={graph} />
+          <Spin spinning={graphLoading}>
+            <RbacGraphView graph={graph} />
+          </Spin>
         </ProCard>
-      </ProCard>
+      </Space>
     </PageContainer>
   );
 };

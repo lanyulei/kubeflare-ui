@@ -170,11 +170,6 @@ export default [
         ],
       },
       {
-        path: '/cluster/custom-resource-definitions',
-        name: 'clusterCustomResourceDefinitions',
-        component: './cluster/custom-resource-definitions',
-      },
-      {
         path: '/cluster/access-control',
         name: 'clusterAccessControl',
         icon: 'safety',
@@ -214,6 +209,11 @@ export default [
             component: './access-control/risks',
           },
         ],
+      },
+      {
+        path: '/cluster/custom-resource-definitions',
+        name: 'clusterCustomResourceDefinitions',
+        component: './cluster/custom-resource-definitions',
       },
     ],
   },

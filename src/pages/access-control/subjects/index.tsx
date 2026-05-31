@@ -1,14 +1,33 @@
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Select, Space } from 'antd';
+import { createStyles } from 'antd-style';
 import { useRef, useState } from 'react';
 import { ClusterTableSearch } from '@/components';
 import { getRbacSubjectList } from '@/services/kubeflare/cluster/rbac';
 import RiskLevelTag from '../components/RiskLevelTag';
-import SubjectPermissionPanel from '../components/SubjectPermissionPanel';
+import SubjectDetailDrawer from '../components/SubjectDetailDrawer';
+import SubjectIdentity from '../components/SubjectIdentity';
 import { SUBJECT_KIND_OPTIONS, TABLE_DEFAULT_PAGE_SIZE } from '../constants';
 
+const useStyles = createStyles(({ token }) => ({
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: token.marginSM,
+  },
+  kindSelect: {
+    width: 180,
+  },
+  search: {
+    width: 300,
+    maxWidth: '100%',
+  },
+}));
+
 const Subjects = () => {
+  const { styles } = useStyles();
   const actionRef = useRef<ActionType | null>(null);
   const keywordRef = useRef('');
   const kindRef = useRef<API.RbacSubjectKind | undefined>(undefined);
@@ -21,13 +40,16 @@ const Subjects = () => {
     {
       title: '主体',
       dataIndex: 'name',
-      width: 260,
-      ellipsis: true,
+      width: 320,
       render: (_, record) => (
-        <a onClick={() => setSelected(record)}>{record.name}</a>
+        <SubjectIdentity
+          link
+          showNamespace={false}
+          subject={record}
+          onClick={() => setSelected(record)}
+        />
       ),
     },
-    { title: '类型', dataIndex: 'kind', width: 150, ellipsis: true },
     {
       title: '命名空间',
       dataIndex: 'namespace',
@@ -46,6 +68,17 @@ const Subjects = () => {
         <RiskLevelTag level={record.risk_level} reasons={record.risk_reasons} />
       ),
     },
+    {
+      title: '操作',
+      valueType: 'option',
+      width: 100,
+      fixed: 'right',
+      render: (_, record) => [
+        <a key="detail" onClick={() => setSelected(record)}>
+          详情
+        </a>,
+      ],
+    },
   ];
 
   return (
@@ -55,7 +88,7 @@ const Subjects = () => {
         actionRef={actionRef}
         search={false}
         columns={columns}
-        scroll={{ x: 1020 }}
+        scroll={{ x: 1030 }}
         pagination={{
           defaultPageSize: TABLE_DEFAULT_PAGE_SIZE,
         }}
@@ -75,22 +108,11 @@ const Subjects = () => {
             total: res.data.items.length,
           };
         }}
-        expandable={{
-          expandedRowRender: (record) => (
-            <SubjectPermissionPanel
-              query={{
-                kind: record.kind,
-                name: record.name,
-                namespace: record.namespace,
-              }}
-            />
-          ),
-        }}
         headerTitle={
-          <Space>
+          <Space className={styles.toolbar}>
             <Select<'all' | API.RbacSubjectKind>
               value={kindValue}
-              style={{ width: 180 }}
+              className={styles.kindSelect}
               options={[
                 { label: '全部主体', value: 'all' },
                 ...SUBJECT_KIND_OPTIONS,
@@ -104,7 +126,7 @@ const Subjects = () => {
             <ClusterTableSearch
               clearTriggersSearch
               placeholder="搜索主体名称 / 命名空间 / 风险"
-              style={{ width: 300 }}
+              className={styles.search}
               onSearch={(value) => {
                 keywordRef.current = value;
                 actionRef.current?.reloadAndRest?.();
@@ -113,15 +135,11 @@ const Subjects = () => {
           </Space>
         }
       />
-      {selected ? (
-        <SubjectPermissionPanel
-          query={{
-            kind: selected.kind,
-            name: selected.name,
-            namespace: selected.namespace,
-          }}
-        />
-      ) : null}
+      <SubjectDetailDrawer
+        open={Boolean(selected)}
+        subject={selected}
+        onClose={() => setSelected(undefined)}
+      />
     </PageContainer>
   );
 };

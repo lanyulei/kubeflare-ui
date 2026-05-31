@@ -1,5 +1,6 @@
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
+import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 import { resolveRbacSubjectPermissions } from '@/services/kubeflare/cluster/rbac';
 import { TABLE_DEFAULT_PAGE_SIZE } from '../constants';
@@ -8,10 +9,14 @@ import PolicyRuleTable from './PolicyRuleTable';
 import RiskLevelTag from './RiskLevelTag';
 
 type SubjectPermissionPanelProps = {
+  title?: ReactNode;
   query?: API.RbacSubjectQuery;
 };
 
-const SubjectPermissionPanel = ({ query }: SubjectPermissionPanelProps) => {
+const SubjectPermissionPanel = ({
+  query,
+  title,
+}: SubjectPermissionPanelProps) => {
   const actionRef = useRef<ActionType | null>(null);
 
   useEffect(() => {
@@ -81,6 +86,7 @@ const SubjectPermissionPanel = ({ query }: SubjectPermissionPanelProps) => {
       rowKey="id"
       actionRef={actionRef}
       search={false}
+      headerTitle={title}
       columns={columns}
       scroll={{ x: 1380 }}
       pagination={{

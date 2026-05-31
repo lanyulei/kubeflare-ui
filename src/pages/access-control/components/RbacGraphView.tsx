@@ -1,4 +1,4 @@
-import { Empty, Tag } from 'antd';
+import { Empty, Tag, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import RiskLevelTag from './RiskLevelTag';
 
@@ -10,22 +10,40 @@ const useStyles = createStyles(({ token }) => ({
   },
   edge: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 96px minmax(0, 1fr)',
+    gridTemplateColumns: 'minmax(0, 1fr) 88px minmax(0, 1fr)',
     alignItems: 'center',
     gap: token.marginSM,
-    padding: token.paddingSM,
+    minHeight: 56,
+    padding: `${token.paddingSM}px ${token.padding}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadius,
-    background: token.colorBgContainer,
+    borderRadius: token.borderRadiusLG,
+    background: token.colorFillAlter,
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+      gap: token.marginXS,
+    },
   },
   node: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginXS,
+    minWidth: 0,
+  },
+  nodeLabel: {
     minWidth: 0,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
   relation: {
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
     textAlign: 'center',
+
+    '@media (max-width: 768px)': {
+      textAlign: 'left',
+    },
   },
 }));
 
@@ -54,7 +72,12 @@ const RbacGraphView = ({ graph }: RbacGraphViewProps) => {
           >
             <span className={styles.node}>
               <Tag>{source?.type}</Tag>
-              {source?.label}
+              <Typography.Text
+                className={styles.nodeLabel}
+                ellipsis={{ tooltip: source?.label }}
+              >
+                {source?.label || '-'}
+              </Typography.Text>
               {source?.risk_level ? (
                 <RiskLevelTag level={source.risk_level} />
               ) : null}
@@ -62,7 +85,12 @@ const RbacGraphView = ({ graph }: RbacGraphViewProps) => {
             <span className={styles.relation}>{edge.label}</span>
             <span className={styles.node}>
               <Tag>{target?.type}</Tag>
-              {target?.label}
+              <Typography.Text
+                className={styles.nodeLabel}
+                ellipsis={{ tooltip: target?.label }}
+              >
+                {target?.label || '-'}
+              </Typography.Text>
               {target?.risk_level ? (
                 <RiskLevelTag level={target.risk_level} />
               ) : null}
