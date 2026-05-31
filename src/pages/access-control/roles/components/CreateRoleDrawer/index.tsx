@@ -2,11 +2,14 @@ import {
   AppstoreOutlined,
   CloseOutlined,
   DeleteOutlined,
+  DownOutlined,
   SafetyCertificateOutlined,
   SlidersOutlined,
+  UpOutlined,
 } from '@ant-design/icons';
 import {
   Button,
+  Checkbox,
   Col,
   Drawer,
   Form,
@@ -35,7 +38,11 @@ import {
   RBAC_API_VERSION,
   ROLE_NAME_PATTERN,
 } from './helpers';
-import type { CreateRoleFormValues, CreateRoleType } from './types';
+import type {
+  CreateRoleFormValues,
+  CreateRoleType,
+  MetadataItem,
+} from './types';
 
 const useStyles = createStyles(({ token }) => ({
   drawer: {
@@ -112,6 +119,86 @@ const useStyles = createStyles(({ token }) => ({
   },
   ruleSectionTitle: {
     marginBottom: 8,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  advancedStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+  },
+  advancedSectionTitle: {
+    marginBottom: 8,
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  advancedOption: {
+    padding: '12px 16px',
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorBgContainer,
+
+    '.ant-form-item': {
+      marginBottom: 0,
+    },
+  },
+  advancedOptionHeader: {
+    display: 'grid',
+    gridTemplateColumns: '24px minmax(0, 1fr)',
+    alignItems: 'start',
+    gap: token.marginSM,
+  },
+  advancedOptionHeaderButton: {
+    display: 'grid',
+    gridTemplateColumns: '24px minmax(0, 1fr)',
+    alignItems: 'start',
+    gap: token.marginSM,
+    width: '100%',
+    padding: 0,
+    border: 0,
+    background: 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+  advancedHeaderIcon: {
+    color: '#36435C',
+    fontSize: token.fontSizeSM,
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  advancedCheckbox: {
+    marginTop: 2,
+  },
+  advancedTitle: {
+    color: token.colorText,
+    fontSize: token.fontSizeSM,
+    fontWeight: 600,
+    lineHeight: token.lineHeight,
+  },
+  advancedDescription: {
+    marginTop: token.marginXXS,
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+    lineHeight: token.lineHeight,
+  },
+  advancedBody: {
+    marginTop: 14,
+    borderRadius: token.borderRadiusSM,
+  },
+  advancedMetadataBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginLG,
+    marginTop: 14,
+    borderRadius: token.borderRadiusSM,
+  },
+  advancedFieldLabel: {
+    marginBottom: token.marginSM,
     color: token.colorText,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeight,
@@ -346,9 +433,15 @@ const CreateRoleDrawer = ({
   const { styles } = useStyles();
   const [form] = Form.useForm<CreateRoleFormValues>();
   const [current, setCurrent] = useState(0);
+  const [metadataOpen, setMetadataOpen] = useState(true);
   const [yamlMode, setYamlMode] = useState(false);
   const [yamlValue, setYamlValue] = useState('');
   const values = Form.useWatch([], { form, preserve: true }) || {};
+  const labels = (Form.useWatch('labels', form) as MetadataItem[]) || [];
+  const annotations =
+    (Form.useWatch('annotations', form) as MetadataItem[]) || [];
+  const aggregationLabels =
+    (Form.useWatch('aggregationLabels', form) as MetadataItem[]) || [];
   const roleType = Form.useWatch('type', form) || defaultType;
   const steps = useMemo(
     () => [
@@ -380,9 +473,33 @@ const CreateRoleDrawer = ({
     form.resetFields();
     form.setFieldsValue(initialValues);
     setCurrent(0);
+    setMetadataOpen(true);
     setYamlMode(false);
     setYamlValue(buildCreateRoleYaml(initialValues));
   }, [defaultNamespace, defaultType, form, open]);
+
+  useEffect(() => {
+    if (!metadataOpen) {
+      return;
+    }
+
+    if (labels.length === 0) {
+      form.setFieldValue('labels', [createMetadataItem()]);
+    }
+    if (annotations.length === 0) {
+      form.setFieldValue('annotations', [createMetadataItem()]);
+    }
+  }, [annotations.length, form, labels.length, metadataOpen]);
+
+  useEffect(() => {
+    if (
+      roleType === 'ClusterRole' &&
+      values.aggregationEnabled &&
+      aggregationLabels.length === 0
+    ) {
+      form.setFieldValue('aggregationLabels', [createMetadataItem()]);
+    }
+  }, [aggregationLabels.length, form, roleType, values.aggregationEnabled]);
 
   const syncYamlFromForm = () => {
     setYamlValue(buildCreateRoleYaml(form.getFieldsValue(true)));
@@ -606,51 +723,116 @@ const CreateRoleDrawer = ({
   );
 
   const renderAdvancedSettings = () => (
-    <Space direction="vertical" size={24} style={{ width: '100%' }}>
-      <Form.Item label="标签" name="labels">
-        <KeyValueEditor
-          addText="添加标签"
-          keyPlaceholder="标签键"
-          valuePlaceholder="标签值"
-          onCreateItem={createMetadataItem}
-        />
-      </Form.Item>
-      <Form.Item label="注解" name="annotations">
-        <KeyValueEditor
-          addText="添加注解"
-          keyPlaceholder="注解键"
-          valuePlaceholder="注解值"
-          onCreateItem={createMetadataItem}
-        />
-      </Form.Item>
+    <div className={styles.advancedStack}>
       {roleType === 'ClusterRole' && (
-        <>
-          <Form.Item
-            extra="启用后，控制面会按标签选择器聚合其他 ClusterRole 的 rules。"
-            label="聚合 ClusterRole"
-            name="aggregationEnabled"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-          {values.aggregationEnabled && (
-            <>
-              <Form.Item label="聚合标签选择器" name="aggregationLabels">
-                <KeyValueEditor
-                  addText="添加匹配标签"
-                  keyPlaceholder="标签键"
-                  valuePlaceholder="标签值"
-                  onCreateItem={createMetadataItem}
-                />
+        <div>
+          <div className={styles.advancedSectionTitle}>聚合规则</div>
+          <div className={styles.advancedOption}>
+            <div className={styles.advancedOptionHeader}>
+              <Form.Item
+                className={styles.advancedCheckbox}
+                name="aggregationEnabled"
+                valuePropName="checked"
+              >
+                <Checkbox aria-label="聚合 ClusterRole" />
               </Form.Item>
-              <Form.Item label="聚合匹配表达式">
-                {renderAggregationExpressions()}
-              </Form.Item>
-            </>
-          )}
-        </>
+              <span>
+                <div className={styles.advancedTitle}>聚合 ClusterRole</div>
+                <div className={styles.advancedDescription}>
+                  按标签选择器聚合其他 ClusterRole
+                  的权限规则，适合组合多个细粒度角色
+                </div>
+              </span>
+            </div>
+            {values.aggregationEnabled && (
+              <div className={styles.advancedMetadataBody}>
+                <div>
+                  <div className={styles.advancedFieldLabel}>
+                    聚合标签选择器
+                  </div>
+                  <Form.Item name="aggregationLabels">
+                    <KeyValueEditor
+                      addIcon={false}
+                      addText="添加"
+                      deleteAriaLabel="删除匹配标签"
+                      keyPlaceholder="标签键"
+                      valuePlaceholder="标签值"
+                      onAddBlocked={() =>
+                        message.warning('请先填写已有匹配标签的键。')
+                      }
+                      onCreateItem={createMetadataItem}
+                    />
+                  </Form.Item>
+                </div>
+                <div>
+                  <div className={styles.advancedFieldLabel}>
+                    聚合匹配表达式
+                  </div>
+                  <Form.Item>{renderAggregationExpressions()}</Form.Item>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
-    </Space>
+
+      <div>
+        <div className={styles.advancedSectionTitle}>元数据</div>
+        <div className={styles.advancedOption}>
+          <button
+            className={styles.advancedOptionHeaderButton}
+            type="button"
+            onClick={() => setMetadataOpen((nextOpen) => !nextOpen)}
+          >
+            <span className={styles.advancedHeaderIcon}>
+              {metadataOpen ? <UpOutlined /> : <DownOutlined />}
+            </span>
+            <span>
+              <div className={styles.advancedTitle}>添加元数据</div>
+              <div className={styles.advancedDescription}>
+                为角色资源添加标签和注解，便于筛选、识别和自动化管理
+              </div>
+            </span>
+          </button>
+          {metadataOpen && (
+            <div className={styles.advancedMetadataBody}>
+              <div>
+                <div className={styles.advancedFieldLabel}>标签</div>
+                <Form.Item name="labels">
+                  <KeyValueEditor
+                    addIcon={false}
+                    addText="添加"
+                    deleteAriaLabel="删除标签"
+                    keyPlaceholder="标签键"
+                    valuePlaceholder="标签值"
+                    onAddBlocked={() =>
+                      message.warning('请先填写已有标签的键。')
+                    }
+                    onCreateItem={createMetadataItem}
+                  />
+                </Form.Item>
+              </div>
+              <div>
+                <div className={styles.advancedFieldLabel}>注解</div>
+                <Form.Item name="annotations">
+                  <KeyValueEditor
+                    addIcon={false}
+                    addText="添加"
+                    deleteAriaLabel="删除注解"
+                    keyPlaceholder="注解键"
+                    valuePlaceholder="注解值"
+                    onAddBlocked={() =>
+                      message.warning('请先填写已有注解的键。')
+                    }
+                    onCreateItem={createMetadataItem}
+                  />
+                </Form.Item>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 
   const stepContent = [
