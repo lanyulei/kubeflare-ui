@@ -90,7 +90,7 @@ const CronJobBasicSettings = ({
         </Col>
         <Col span={24}>
           <Form.Item
-            tooltip="为定时任务设置定时计划。KubeSphere 默认使用 UTC 时间，您需要根据时区调整定时计划"
+            tooltip="为定时任务设置定时计划。Kubernetes 会按 CronJob 的时区设置解析该计划"
             label="定时计划"
             name="schedule"
             rules={[{ required: true, message: '请选择或输入定时计划' }]}
@@ -171,6 +171,15 @@ const CronJobBasicSettings = ({
                 options={concurrencyPolicyOptions}
                 placeholder="请选择并发策略"
               />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              tooltip="对应 Kubernetes CronJob 的 spec.timeZone。不填写时由集群控制器使用默认时区"
+              label="时区"
+              name="timeZone"
+            >
+              <Input placeholder="例如 Asia/Shanghai" />
             </Form.Item>
           </Col>
         </Row>

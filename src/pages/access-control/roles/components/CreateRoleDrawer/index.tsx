@@ -34,6 +34,7 @@ import {
   getInitialCreateRoleValues,
   hasAdvancedContent,
   hasRulesContent,
+  normalizeApiGroups,
   normalizeStringList,
   RBAC_API_VERSION,
   ROLE_NAME_PATTERN,
@@ -292,6 +293,7 @@ const validatePolicyRules = (values: CreateRoleFormValues) => {
 
   for (const [index, rule] of rules.entries()) {
     const verbs = normalizeStringList(rule.verbs);
+    const apiGroups = normalizeApiGroups(rule.apiGroups);
     const resources = normalizeStringList(rule.resources);
     const nonResourceURLs = normalizeStringList(rule.nonResourceURLs);
 
@@ -309,6 +311,10 @@ const validatePolicyRules = (values: CreateRoleFormValues) => {
         return false;
       }
       continue;
+    }
+    if (!apiGroups.length) {
+      message.warning(`权限规则 ${index + 1} 需要选择 API 组`);
+      return false;
     }
     if (!resources.length) {
       message.warning(`权限规则 ${index + 1} 需要选择资源`);
@@ -400,11 +406,15 @@ const validateYamlManifest = (resource: Record<string, unknown>) => {
     const resources = Array.isArray(ruleRecord.resources)
       ? ruleRecord.resources
       : [];
+    const apiGroups = Array.isArray(ruleRecord.apiGroups)
+      ? ruleRecord.apiGroups
+      : [];
     const nonResourceURLs = Array.isArray(ruleRecord.nonResourceURLs)
       ? ruleRecord.nonResourceURLs
       : [];
     return (
       !ruleRecord.verbs.length ||
+      (resources.length > 0 && apiGroups.length === 0) ||
       (resources.length > 0 && nonResourceURLs.length > 0) ||
       (resources.length === 0 && nonResourceURLs.length === 0) ||
       (kind === 'Role' && nonResourceURLs.length > 0)
@@ -413,7 +423,7 @@ const validateYamlManifest = (resource: Record<string, unknown>) => {
 
   if (invalidRuleIndex >= 0) {
     message.error(
-      `YAML rules[${invalidRuleIndex}] 需要包含 verbs，且 resources 与 nonResourceURLs 不能同时或同时不配置`,
+      `YAML rules[${invalidRuleIndex}] 需要包含 verbs；资源权限需要 apiGroups 和 resources；resources 与 nonResourceURLs 不能同时或同时不配置`,
     );
     return false;
   }

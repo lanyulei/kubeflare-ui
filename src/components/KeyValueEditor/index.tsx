@@ -2,6 +2,7 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Input } from 'antd';
 import { createStyles } from 'antd-style';
 import type { CSSProperties, ReactNode } from 'react';
+import { useEffect } from 'react';
 
 const useStyles = createStyles(
   ({ token }, props: { footerJustify: CSSProperties['justifyContent'] }) => ({
@@ -90,6 +91,17 @@ const KeyValueEditor = ({
 }: KeyValueEditorProps) => {
   const { styles } = useStyles({ footerJustify });
   const addDisabled = value.some((item) => !item.keyName.trim());
+
+  useEffect(() => {
+    if (!minRows || value.length >= minRows) {
+      return;
+    }
+
+    onChange?.([
+      ...value,
+      ...Array.from({ length: minRows - value.length }, () => onCreateItem()),
+    ]);
+  }, [minRows, onChange, onCreateItem, value]);
 
   const updateItem = (
     id: string,

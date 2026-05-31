@@ -1000,7 +1000,6 @@ const toStorageClassItem = (
     storage_type: storageClass.parameters?.type || storageClass.provisioner,
     persistent_volume_claim_count: pvcCounts.get(name) || 0,
     allow_volume_clone:
-      annotations['storageclass.kubesphere.io/allow-clone'] === 'true' ||
       annotations['storageclass.kubeflare.io/allow-clone'] === 'true',
     allow_volume_expansion: storageClass.allowVolumeExpansion,
   }

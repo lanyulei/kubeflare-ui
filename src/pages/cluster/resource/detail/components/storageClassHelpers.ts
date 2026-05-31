@@ -6,13 +6,10 @@ const DEFAULT_CLASS_ANNOTATIONS = [
 ];
 
 const VOLUME_CLONE_ANNOTATIONS = [
-  'storageclass.kubesphere.io/allow-clone',
   'storageclass.kubeflare.io/allow-clone',
 ];
 
 const SNAPSHOT_ANNOTATIONS = [
-  'storageclass.kubesphere.io/allow-snapshot',
-  'storageclass.kubesphere.io/support-snapshot',
   'storageclass.kubeflare.io/allow-snapshot',
   'storageclass.kubeflare.io/support-snapshot',
   'storageclass.kubernetes.io/support-snapshot',

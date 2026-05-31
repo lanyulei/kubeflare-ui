@@ -36,6 +36,7 @@ const getInitialCreateCronJobValues = (
   schedule: undefined,
   startingDeadlineSeconds: undefined,
   successfulJobsHistoryLimit: undefined,
+  timeZone: undefined,
 });
 
 const setNumberIfDefined = (
@@ -83,6 +84,9 @@ const buildCreateCronJobManifest = (
     values.failedJobsHistoryLimit,
     0,
   );
+  if (normalizeName(values.timeZone)) {
+    spec.timeZone = normalizeName(values.timeZone);
+  }
 
   return {
     apiVersion: CRON_JOB_API_VERSION,
@@ -111,6 +115,7 @@ const getCronJobStepFields = (
       'successfulJobsHistoryLimit',
       'failedJobsHistoryLimit',
       'concurrencyPolicy',
+      'timeZone',
     ];
   }
 

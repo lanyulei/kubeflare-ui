@@ -12,7 +12,10 @@ import { useEffect, useRef, useState } from 'react';
 import { ClusterTableSearch } from '@/components';
 import { getClusterNamespaceList } from '@/services/kubeflare/cluster/namespace';
 import { getRbacBindingList } from '@/services/kubeflare/cluster/rbac';
-import { deleteClusterResource } from '@/services/kubeflare/cluster/resource';
+import {
+  createClusterResource,
+  deleteClusterResource,
+} from '@/services/kubeflare/cluster/resource';
 import RbacDetailDrawer from '../components/RbacDetailDrawer';
 import RbacYamlDrawer from '../components/RbacYamlDrawer';
 import RiskLevelTag from '../components/RiskLevelTag';
@@ -24,6 +27,7 @@ import {
   getSubjectText,
   toYaml,
 } from '../utils';
+import CreateBindingDrawer from './components/CreateBindingDrawer';
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '操作失败，请稍后重试';
@@ -42,35 +46,6 @@ const useStyles = createStyles(({ token }) => ({
   },
 }));
 
-const roleBindingTemplate = `apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: example-reader
-  namespace: default
-subjects:
-  - kind: ServiceAccount
-    name: default
-    namespace: default
-roleRef:
-  kind: Role
-  name: example-reader
-  apiGroup: rbac.authorization.k8s.io
-`;
-
-const clusterRoleBindingTemplate = `apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: example-cluster-reader
-subjects:
-  - kind: Group
-    name: system:authenticated
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  kind: ClusterRole
-  name: view
-  apiGroup: rbac.authorization.k8s.io
-`;
-
 const Bindings = () => {
   const { styles } = useStyles();
   const { message } = App.useApp();
@@ -84,6 +59,8 @@ const Bindings = () => {
   const [typeValue, setTypeValue] = useState<
     'all' | 'RoleBinding' | 'ClusterRoleBinding'
   >('all');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
   const [namespaceOptions, setNamespaceOptions] = useState<
     { label: string; value: string }[]
   >([]);
@@ -95,13 +72,39 @@ const Bindings = () => {
     value: string;
   }>({ open: false, mode: 'view', value: '' });
 
+  const handleCreateBinding = async (values: {
+    type: API.ClusterResourceCreateType;
+    namespace?: string;
+    manifest: Record<string, unknown>;
+  }) => {
+    setCreateLoading(true);
+    try {
+      await createClusterResource(values);
+      message.success('绑定已创建');
+      setCreateOpen(false);
+      actionRef.current?.reloadAndRest?.();
+    } catch (error) {
+      message.error(getErrorMessage(error));
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   useEffect(() => {
     getClusterNamespaceList().then((res) => {
       setNamespaceOptions(
-        (res.data.items || []).map((item) => ({
-          label: item.name,
-          value: item.name,
-        })),
+        (res.data.items || []).flatMap((item) => {
+          if (!item.name || item.name === '-') {
+            return [];
+          }
+
+          return [
+            {
+              label: item.name,
+              value: item.name,
+            },
+          ];
+        }),
       );
     });
   }, []);
@@ -244,16 +247,7 @@ const Bindings = () => {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() =>
-                setYamlState({
-                  open: true,
-                  mode: 'create',
-                  value:
-                    typeRef.current === 'ClusterRoleBinding'
-                      ? clusterRoleBindingTemplate
-                      : roleBindingTemplate,
-                })
-              }
+              onClick={() => setCreateOpen(true)}
             >
               新建
             </Button>
@@ -301,6 +295,17 @@ const Bindings = () => {
         open={Boolean(detailItem)}
         item={detailItem}
         onClose={() => setDetailItem(undefined)}
+      />
+      <CreateBindingDrawer
+        defaultNamespace={
+          namespaceValue === ALL_NAMESPACES_VALUE ? undefined : namespaceValue
+        }
+        defaultType={typeRef.current || 'RoleBinding'}
+        loading={createLoading}
+        namespaceOptions={namespaceOptions}
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        onSubmit={handleCreateBinding}
       />
       <RbacYamlDrawer
         open={yamlState.open}

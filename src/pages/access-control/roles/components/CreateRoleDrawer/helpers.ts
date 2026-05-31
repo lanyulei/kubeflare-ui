@@ -25,6 +25,11 @@ const createMetadataItem = (): MetadataItem => ({
 const normalizeStringList = (values?: string[]) =>
   (values || []).map((value) => value.trim()).filter(Boolean);
 
+const normalizeApiGroups = (values?: string[]) =>
+  (values || [])
+    .map((value) => value.trim())
+    .filter((value, index, list) => list.indexOf(value) === index);
+
 const metadataItemsToRecord = (items?: MetadataItem[]) => {
   const entries = (items || [])
     .map((item) => [item.keyName.trim(), item.value.trim()] as const)
@@ -45,7 +50,7 @@ const normalizePolicyRule = (rule: PolicyRuleFormValue) => {
 
   const resourceNames = normalizeStringList(rule.resourceNames);
   return {
-    apiGroups: normalizeStringList(rule.apiGroups),
+    apiGroups: normalizeApiGroups(rule.apiGroups),
     resources: normalizeStringList(rule.resources),
     verbs,
     ...(resourceNames.length ? { resourceNames } : {}),
@@ -183,6 +188,7 @@ export {
   getInitialCreateRoleValues,
   hasAdvancedContent,
   hasRulesContent,
+  normalizeApiGroups,
   normalizeStringList,
   RBAC_API_VERSION,
   ROLE_NAME_PATTERN,

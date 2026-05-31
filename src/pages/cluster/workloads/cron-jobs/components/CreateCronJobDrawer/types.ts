@@ -8,6 +8,7 @@ type CreateCronJobFormValues = CreateJobFormValues & {
   schedule?: string;
   startingDeadlineSeconds?: number;
   successfulJobsHistoryLimit?: number;
+  timeZone?: string;
 };
 
 export type { CreateCronJobFormValues, CronJobConcurrencyPolicy };

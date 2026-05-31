@@ -134,6 +134,7 @@ const hasWorkerContainer = (values: CreateCronJobFormValues) =>
 const hasCronJobBasicAdvancedContent = (values: CreateCronJobFormValues) =>
   Boolean(
     values.concurrencyPolicy ||
+      values.timeZone ||
       [
         values.startingDeadlineSeconds,
         values.successfulJobsHistoryLimit,

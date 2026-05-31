@@ -9,7 +9,6 @@ const STORAGE_CLASS_RESOURCE_TYPE: API.ClusterResourceCreateType =
 const NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 
 const SUPPORTED_ACCESS_MODE_ANNOTATIONS = [
-  'storageclass.kubesphere.io/supported-access-modes',
   'storageclass.kubeflare.io/supported-access-modes',
 ];
 
