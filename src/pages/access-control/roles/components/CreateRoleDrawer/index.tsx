@@ -804,6 +804,7 @@ const CreateRoleDrawer = ({
                     addText="添加"
                     deleteAriaLabel="删除标签"
                     keyPlaceholder="标签键"
+                    minRows={1}
                     valuePlaceholder="标签值"
                     onAddBlocked={() =>
                       message.warning('请先填写已有标签的键。')
@@ -820,6 +821,7 @@ const CreateRoleDrawer = ({
                     addText="添加"
                     deleteAriaLabel="删除注解"
                     keyPlaceholder="注解键"
+                    minRows={1}
                     valuePlaceholder="注解值"
                     onAddBlocked={() =>
                       message.warning('请先填写已有注解的键。')

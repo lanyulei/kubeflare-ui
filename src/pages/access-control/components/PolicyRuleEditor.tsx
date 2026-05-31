@@ -103,10 +103,10 @@ const useStyles = createStyles(({ token }) => ({
   addButton: {
     display: 'flex',
     width: '100%',
-    minHeight: 82,
+    minHeight: 75,
     alignItems: 'center',
     justifyContent: 'space-evenly',
-    padding: `${token.paddingMD}px 64px`,
+    padding: `15px 64px`,
     border: `1px dashed ${token.colorBorder}`,
     borderRadius: token.borderRadiusSM,
     background: token.colorBgContainer,
