@@ -6,7 +6,7 @@ import { ClusterTableSearch } from '@/components';
 import { getRbacSubjectList } from '@/services/kubeflare/cluster/rbac';
 import RiskLevelTag from '../components/RiskLevelTag';
 import SubjectPermissionPanel from '../components/SubjectPermissionPanel';
-import { SUBJECT_KIND_OPTIONS } from '../constants';
+import { SUBJECT_KIND_OPTIONS, TABLE_DEFAULT_PAGE_SIZE } from '../constants';
 
 const Subjects = () => {
   const actionRef = useRef<ActionType | null>(null);
@@ -56,13 +56,16 @@ const Subjects = () => {
         search={false}
         columns={columns}
         scroll={{ x: 1020 }}
+        pagination={{
+          defaultPageSize: TABLE_DEFAULT_PAGE_SIZE,
+        }}
         request={async (params) => {
           const res = await getRbacSubjectList({
             keyword: keywordRef.current,
             kind: kindRef.current,
           });
           const current = params.current || 1;
-          const pageSize = params.pageSize || 10;
+          const pageSize = params.pageSize || TABLE_DEFAULT_PAGE_SIZE;
           return {
             data: res.data.items.slice(
               (current - 1) * pageSize,

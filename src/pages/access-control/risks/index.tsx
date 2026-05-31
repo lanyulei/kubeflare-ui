@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { ClusterTableSearch } from '@/components';
 import { getRbacRiskList } from '@/services/kubeflare/cluster/rbac';
 import RiskLevelTag from '../components/RiskLevelTag';
+import { TABLE_DEFAULT_PAGE_SIZE } from '../constants';
 
 const Risks = () => {
   const actionRef = useRef<ActionType | null>(null);
@@ -37,10 +38,13 @@ const Risks = () => {
         search={false}
         columns={columns}
         scroll={{ x: 1210 }}
+        pagination={{
+          defaultPageSize: TABLE_DEFAULT_PAGE_SIZE,
+        }}
         request={async (params) => {
           const res = await getRbacRiskList({ keyword: keywordRef.current });
           const current = params.current || 1;
-          const pageSize = params.pageSize || 10;
+          const pageSize = params.pageSize || TABLE_DEFAULT_PAGE_SIZE;
           return {
             data: res.data.items.slice(
               (current - 1) * pageSize,

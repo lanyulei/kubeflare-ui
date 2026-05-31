@@ -53,6 +53,8 @@ import {
 
 type ClusterFormValues = API.CreateClusterParams & API.UpdateClusterParams;
 
+const DEFAULT_PAGE_SIZE = 10;
+
 const CLUSTER_PROVIDER_OPTIONS: {
   icon: React.ReactNode;
   labelId: string;
@@ -521,6 +523,9 @@ const ClusterManagementPage: React.FC = () => {
         search={false}
         columns={columns}
         scroll={{ x: 1200 }}
+        pagination={{
+          defaultPageSize: DEFAULT_PAGE_SIZE,
+        }}
         request={async () => {
           const res = await getClusterList({
             keyword: normalizeOptionalText(clusterKeywordRef.current),

@@ -19,7 +19,7 @@ import {
 import RbacDetailDrawer from '../components/RbacDetailDrawer';
 import RbacYamlDrawer from '../components/RbacYamlDrawer';
 import RiskLevelTag from '../components/RiskLevelTag';
-import { ALL_NAMESPACES_VALUE } from '../constants';
+import { ALL_NAMESPACES_VALUE, TABLE_DEFAULT_PAGE_SIZE } from '../constants';
 import { getRbacResourceType, getResourceNamespace, toYaml } from '../utils';
 import CreateRoleDrawer from './components/CreateRoleDrawer';
 
@@ -215,6 +215,9 @@ const Roles = () => {
         search={false}
         columns={columns}
         scroll={{ x: 1340 }}
+        pagination={{
+          defaultPageSize: TABLE_DEFAULT_PAGE_SIZE,
+        }}
         request={async (params) => {
           const res = await getRbacRoleList({
             keyword: keywordRef.current,
@@ -222,7 +225,7 @@ const Roles = () => {
             type: typeRef.current,
           });
           const current = params.current || 1;
-          const pageSize = params.pageSize || 10;
+          const pageSize = params.pageSize || TABLE_DEFAULT_PAGE_SIZE;
           return {
             data: res.data.items.slice(
               (current - 1) * pageSize,

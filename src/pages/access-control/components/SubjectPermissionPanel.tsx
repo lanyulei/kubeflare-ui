@@ -2,6 +2,7 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { useEffect, useRef } from 'react';
 import { resolveRbacSubjectPermissions } from '@/services/kubeflare/cluster/rbac';
+import { TABLE_DEFAULT_PAGE_SIZE } from '../constants';
 import { formatList, getRuleResourceText } from '../utils';
 import PolicyRuleTable from './PolicyRuleTable';
 import RiskLevelTag from './RiskLevelTag';
@@ -82,6 +83,9 @@ const SubjectPermissionPanel = ({ query }: SubjectPermissionPanelProps) => {
       search={false}
       columns={columns}
       scroll={{ x: 1380 }}
+      pagination={{
+        defaultPageSize: TABLE_DEFAULT_PAGE_SIZE,
+      }}
       expandable={{
         expandedRowRender: (record) => (
           <PolicyRuleTable rules={[record.rule]} showRisk={false} />

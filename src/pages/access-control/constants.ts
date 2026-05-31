@@ -1,5 +1,7 @@
 export const ALL_NAMESPACES_VALUE = '__all__';
 
+export const TABLE_DEFAULT_PAGE_SIZE = 10;
+
 export const RBAC_RESOURCE_TYPES = [
   'Role',
   'ClusterRole',

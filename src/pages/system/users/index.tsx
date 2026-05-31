@@ -25,6 +25,8 @@ import {
 } from '@/services/kubeflare/system/users'
 import { uploadFile } from '@/services/kubeflare/upload'
 
+const DEFAULT_PAGE_SIZE = 10
+
 const usernameRules = [
   {
     required: true,
@@ -452,6 +454,9 @@ const UserManagementPage: React.FC = () => {
         actionRef={actionRef}
         search={false}
         columns={columns}
+        pagination={{
+          defaultPageSize: DEFAULT_PAGE_SIZE,
+        }}
         request={async () => {
           const res = await getUserList()
           return {
