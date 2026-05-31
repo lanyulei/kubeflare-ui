@@ -18,10 +18,12 @@ const useStyles = createStyles(({ token }) => ({
   },
   item: {
     minWidth: 0,
-    padding: `${token.paddingSM}px ${token.padding}px`,
+    minHeight: 86,
+    padding: `${token.padding}px ${token.paddingLG}px`,
     border: `1px solid ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
-    background: token.colorFillAlter,
+    background: token.colorBgContainer,
+    boxShadow: token.boxShadowTertiary,
   },
   label: {
     marginBottom: token.marginXXS,

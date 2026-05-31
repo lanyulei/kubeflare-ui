@@ -77,8 +77,8 @@ const Permissions = () => {
           />
         </ProCard>
         {query ? <RbacSubjectQuerySummary graph={graph} query={query} /> : null}
-        <SubjectPermissionPanel title="最终权限" query={query} />
-        <ProCard title="权限来源关系">
+        <SubjectPermissionPanel query={query} />
+        <ProCard>
           <Spin spinning={graphLoading}>
             <RbacGraphView graph={graph} />
           </Spin>
