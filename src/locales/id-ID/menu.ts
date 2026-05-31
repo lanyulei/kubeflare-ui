@@ -33,12 +33,6 @@ export default {
   'menu.cluster.clusterAccessControl.clusterAccessControlRoles': 'Roles',
   'menu.cluster.clusterAccessControl.clusterAccessControlBindings': 'Bindings',
   'menu.cluster.clusterAccessControl.clusterAccessControlSubjects': 'Subjects',
-  'menu.cluster.clusterAccessControl.clusterAccessControlPermissions':
-    'Permission Lookup',
-  'menu.cluster.clusterAccessControl.clusterAccessControlSimulator':
-    'Permission Simulator',
-  'menu.cluster.clusterAccessControl.clusterAccessControlRisks':
-    'Risk Analysis',
   'menu.system': 'System',
   'menu.system.sub-page': 'Sub-Halaman',
   'menu.system.systemUser': 'Pengguna',

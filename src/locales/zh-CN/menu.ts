@@ -32,10 +32,6 @@ export default {
   'menu.cluster.clusterAccessControl.clusterAccessControlRoles': '角色',
   'menu.cluster.clusterAccessControl.clusterAccessControlBindings': '绑定',
   'menu.cluster.clusterAccessControl.clusterAccessControlSubjects': '主体',
-  'menu.cluster.clusterAccessControl.clusterAccessControlPermissions':
-    '权限反查',
-  'menu.cluster.clusterAccessControl.clusterAccessControlSimulator': '权限模拟',
-  'menu.cluster.clusterAccessControl.clusterAccessControlRisks': '风险分析',
   'menu.system': '系统管理',
   'menu.system.systemUser': '用户管理',
   'menu.login': '登录',

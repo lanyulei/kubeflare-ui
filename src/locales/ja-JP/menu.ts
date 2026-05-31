@@ -33,12 +33,6 @@ export default {
   'menu.cluster.clusterAccessControl.clusterAccessControlRoles': 'Roles',
   'menu.cluster.clusterAccessControl.clusterAccessControlBindings': 'Bindings',
   'menu.cluster.clusterAccessControl.clusterAccessControlSubjects': 'Subjects',
-  'menu.cluster.clusterAccessControl.clusterAccessControlPermissions':
-    'Permission Lookup',
-  'menu.cluster.clusterAccessControl.clusterAccessControlSimulator':
-    'Permission Simulator',
-  'menu.cluster.clusterAccessControl.clusterAccessControlRisks':
-    'Risk Analysis',
   'menu.system': 'システム',
   'menu.system.sub-page': 'サブページ',
   'menu.system.systemUser': 'ユーザー管理',

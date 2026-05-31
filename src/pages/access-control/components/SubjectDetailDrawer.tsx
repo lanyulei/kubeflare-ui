@@ -28,6 +28,12 @@ const useStyles = createStyles(({ token }) => ({
   sectionTitle: {
     marginBottom: token.marginSM,
   },
+  permissionSection: {
+    '.ant-pro-card .ant-pro-card-body': {
+      paddingInline: 0,
+      paddingBlock: 0,
+    },
+  },
 }));
 
 type SubjectDetailDrawerProps = {
@@ -119,11 +125,8 @@ const SubjectDetailDrawer = ({
               }))}
             />
           </div>
-          <div>
-            <Typography.Title className={styles.sectionTitle} level={5}>
-              最终权限
-            </Typography.Title>
-            <SubjectPermissionPanel query={getSubjectQuery(subject)} />
+          <div className={styles.permissionSection}>
+            <SubjectPermissionPanel title="最终权限" query={getSubjectQuery(subject)} />
           </div>
         </Space>
       ) : null}

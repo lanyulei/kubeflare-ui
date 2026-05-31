@@ -972,53 +972,6 @@ declare namespace API {
     items: T[]
   }
 
-  type RbacGraphData = {
-    nodes: {
-      id: string
-      label: string
-      type: string
-      risk_level?: RbacRiskLevel
-    }[]
-    edges: {
-      source: string
-      target: string
-      label: string
-    }[]
-  }
-
-  type RbacSimulatorParams = {
-    subjectKind: 'Self' | RbacSubjectKind
-    subjectName?: string
-    subjectNamespace?: string
-    groups?: string[]
-    namespace?: string
-    apiGroup?: string
-    resource?: string
-    subresource?: string
-    resourceName?: string
-    verb: string
-    nonResourceURL?: string
-  }
-
-  type RbacSimulatorResult = {
-    allowed?: boolean
-    denied?: boolean
-    reason?: string
-    evaluationError?: string
-    matchedPermissions?: RbacResolvedPermission[]
-  }
-
-  type RbacAuditItem = {
-    id: string
-    action: string
-    resource: string
-    namespace?: string
-    operator?: string
-    risk_level?: RbacRiskLevel
-    time?: string
-    status?: string
-  }
-
   type ClusterCustomResourceDefinitionItem = {
     id?: string
     apiVersions: string[]

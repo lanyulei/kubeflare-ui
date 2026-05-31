@@ -193,21 +193,6 @@ export default [
             name: 'clusterAccessControlSubjects',
             component: './access-control/subjects',
           },
-          {
-            path: '/cluster/access-control/permissions',
-            name: 'clusterAccessControlPermissions',
-            component: './access-control/permissions',
-          },
-          {
-            path: '/cluster/access-control/simulator',
-            name: 'clusterAccessControlSimulator',
-            component: './access-control/simulator',
-          },
-          {
-            path: '/cluster/access-control/risks',
-            name: 'clusterAccessControlRisks',
-            component: './access-control/risks',
-          },
         ],
       },
       {

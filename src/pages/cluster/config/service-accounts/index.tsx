@@ -1,4 +1,3 @@
-import { Link } from '@umijs/max';
 import { KubernetesCompatibilityNotice } from '@/components';
 import { getClusterServiceAccountList } from '@/services/kubeflare/cluster/resource';
 import ClusterResourceListPage, {
@@ -49,21 +48,6 @@ const ServiceAccounts = () => (
         dataIndex: 'create_time',
         valueType: 'dateTime',
         width: 180,
-      },
-      {
-        title: '访问控制',
-        valueType: 'option',
-        width: 120,
-        render: (_, record) => [
-          <Link
-            key="permissions"
-            to={`/cluster/access-control/permissions?kind=ServiceAccount&namespace=${encodeURIComponent(
-              record.namespace || '',
-            )}&name=${encodeURIComponent(record.name)}`}
-          >
-            查看权限
-          </Link>,
-        ],
       },
     ]}
   />
