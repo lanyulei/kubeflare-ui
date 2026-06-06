@@ -3,14 +3,14 @@ import type { ChatMessageItem, ChatSession } from './types';
 const DEFAULT_CREATED_AT = Date.now() - 60000;
 
 export const responseParagraphs = [
-  'Artificial Intelligence (AI) offers numerous advantages and has the potential to revolutionize various aspects of our lives. Here are some key advantages of AI:',
-  'Automation: AI can automate repetitive and mundane tasks, saving time and effort for humans. It can handle large volumes of data, perform complex calculations, and execute tasks with precision and consistency. This automation leads to increased productivity and efficiency in various industries.',
-  'Decision-making: AI systems can analyze vast amounts of data, identify patterns, and make informed decisions based on that analysis. This ability is particularly useful in complex scenarios where humans may struggle to process large datasets or where quick and accurate decisions are crucial.',
-  'Improved accuracy: AI algorithms can achieve high levels of accuracy and precision in tasks such as image recognition, natural language processing, and data analysis. They can eliminate human errors caused by fatigue, distractions, or bias, leading to more reliable and consistent results.',
-  'Continuous operation: AI systems can work tirelessly without the need for breaks, resulting in uninterrupted 24/7 operations. This capability is especially beneficial in applications like customer support chatbots, manufacturing processes, and surveillance systems.',
+  '### Key advantages of Artificial Intelligence',
+  '- **Automation:** AI can automate repetitive and mundane tasks, saving time and effort for humans.',
+  '- **Decision-making:** AI systems can analyze vast amounts of data, identify patterns, and support informed decisions.',
+  '- **Improved accuracy:** AI algorithms can reduce human error in image recognition, natural language processing, and data analysis.',
+  '- **Continuous operation:** AI systems can work without breaks, which is helpful for customer support, manufacturing, and monitoring scenarios.',
 ];
 
-const defaultAssistantContent = responseParagraphs.join('\n\n');
+const defaultAssistantContent = responseParagraphs.join('\n');
 
 export const createChatId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -28,9 +28,8 @@ export const createUserMessage = (
 export const createAssistantMessage = (
   content: string,
   createdAt = Date.now(),
-  regenerating = false,
 ): ChatMessageItem => ({
-  content: createAssistantReply(content, regenerating),
+  content: createAssistantReply(content),
   createdAt,
   id: createChatId('message-assistant'),
   role: 'assistant',
@@ -54,19 +53,20 @@ export const createSessionTitle = (content: string) => {
     : normalizedContent || '新会话';
 };
 
-export const createAssistantReply = (content: string, regenerating = false) => {
+export const createAssistantReply = (content: string) => {
   if (/artificial intelligence|人工智能|\bai\b/i.test(content)) {
     return defaultAssistantContent;
   }
 
-  const prefix = regenerating
-    ? '我重新整理了这条问题的回答：'
-    : '我已经收到你的问题。';
-
   return [
-    `${prefix}“${content}”`,
-    '可以先从目标、上下文、约束和期望结果四个角度拆解，再把可执行的步骤整理出来。',
-    '如果这是一个工程问题，我建议先明确输入输出，再确认边界条件，最后补充必要的验证方式。',
+    `**我已经收到你的问题。** “${content}”`,
+    '可以先从以下角度拆解：',
+    [
+      '- **目标：** 明确你希望最终得到什么结果。',
+      '- **上下文：** 补充当前环境、已有数据和限制条件。',
+      '- **验证：** 定义怎样确认输出是正确的。',
+    ].join('\n'),
+    '```text\n输入 -> 分析 -> 实现 -> 验证\n```',
   ].join('\n\n');
 };
 
@@ -103,7 +103,7 @@ export const initialChatSessions: ChatSession[] = [
       },
       {
         content:
-          '可以先检查节点 Ready 状态、最近事件、Pod 调度失败原因和 kubelet 日志。若资源压力较高，再继续查看 CPU、内存和磁盘相关指标。',
+          '**排查建议：**\n\n- 检查节点 `Ready` 状态\n- 查看最近事件和 Pod 调度失败原因\n- 必要时继续分析 kubelet 日志、CPU、内存和磁盘指标',
         createdAt: DEFAULT_CREATED_AT - 3599000,
         id: 'message-cluster-answer',
         role: 'assistant',

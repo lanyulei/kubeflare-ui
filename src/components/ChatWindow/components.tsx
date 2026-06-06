@@ -2,18 +2,17 @@ import {
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
-  ReloadOutlined,
   RobotOutlined,
   SendOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Button, Empty, Input, Typography } from 'antd';
+import { Avatar, Button, Empty, Input, Popconfirm } from 'antd';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
+import MarkdownRenderer from './MarkdownRenderer';
 import { useStyles } from './styles';
 import type { ChatMessageItem, ChatSession } from './types';
 
-const { Paragraph } = Typography;
 const { TextArea } = Input;
 const sessionTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
   hour: '2-digit',
@@ -36,7 +35,6 @@ type ChatSidebarProps = {
 type ConversationPanelProps = {
   session?: ChatSession;
   onEditMessage: (content: string) => void;
-  onRegenerateResponse: () => void;
 };
 
 type PromptComposerProps = {
@@ -55,12 +53,6 @@ const getSessionPreview = (session: ChatSession) => {
     lastMessage?.content.replace(/\s+/g, ' ').trim() || '暂无消息';
   return preview.length > 42 ? `${preview.slice(0, 42)}...` : preview;
 };
-
-const splitMessageContent = (content: string) =>
-  content
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
 
 const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
   const { styles, cx } = useStyles();
@@ -104,11 +96,7 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
             className={styles.responseCard}
             data-chat-window="response-card"
           >
-            {splitMessageContent(message.content).map((paragraph) => (
-              <Paragraph className={styles.responseParagraph} key={paragraph}>
-                {paragraph}
-              </Paragraph>
-            ))}
+            <MarkdownRenderer content={message.content} />
           </article>
         )}
       </div>
@@ -181,14 +169,22 @@ export const ChatSidebar = ({
                 </span>
               </span>
             </button>
-            <Button
-              aria-label={`删除会话 ${session.title}`}
-              className={styles.sessionDeleteButton}
-              data-chat-window="session-delete"
-              icon={<DeleteOutlined />}
-              type="text"
-              onClick={() => onDeleteSession(session.id)}
-            />
+            <Popconfirm
+              title="确认删除该会话吗？"
+              description="删除后该会话中的消息记录将无法恢复。"
+              okButtonProps={{ danger: true }}
+              okText="删除"
+              cancelText="取消"
+              onConfirm={() => onDeleteSession(session.id)}
+            >
+              <Button
+                aria-label={`删除会话 ${session.title}`}
+                className={styles.sessionDeleteButton}
+                data-chat-window="session-delete"
+                icon={<DeleteOutlined />}
+                type="text"
+              />
+            </Popconfirm>
           </div>
         ))}
       </nav>
@@ -199,7 +195,6 @@ export const ChatSidebar = ({
 export const ConversationPanel = ({
   session,
   onEditMessage,
-  onRegenerateResponse,
 }: ConversationPanelProps) => {
   const { styles } = useStyles();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -221,10 +216,6 @@ export const ConversationPanel = ({
     );
   }
 
-  const hasUserMessage = session.messages.some(
-    (message) => message.role === 'user',
-  );
-
   return (
     <section className={styles.conversation}>
       <div className={styles.messageStack}>
@@ -235,16 +226,6 @@ export const ConversationPanel = ({
             onEditMessage={onEditMessage}
           />
         ))}
-        <div className={styles.regenerate}>
-          <Button
-            className={styles.regenerateButton}
-            disabled={!hasUserMessage}
-            icon={<ReloadOutlined />}
-            onClick={onRegenerateResponse}
-          >
-            重新生成
-          </Button>
-        </div>
         <div ref={bottomRef} />
       </div>
     </section>

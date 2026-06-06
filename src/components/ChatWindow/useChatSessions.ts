@@ -111,19 +111,6 @@ const upsertSessionToTop = (
   ...sessions.filter((session) => session.id !== updatedSession.id),
 ];
 
-const findLastMessageIndex = (
-  messages: ChatMessageItem[],
-  predicate: (message: ChatMessageItem) => boolean,
-) => {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (predicate(messages[index])) {
-      return index;
-    }
-  }
-
-  return -1;
-};
-
 export const useChatSessions = () => {
   const [chatState, setChatState] = useState<ChatWindowState>(getInitialState);
   const [draft, setDraft] = useState('');
@@ -263,64 +250,12 @@ export const useChatSessions = () => {
     setDraft(content);
   }, []);
 
-  const regenerateResponse = useCallback(() => {
-    if (!activeSession) {
-      return;
-    }
-
-    setChatState((prevState) => {
-      const session = prevState.sessions.find(
-        (item) => item.id === prevState.activeSessionId,
-      );
-      if (!session) {
-        return prevState;
-      }
-
-      const lastUserIndex = findLastMessageIndex(
-        session.messages,
-        (message) => message.role === 'user',
-      );
-      if (lastUserIndex < 0) {
-        return prevState;
-      }
-
-      const now = Date.now();
-      const lastUserMessage = session.messages[lastUserIndex];
-      const lastAssistantIndex = findLastMessageIndex(
-        session.messages,
-        (message) => message.role === 'assistant',
-      );
-      const assistantMessage = createAssistantMessage(
-        lastUserMessage.content,
-        now,
-        true,
-      );
-      const messages =
-        lastAssistantIndex > lastUserIndex
-          ? session.messages.map((message, index) =>
-              index === lastAssistantIndex ? assistantMessage : message,
-            )
-          : [...session.messages, assistantMessage];
-      const updatedSession = {
-        ...session,
-        messages,
-        updatedAt: now,
-      };
-
-      return {
-        activeSessionId: updatedSession.id,
-        sessions: upsertSessionToTop(prevState.sessions, updatedSession),
-      };
-    });
-  }, [activeSession]);
-
   return {
     activeSession,
     createSession,
     deleteSession,
     draft,
     editMessage,
-    regenerateResponse,
     selectSession,
     sendMessage,
     sessions: chatState.sessions,

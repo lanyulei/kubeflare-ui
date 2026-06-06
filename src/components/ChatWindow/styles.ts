@@ -273,6 +273,88 @@ export const useStyles = createStyles(({ token }) => ({
     fontSize: 13,
     lineHeight: 1.7,
   },
+  markdown: {
+    color: '#152153',
+    fontSize: 13,
+    lineHeight: 1.7,
+    overflowWrap: 'anywhere',
+  },
+  markdownHeading: {
+    margin: '0 0 10px',
+    color: '#152153',
+    fontSize: 14,
+    fontWeight: 600,
+    lineHeight: 1.5,
+  },
+  markdownParagraph: {
+    margin: '0 0 12px',
+
+    '&:last-child': {
+      marginBottom: 0,
+    },
+  },
+  markdownList: {
+    margin: '0 0 12px',
+    paddingInlineStart: 20,
+
+    '&:last-child': {
+      marginBottom: 0,
+    },
+
+    li: {
+      marginBottom: 4,
+      paddingInlineStart: 2,
+    },
+  },
+  markdownBlockquote: {
+    margin: '0 0 12px',
+    padding: '6px 10px',
+    borderLeft: '3px solid #d7def0',
+    color: '#53617f',
+    background: '#f8faff',
+    borderRadius: 6,
+
+    '&:last-child': {
+      marginBottom: 0,
+    },
+  },
+  markdownCodeBlock: {
+    margin: '0 0 12px',
+    padding: '10px 12px',
+    overflowX: 'auto',
+    border: '1px solid #e3e8f4',
+    borderRadius: 8,
+    color: '#18214f',
+    background: '#f7f9fd',
+    fontSize: 12,
+    lineHeight: 1.6,
+
+    '&:last-child': {
+      marginBottom: 0,
+    },
+
+    code: {
+      fontFamily:
+        'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    },
+  },
+  markdownInlineCode: {
+    padding: '1px 5px',
+    borderRadius: 5,
+    color: '#3b2bd8',
+    background: '#f0edff',
+    fontSize: 12,
+    fontFamily:
+      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  },
+  markdownLink: {
+    color: '#4a37dc',
+    textDecoration: 'none',
+
+    '&:hover': {
+      textDecoration: 'underline',
+    },
+  },
   userInputCard: {
     display: 'flex',
     minHeight: 45,
@@ -300,30 +382,6 @@ export const useStyles = createStyles(({ token }) => ({
     color: '#1f2c5b',
     borderRadius: 8,
   },
-  responseParagraph: {
-    marginBottom: 16,
-    color: '#152153',
-    fontSize: 13,
-    lineHeight: 1.7,
-    overflowWrap: 'anywhere',
-
-    '&:last-child': {
-      marginBottom: 0,
-    },
-  },
-  regenerate: {
-    display: 'flex',
-    justifyContent: 'center',
-    marginTop: 30,
-  },
-  regenerateButton: {
-    height: 38,
-    paddingInline: 26,
-    borderColor: '#dbe3f0',
-    color: '#1f2c5b',
-    borderRadius: 999,
-    background: '#ffffff',
-  },
   composer: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr) 150px',
@@ -333,7 +391,7 @@ export const useStyles = createStyles(({ token }) => ({
     boxSizing: 'border-box',
     alignItems: 'end',
     margin: '0 auto',
-    padding: '0 40px 24px',
+    padding: '16px 40px 16px',
 
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',

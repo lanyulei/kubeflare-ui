@@ -10,7 +10,6 @@ const ChatWindow = () => {
     deleteSession,
     draft,
     editMessage,
-    regenerateResponse,
     selectSession,
     sendMessage,
     sessions,
@@ -31,7 +30,6 @@ const ChatWindow = () => {
           <ConversationPanel
             session={activeSession}
             onEditMessage={editMessage}
-            onRegenerateResponse={regenerateResponse}
           />
         </div>
         <PromptComposer
