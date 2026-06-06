@@ -4,6 +4,7 @@ export default {
   'component.globalHeader.search.example2': 'অনুসন্ধান উদাহরণ ২',
   'component.globalHeader.search.example3': 'অনুসন্ধান উদাহরণ ৩',
   'component.globalHeader.help': 'সহায়তা',
+  'component.globalHeader.chat': 'চ্যাট',
   'component.globalHeader.notification': 'বিজ্ঞপ্তি',
   'component.globalHeader.notification.empty': 'আপনি সমস্ত বিজ্ঞপ্তি দেখেছেন।',
   'component.globalHeader.message': 'বার্তা',

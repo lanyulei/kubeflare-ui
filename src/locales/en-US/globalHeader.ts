@@ -8,6 +8,7 @@ export default {
   'component.globalHeader.cluster.placeholder': 'Select cluster',
   'component.globalHeader.cluster.empty': 'No clusters',
   'component.globalHeader.cluster.disabled': '{name} (Disabled)',
+  'component.globalHeader.chat': 'Chat',
   'component.globalHeader.notification': 'Notification',
   'component.globalHeader.notification.empty':
     'You have viewed all notifications.',

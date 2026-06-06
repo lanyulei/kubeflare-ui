@@ -4,6 +4,7 @@ export default {
   'component.globalHeader.search.example2': '検索例2',
   'component.globalHeader.search.example3': '検索例3',
   'component.globalHeader.help': 'ヘルプ',
+  'component.globalHeader.chat': 'チャット',
   'component.globalHeader.notification': '通知',
   'component.globalHeader.notification.empty': 'すべての通知を表示しました。',
   'component.globalHeader.message': 'メッセージ',

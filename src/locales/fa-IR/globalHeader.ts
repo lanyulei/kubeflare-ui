@@ -4,6 +4,7 @@ export default {
   'component.globalHeader.search.example2': 'مثال 2 را جستجو کنید',
   'component.globalHeader.search.example3': 'مثال 3 را جستجو کنید',
   'component.globalHeader.help': 'کمک',
+  'component.globalHeader.chat': 'گفتگو',
   'component.globalHeader.notification': 'اعلان',
   'component.globalHeader.notification.empty':
     'شما همه اعلان ها را مشاهده کرده اید.',

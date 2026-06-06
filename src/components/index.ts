@@ -22,7 +22,12 @@ import KeyValueEditor from './KeyValueEditor';
 import KeyValueList from './KeyValueList';
 import KubernetesCompatibilityNotice from './KubernetesCompatibilityNotice';
 import ReplicaSummary from './ReplicaSummary';
-import { ClusterSwitch, Question, SelectLang } from './RightContent';
+import {
+  ChatDrawerAction,
+  ClusterSwitch,
+  Question,
+  SelectLang,
+} from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import SectionTitle from './SectionTitle';
 import SegmentedTabs from './SegmentedTabs';
@@ -37,6 +42,7 @@ export type { SettingsNavDrawerSection } from './SettingsNavDrawer';
 export {
   AvatarDropdown,
   AvatarName,
+  ChatDrawerAction,
   ClusterEventTable,
   ClusterMetadata,
   ClusterPodList,

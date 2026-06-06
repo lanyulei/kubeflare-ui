@@ -6,6 +6,7 @@ import React from 'react';
 import {
   AvatarDropdown,
   AvatarName,
+  ChatDrawerAction,
   ClusterSwitch,
   Footer,
   Question,
@@ -81,6 +82,7 @@ export const layout: RunTimeLayoutConfig = ({
   return {
     actionsRender: () => [
       <ClusterSwitch key="ClusterSwitch" />,
+      <ChatDrawerAction key="ChatDrawerAction" />,
       <Question key="doc" />,
       <SelectLang key="SelectLang" />,
     ],
