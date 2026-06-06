@@ -6,6 +6,7 @@
  * 布局组件
  */
 
+import ChatWindow from './ChatWindow';
 import {
   EventDetailDrawer,
   EventTypeBadge,
@@ -18,6 +19,7 @@ import ClusterPodList from './ClusterPodList';
 import ClusterTableSearch from './ClusterTableSearch';
 import ComputeQuotaFields from './ComputeQuotaFields';
 import Footer from './Footer';
+import { HeaderActionButton, HeaderActionDrawer } from './HeaderAction';
 import KeyValueEditor from './KeyValueEditor';
 import KeyValueList from './KeyValueList';
 import KubernetesCompatibilityNotice from './KubernetesCompatibilityNotice';
@@ -38,11 +40,16 @@ import UnitInputNumber from './UnitInputNumber';
 import YamlEditor from './YamlEditor';
 
 export type { WatchStatus } from './ClusterEventCenter';
+export type {
+  HeaderActionButtonProps,
+  HeaderActionDrawerProps,
+} from './HeaderAction';
 export type { SettingsNavDrawerSection } from './SettingsNavDrawer';
 export {
   AvatarDropdown,
   AvatarName,
   ChatDrawerAction,
+  ChatWindow,
   ClusterEventTable,
   ClusterMetadata,
   ClusterPodList,
@@ -53,6 +60,8 @@ export {
   EventTypeBadge,
   EventTypeTag,
   Footer,
+  HeaderActionButton,
+  HeaderActionDrawer,
   KeyValueEditor,
   KeyValueList,
   KubernetesCompatibilityNotice,

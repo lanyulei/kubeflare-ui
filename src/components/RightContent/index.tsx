@@ -6,10 +6,12 @@ import {
 } from '@ant-design/icons';
 import { SelectLang as UmiSelectLang, useIntl } from '@umijs/max';
 import type { MenuProps } from 'antd';
-import { Drawer, Spin } from 'antd';
+import { Spin } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getClusterList } from '@/services/kubeflare/cluster/info';
+import ChatWindow from '../ChatWindow';
+import { HeaderActionButton, HeaderActionDrawer } from '../HeaderAction';
 import HeaderDropdown from '../HeaderDropdown';
 
 export type SiderTheme = 'light' | 'dark';
@@ -48,29 +50,6 @@ const useStyles = createStyles(({ token }) => ({
     whiteSpace: 'nowrap',
     fontSize: token.fontSize,
     lineHeight: token.lineHeight,
-  },
-  actionButton: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 32,
-    minHeight: 32,
-    padding: 4,
-    border: 0,
-    color: 'inherit',
-    cursor: 'pointer',
-    background: 'transparent',
-    borderRadius: token.borderRadius,
-    transition: `background-color ${token.motionDurationMid}`,
-    fontSize: 18,
-    lineHeight: 1,
-    '&:hover': {
-      backgroundColor: token.colorBgTextHover,
-    },
-  },
-  chatDrawerBody: {
-    height: '100%',
-    backgroundColor: token.colorBgLayout,
   },
 }));
 
@@ -264,59 +243,48 @@ export const SelectLang: React.FC = () => {
 };
 
 export const ChatDrawerAction: React.FC = () => {
-  const { styles } = useStyles();
   const intl = useIntl();
-  const [open, setOpen] = useState(false);
   const title = intl.formatMessage({
     id: 'component.globalHeader.chat',
     defaultMessage: '聊天窗口',
   });
 
   return (
-    <>
-      <button
-        aria-label={title}
-        title={title}
-        type="button"
-        className={styles.actionButton}
-        onClick={() => setOpen(true)}
-      >
-        <MessageOutlined />
-      </button>
-      <Drawer
-        destroyOnHidden
-        open={open}
-        placement="right"
-        title={title}
-        width="80%"
-        onClose={() => setOpen(false)}
-      >
-        <div className={styles.chatDrawerBody} />
-      </Drawer>
-    </>
+    <HeaderActionDrawer
+      drawerProps={{
+        destroyOnHidden: false,
+        styles: {
+          body: {
+            height: '100%',
+            padding: 0,
+            overflow: 'hidden',
+          },
+        },
+        width: '80%',
+      }}
+      icon={<MessageOutlined />}
+      title={title}
+    >
+      <ChatWindow />
+    </HeaderActionDrawer>
   );
 };
 
 export const Question: React.FC = () => {
-  const { styles } = useStyles();
   const intl = useIntl();
+  const title = intl.formatMessage({
+    id: 'component.globalHeader.help',
+    defaultMessage: '使用文档',
+  });
 
   return (
-    <a
+    <HeaderActionButton
       href="https://github.com/kubeflare/kubeflare"
-      target="_blank"
+      label={title}
       rel="noreferrer"
-      aria-label={intl.formatMessage({
-        id: 'component.globalHeader.help',
-        defaultMessage: '使用文档',
-      })}
-      title={intl.formatMessage({
-        id: 'component.globalHeader.help',
-        defaultMessage: '使用文档',
-      })}
-      className={styles.actionButton}
+      target="_blank"
     >
       <QuestionCircleOutlined />
-    </a>
+    </HeaderActionButton>
   );
 };
