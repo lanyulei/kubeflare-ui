@@ -8,7 +8,7 @@ export default {
   'component.globalHeader.cluster.placeholder': '选择集群',
   'component.globalHeader.cluster.empty': '暂无集群',
   'component.globalHeader.cluster.disabled': '{name}（停用）',
-  'component.globalHeader.chat': '聊天窗口',
+  'component.globalHeader.chat': 'AI 智能助手',
   'component.globalHeader.notification': '通知',
   'component.globalHeader.notification.empty': '你已查看所有通知',
   'component.globalHeader.message': '消息',

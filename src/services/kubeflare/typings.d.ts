@@ -72,6 +72,68 @@ declare namespace API {
     created_at: string
   }
 
+  type AiChatMessageRole = 'assistant' | 'system' | 'user'
+
+  type AiChatMessageStatus =
+    | 'completed'
+    | 'failed'
+    | 'pending'
+    | 'streaming'
+
+  type AiChatSessionItem = {
+    id: string
+    user_id: string
+    title: string
+    summary?: string
+    status: string
+    created_at: string
+    updated_at: string
+    deleted_at?: string
+  }
+
+  type AiChatMessageItem = {
+    id: string
+    session_id: string
+    role: AiChatMessageRole
+    content: string
+    content_type: string
+    status: AiChatMessageStatus
+    sequence: number
+    model?: string
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+    error_message?: string
+    created_at: string
+    completed_at?: string
+    deleted_at?: string
+  }
+
+  type AiChatSessionDetail = AiChatSessionItem & {
+    messages: AiChatMessageItem[]
+  }
+
+  type AiChatSessionListData = {
+    items: AiChatSessionItem[]
+  }
+
+  type AiChatMessageListData = {
+    items: AiChatMessageItem[]
+  }
+
+  type CreateAiChatSessionParams = {
+    title?: string
+  }
+
+  type UpdateAiChatSessionParams = {
+    title: string
+    summary?: string
+  }
+
+  type CreateAiChatMessageParams = {
+    content: string
+  }
+
   type UpdateCurrentUserParams = {
     nickname: string
     email?: string

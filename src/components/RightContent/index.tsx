@@ -246,7 +246,7 @@ export const ChatDrawerAction: React.FC = () => {
   const intl = useIntl();
   const title = intl.formatMessage({
     id: 'component.globalHeader.chat',
-    defaultMessage: '聊天窗口',
+    defaultMessage: 'AI 智能助手',
   });
 
   return (

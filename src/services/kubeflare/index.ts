@@ -3,6 +3,7 @@
 // API 更新时间：
 // API 唯一标识：
 import * as accountSettings from './account/settings'
+import * as aiChat from './ai/chat'
 import * as api from './api'
 import * as clusterInfo from './cluster/info'
 import * as clusterNode from './cluster/node'
@@ -13,6 +14,7 @@ import * as userLogin from './user/login'
 
 export default {
   accountSettings,
+  aiChat,
   api,
   clusterInfo,
   clusterNode,

@@ -1,4 +1,4 @@
-export type ChatMessageRole = 'assistant' | 'user';
+export type ChatMessageRole = 'assistant' | 'system' | 'user';
 
 export type ChatMessageItem = {
   content: string;
@@ -11,6 +11,7 @@ export type ChatSession = {
   createdAt: number;
   id: string;
   messages: ChatMessageItem[];
+  summary?: string;
   title: string;
   updatedAt: number;
 };

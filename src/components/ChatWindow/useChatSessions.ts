@@ -1,106 +1,68 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { message as antdMessage } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  createAssistantMessage,
-  createBlankSession,
-  createSessionTitle,
-  createUserMessage,
-  initialChatSessions,
-} from './data';
-import type { ChatMessageItem, ChatSession } from './types';
-
-const CHAT_STORAGE_KEY = 'kubeflare.chatWindow.state';
+  createAiChatMessage,
+  createAiChatSession,
+  deleteAiChatSession,
+  getAiChatSessionDetail,
+  getAiChatSessionList,
+} from '@/services/kubeflare/ai/chat';
+import type { ChatMessageItem, ChatMessageRole, ChatSession } from './types';
 
 type ChatWindowState = {
   activeSessionId?: string;
   sessions: ChatSession[];
 };
 
-const getChatStorage = () => {
-  if (typeof window === 'undefined') {
-    return undefined;
+const toTimestamp = (value?: string) => {
+  if (!value) {
+    return Date.now();
   }
 
-  try {
-    return window.localStorage;
-  } catch (_error) {
-    return undefined;
-  }
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : Date.now();
 };
 
-const removeStoredChatState = (storage: Storage) => {
-  try {
-    storage.removeItem(CHAT_STORAGE_KEY);
-  } catch (_error) {
-    // Ignore storage cleanup failures and keep the in-memory fallback.
+const toChatRole = (role?: API.AiChatMessageRole): ChatMessageRole => {
+  if (role === 'user' || role === 'system') {
+    return role;
   }
+  return 'assistant';
 };
 
-const isChatMessage = (value: unknown): value is ChatMessageItem => {
-  if (!value || typeof value !== 'object') {
-    return false;
+const toChatMessage = (message: API.AiChatMessageItem): ChatMessageItem => ({
+  content: message.content || '',
+  createdAt: toTimestamp(message.created_at),
+  id: message.id,
+  role: toChatRole(message.role),
+});
+
+const toChatSession = (
+  session: API.AiChatSessionItem,
+  messages: ChatMessageItem[] = [],
+): ChatSession => ({
+  createdAt: toTimestamp(session.created_at),
+  id: session.id,
+  messages,
+  summary: session.summary,
+  title: session.title || '新会话',
+  updatedAt: toTimestamp(session.updated_at || session.created_at),
+});
+
+const toChatSessionDetail = (detail: API.AiChatSessionDetail): ChatSession =>
+  toChatSession(detail, (detail.messages || []).map(toChatMessage));
+
+const replaceSession = (
+  sessions: ChatSession[],
+  updatedSession: ChatSession,
+) => {
+  if (!sessions.some((session) => session.id === updatedSession.id)) {
+    return [updatedSession, ...sessions];
   }
 
-  const message = value as ChatMessageItem;
-  return (
-    typeof message.id === 'string' &&
-    typeof message.content === 'string' &&
-    typeof message.createdAt === 'number' &&
-    (message.role === 'assistant' || message.role === 'user')
+  return sessions.map((session) =>
+    session.id === updatedSession.id ? updatedSession : session,
   );
-};
-
-const isChatSession = (value: unknown): value is ChatSession => {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const session = value as ChatSession;
-  return (
-    typeof session.id === 'string' &&
-    typeof session.title === 'string' &&
-    typeof session.createdAt === 'number' &&
-    typeof session.updatedAt === 'number' &&
-    Array.isArray(session.messages) &&
-    session.messages.every(isChatMessage)
-  );
-};
-
-const getInitialState = (): ChatWindowState => {
-  const storage = getChatStorage();
-
-  if (!storage) {
-    return {
-      activeSessionId: initialChatSessions[0]?.id,
-      sessions: initialChatSessions,
-    };
-  }
-
-  try {
-    const storedValue = storage.getItem(CHAT_STORAGE_KEY);
-    const parsedValue = storedValue
-      ? (JSON.parse(storedValue) as ChatWindowState)
-      : undefined;
-    const sessions = parsedValue?.sessions?.filter(isChatSession) || [];
-    const activeSessionId = sessions.some(
-      (session) => session.id === parsedValue?.activeSessionId,
-    )
-      ? parsedValue?.activeSessionId
-      : sessions[0]?.id;
-
-    if (sessions.length > 0) {
-      return {
-        activeSessionId,
-        sessions,
-      };
-    }
-  } catch (_error) {
-    removeStoredChatState(storage);
-  }
-
-  return {
-    activeSessionId: initialChatSessions[0]?.id,
-    sessions: initialChatSessions,
-  };
 };
 
 const upsertSessionToTop = (
@@ -112,8 +74,16 @@ const upsertSessionToTop = (
 ];
 
 export const useChatSessions = () => {
-  const [chatState, setChatState] = useState<ChatWindowState>(getInitialState);
+  const [chatState, setChatState] = useState<ChatWindowState>({
+    sessions: [],
+  });
   const [draft, setDraft] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const mountedRef = useRef(true);
+  const creatingRef = useRef(false);
+  const detailRequestRef = useRef(0);
+
   const activeSession = useMemo(
     () =>
       chatState.sessions.find(
@@ -123,128 +93,223 @@ export const useChatSessions = () => {
   );
 
   useEffect(() => {
-    const storage = getChatStorage();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-    if (!storage) {
-      return;
-    }
+  const loadSessionDetail = useCallback(async (sessionId: string) => {
+    const requestId = ++detailRequestRef.current;
 
     try {
-      storage.setItem(
-        CHAT_STORAGE_KEY,
-        JSON.stringify({
-          activeSessionId: activeSession?.id,
-          sessions: chatState.sessions,
-        }),
-      );
-    } catch (_error) {
-      removeStoredChatState(storage);
-    }
-  }, [activeSession?.id, chatState.sessions]);
-
-  const selectSession = useCallback((sessionId: string) => {
-    setChatState((prevState) => {
-      if (!prevState.sessions.some((session) => session.id === sessionId)) {
-        return prevState;
+      const res = await getAiChatSessionDetail(sessionId, {
+        skipErrorHandler: true,
+      });
+      if (!mountedRef.current || requestId !== detailRequestRef.current) {
+        return;
       }
 
-      return {
-        ...prevState,
-        activeSessionId: sessionId,
-      };
-    });
+      const detail = res.data ? toChatSessionDetail(res.data) : undefined;
+      if (!detail) {
+        return;
+      }
+
+      setChatState((prevState) => ({
+        activeSessionId: prevState.activeSessionId || detail.id,
+        sessions: replaceSession(prevState.sessions, detail),
+      }));
+    } catch (_error) {
+      if (mountedRef.current && requestId === detailRequestRef.current) {
+        antdMessage.error('加载会话详情失败');
+      }
+    }
   }, []);
+
+  const createSessionOnServer = useCallback(async () => {
+    if (creatingRef.current) {
+      return undefined;
+    }
+
+    creatingRef.current = true;
+    try {
+      const res = await createAiChatSession(undefined, {
+        skipErrorHandler: true,
+      });
+      const session = res.data ? toChatSession(res.data) : undefined;
+
+      if (!session || !mountedRef.current) {
+        return session;
+      }
+
+      setChatState((prevState) => ({
+        activeSessionId: session.id,
+        sessions: upsertSessionToTop(prevState.sessions, session),
+      }));
+      return session;
+    } catch (_error) {
+      antdMessage.error('新建会话失败');
+      return undefined;
+    } finally {
+      creatingRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      setLoading(true);
+      try {
+        const res = await getAiChatSessionList({
+          skipErrorHandler: true,
+        });
+        if (!mountedRef.current) {
+          return;
+        }
+
+        const sessions = (res.data?.items || []).map((session) =>
+          toChatSession(session),
+        );
+
+        if (sessions.length === 0) {
+          await createSessionOnServer();
+          return;
+        }
+
+        const activeSessionId = sessions[0].id;
+        setChatState({
+          activeSessionId,
+          sessions,
+        });
+        void loadSessionDetail(activeSessionId);
+      } catch (_error) {
+        if (mountedRef.current) {
+          setChatState({ sessions: [] });
+        }
+        antdMessage.error('AI 智能助手加载失败');
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadSessions();
+  }, [createSessionOnServer, loadSessionDetail]);
+
+  const selectSession = useCallback(
+    (sessionId: string) => {
+      setChatState((prevState) => {
+        if (!prevState.sessions.some((session) => session.id === sessionId)) {
+          return prevState;
+        }
+
+        return {
+          ...prevState,
+          activeSessionId: sessionId,
+        };
+      });
+      void loadSessionDetail(sessionId);
+    },
+    [loadSessionDetail],
+  );
 
   const createSession = useCallback(() => {
-    setChatState((prevState) => {
-      const session = createBlankSession(prevState.sessions.length + 1);
-      return {
-        activeSessionId: session.id,
-        sessions: [session, ...prevState.sessions],
-      };
-    });
     setDraft('');
-  }, []);
+    void createSessionOnServer();
+  }, [createSessionOnServer]);
 
-  const deleteSession = useCallback((sessionId: string) => {
-    setChatState((prevState) => {
-      const sessions = prevState.sessions.filter(
-        (session) => session.id !== sessionId,
-      );
+  const deleteSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        await deleteAiChatSession(sessionId, {
+          skipErrorHandler: true,
+        });
 
-      if (sessions.length === 0) {
-        const session = createBlankSession(1);
-        return {
-          activeSessionId: session.id,
-          sessions: [session],
-        };
+        let nextActiveSessionId: string | undefined;
+        let shouldReloadActiveSession = false;
+        setChatState((prevState) => {
+          const sessions = prevState.sessions.filter(
+            (session) => session.id !== sessionId,
+          );
+          const existingActiveSessionId = sessions.some(
+            (session) => session.id === prevState.activeSessionId,
+          )
+            ? prevState.activeSessionId
+            : undefined;
+          nextActiveSessionId =
+            prevState.activeSessionId === sessionId
+              ? sessions[0]?.id
+              : existingActiveSessionId || sessions[0]?.id;
+          shouldReloadActiveSession = Boolean(
+            nextActiveSessionId && prevState.activeSessionId === sessionId,
+          );
+
+          return {
+            activeSessionId: nextActiveSessionId,
+            sessions,
+          };
+        });
+        setDraft('');
+
+        if (nextActiveSessionId && shouldReloadActiveSession) {
+          void loadSessionDetail(nextActiveSessionId);
+          return;
+        }
+
+        if (!nextActiveSessionId) {
+          void createSessionOnServer();
+        }
+      } catch (_error) {
+        antdMessage.error('删除会话失败');
       }
+    },
+    [createSessionOnServer, loadSessionDetail],
+  );
 
-      const activeSessionId =
-        prevState.activeSessionId === sessionId ||
-        !sessions.some((session) => session.id === prevState.activeSessionId)
-          ? sessions[0].id
-          : prevState.activeSessionId;
-
-      return {
-        activeSessionId,
-        sessions,
-      };
-    });
-  }, []);
-
-  const sendMessage = useCallback(() => {
+  const sendMessage = useCallback(async () => {
     const content = draft.trim();
-    if (!content) {
+    if (!content || submitting) {
       return;
     }
 
-    const createdAt = Date.now();
-    const userMessage = createUserMessage(content, createdAt);
-    const assistantMessage = createAssistantMessage(content, createdAt + 1);
+    setSubmitting(true);
+    try {
+      let sessionId: string | undefined = activeSession?.id;
+      if (!sessionId) {
+        const session = await createSessionOnServer();
+        sessionId = session?.id;
+      }
+      if (!sessionId) {
+        return;
+      }
 
-    setChatState((prevState) => {
-      const fallbackSession =
-        prevState.sessions[0] ||
-        createBlankSession(prevState.sessions.length + 1, createdAt);
-      const activeSessionId = prevState.sessions.some(
-        (session) => session.id === prevState.activeSessionId,
-      )
-        ? prevState.activeSessionId
-        : fallbackSession.id;
-      const sessions = prevState.sessions.length
-        ? prevState.sessions
-        : [fallbackSession];
-      const nextSessions = sessions.map((session) => {
-        if (session.id !== activeSessionId) {
-          return session;
-        }
-
-        const shouldUpdateTitle =
-          session.messages.length === 0 || session.title.startsWith('新会话');
-
-        return {
-          ...session,
-          messages: [...session.messages, userMessage, assistantMessage],
-          title: shouldUpdateTitle
-            ? createSessionTitle(content)
-            : session.title,
-          updatedAt: createdAt + 1,
-        };
-      });
-      const updatedSession = nextSessions.find(
-        (session) => session.id === activeSessionId,
+      const res = await createAiChatMessage(
+        sessionId,
+        { content },
+        {
+          skipErrorHandler: true,
+        },
       );
+      const detail = res.data ? toChatSessionDetail(res.data) : undefined;
+      if (!detail || !mountedRef.current) {
+        return;
+      }
 
-      return {
-        activeSessionId,
-        sessions: updatedSession
-          ? upsertSessionToTop(nextSessions, updatedSession)
-          : nextSessions,
-      };
-    });
-    setDraft('');
-  }, [draft]);
+      setChatState((prevState) => ({
+        activeSessionId:
+          prevState.activeSessionId === sessionId || !prevState.activeSessionId
+            ? detail.id
+            : prevState.activeSessionId,
+        sessions: upsertSessionToTop(prevState.sessions, detail),
+      }));
+      setDraft('');
+    } catch (_error) {
+      antdMessage.error('消息发送失败');
+    } finally {
+      if (mountedRef.current) {
+        setSubmitting(false);
+      }
+    }
+  }, [activeSession?.id, createSessionOnServer, draft, submitting]);
 
   const editMessage = useCallback((content: string) => {
     setDraft(content);
@@ -256,9 +321,11 @@ export const useChatSessions = () => {
     deleteSession,
     draft,
     editMessage,
+    loading,
     selectSession,
     sendMessage,
     sessions: chatState.sessions,
     setDraft,
+    submitting,
   };
 };

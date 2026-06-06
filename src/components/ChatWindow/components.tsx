@@ -50,7 +50,9 @@ const formatSessionTime = (timestamp: number) =>
 const getSessionPreview = (session: ChatSession) => {
   const lastMessage = session.messages[session.messages.length - 1];
   const preview =
-    lastMessage?.content.replace(/\s+/g, ' ').trim() || '暂无消息';
+    lastMessage?.content.replace(/\s+/g, ' ').trim() ||
+    session.summary?.replace(/\s+/g, ' ').trim() ||
+    '暂无消息';
   return preview.length > 42 ? `${preview.slice(0, 42)}...` : preview;
 };
 
