@@ -20,6 +20,17 @@ export type AiChatStreamEvent = {
   user_message?: API.AiChatMessageItem
 }
 
+/** 获取 AI 大模型连接状态 GET /api/v1/ai/status */
+export async function getAiConnectionStatus(options?: { [key: string]: any }) {
+  return request<API.ApiResponse<API.AiConnectionStatusData>>(
+    '/api/v1/ai/status',
+    {
+      method: 'GET',
+      ...(options || {}),
+    },
+  )
+}
+
 /** 获取 AI 会话列表 GET /api/v1/ai/session */
 export async function getAiChatSessionList(options?: { [key: string]: any }) {
   return request<API.ApiResponse<API.AiChatSessionListData>>(

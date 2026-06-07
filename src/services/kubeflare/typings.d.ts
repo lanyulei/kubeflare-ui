@@ -80,6 +80,19 @@ declare namespace API {
     | 'pending'
     | 'streaming'
 
+  type AiConnectionStatus =
+    | 'connected'
+    | 'connecting'
+    | 'disconnected'
+    | 'failed'
+
+  type AiConnectionStatusData = {
+    status: AiConnectionStatus
+    message?: string
+    provider?: string
+    model?: string
+  }
+
   type AiChatSessionItem = {
     id: string
     user_id: string

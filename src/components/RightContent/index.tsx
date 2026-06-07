@@ -6,9 +6,10 @@ import {
 } from '@ant-design/icons';
 import { SelectLang as UmiSelectLang, useIntl } from '@umijs/max';
 import type { MenuProps } from 'antd';
-import { Spin } from 'antd';
+import { Spin, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { useEffect, useMemo, useState } from 'react';
+import { getAiConnectionStatus } from '@/services/kubeflare/ai/chat';
 import { getClusterList } from '@/services/kubeflare/cluster/info';
 import ChatWindow from '../ChatWindow';
 import { HeaderActionButton, HeaderActionDrawer } from '../HeaderAction';
@@ -51,7 +52,48 @@ const useStyles = createStyles(({ token }) => ({
     fontSize: token.fontSize,
     lineHeight: token.lineHeight,
   },
+  chatTitle: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: token.marginXS,
+    minWidth: 0,
+  },
+  chatStatus: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: token.marginXXS,
+    color: token.colorTextSecondary,
+    fontSize: token.fontSizeSM,
+    fontWeight: 400,
+    lineHeight: 1,
+  },
+  chatStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    flex: '0 0 auto',
+    backgroundColor: token.colorTextQuaternary,
+  },
+  chatStatusConnected: {
+    backgroundColor: token.colorSuccess,
+  },
+  chatStatusConnecting: {
+    backgroundColor: token.colorInfo,
+  },
+  chatStatusDisconnected: {
+    backgroundColor: token.colorTextQuaternary,
+  },
+  chatStatusFailed: {
+    backgroundColor: token.colorError,
+  },
 }));
+
+const AI_CONNECTION_STATUS_LABEL: Record<API.AiConnectionStatus, string> = {
+  connected: '已连接',
+  connecting: '连接中',
+  disconnected: '未连接',
+  failed: '连接失败',
+};
 
 const getStoredClusterId = () => {
   if (typeof window === 'undefined') {
@@ -244,10 +286,63 @@ export const SelectLang: React.FC = () => {
 
 export const ChatDrawerAction: React.FC = () => {
   const intl = useIntl();
+  const { styles, cx } = useStyles();
+  const [connectionStatus, setConnectionStatus] =
+    useState<API.AiConnectionStatus>('connecting');
   const title = intl.formatMessage({
     id: 'component.globalHeader.chat',
     defaultMessage: 'AI 智能助手',
   });
+  const statusLabel = AI_CONNECTION_STATUS_LABEL[connectionStatus];
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadConnectionStatus = async () => {
+      setConnectionStatus('connecting');
+      try {
+        const res = await getAiConnectionStatus({
+          skipErrorHandler: true,
+        });
+        if (!mounted) {
+          return;
+        }
+        setConnectionStatus(res.data?.status || 'disconnected');
+      } catch (_error) {
+        if (mounted) {
+          setConnectionStatus('failed');
+        }
+      }
+    };
+
+    void loadConnectionStatus();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const drawerTitle = (
+    <span className={styles.chatTitle}>
+      <span>{title}</span>
+      <Tooltip title={statusLabel}>
+        <span className={styles.chatStatus}>
+          <span
+            aria-hidden="true"
+            className={cx(
+              styles.chatStatusDot,
+              connectionStatus === 'connected' && styles.chatStatusConnected,
+              connectionStatus === 'connecting' && styles.chatStatusConnecting,
+              connectionStatus === 'disconnected' &&
+                styles.chatStatusDisconnected,
+              connectionStatus === 'failed' && styles.chatStatusFailed,
+            )}
+          />
+          <span>{statusLabel}</span>
+        </span>
+      </Tooltip>
+    </span>
+  );
 
   return (
     <HeaderActionDrawer
@@ -263,9 +358,13 @@ export const ChatDrawerAction: React.FC = () => {
         width: '80%',
       }}
       icon={<MessageOutlined />}
-      title={title}
+      label={title}
+      title={drawerTitle}
     >
-      <ChatWindow />
+      <ChatWindow
+        connectionStatus={connectionStatus}
+        onConnectionStatusChange={setConnectionStatus}
+      />
     </HeaderActionDrawer>
   );
 };

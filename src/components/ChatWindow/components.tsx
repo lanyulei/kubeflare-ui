@@ -40,6 +40,7 @@ type ConversationPanelProps = {
 
 type PromptComposerProps = {
   disabled?: boolean;
+  sendDisabled?: boolean;
   submitting?: boolean;
   value: string;
   onChange: (value: string) => void;
@@ -252,6 +253,7 @@ export const ConversationPanel = ({
 
 export const PromptComposer = ({
   disabled,
+  sendDisabled,
   submitting,
   value,
   onChange,
@@ -259,7 +261,8 @@ export const PromptComposer = ({
   onSubmit,
 }: PromptComposerProps) => {
   const { styles } = useStyles();
-  const canSubmit = Boolean(value.trim()) && !disabled && !submitting;
+  const canSubmit =
+    Boolean(value.trim()) && !disabled && !sendDisabled && !submitting;
 
   const handleSubmit = () => {
     if (submitting) {

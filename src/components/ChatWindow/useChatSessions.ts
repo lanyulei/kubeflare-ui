@@ -75,7 +75,15 @@ const mergeSessionDetail = (
   return incomingSession;
 };
 
-export const useChatSessions = () => {
+type UseChatSessionsOptions = {
+  connectionStatus?: API.AiConnectionStatus;
+  onConnectionStatusChange?: (status: API.AiConnectionStatus) => void;
+};
+
+export const useChatSessions = ({
+  connectionStatus,
+  onConnectionStatusChange,
+}: UseChatSessionsOptions = {}) => {
   const [chatState, setChatState] = useState<ChatWindowState>({
     sessions: [],
   });
@@ -379,6 +387,9 @@ export const useChatSessions = () => {
         const failedMessage = event.message
           ? toChatMessage(event.message)
           : undefined;
+        if (event.error_message !== 'generation canceled') {
+          onConnectionStatusChange?.('failed');
+        }
         streamingMessageIdRef.current = undefined;
         streamingSessionIdRef.current = undefined;
 
@@ -406,12 +417,16 @@ export const useChatSessions = () => {
         }));
       }
     },
-    [],
+    [onConnectionStatusChange],
   );
 
   const sendMessage = useCallback(async () => {
     const content = draft.trim();
     if (!content || submitting) {
+      return;
+    }
+    if (connectionStatus && connectionStatus !== 'connected') {
+      antdMessage.warning('AI 大模型未连接，暂时无法发送消息');
       return;
     }
 
@@ -449,6 +464,7 @@ export const useChatSessions = () => {
           setDraft((currentDraft) => currentDraft || content);
         }
       } else {
+        onConnectionStatusChange?.('failed');
         antdMessage.error(
           error instanceof Error ? error.message : '消息发送失败',
         );
@@ -469,8 +485,10 @@ export const useChatSessions = () => {
   }, [
     activeSession?.id,
     applyStreamEvent,
+    connectionStatus,
     createSessionOnServer,
     draft,
+    onConnectionStatusChange,
     submitting,
   ]);
 

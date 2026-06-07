@@ -2,7 +2,15 @@ import { ChatSidebar, ConversationPanel, PromptComposer } from './components';
 import { useStyles } from './styles';
 import { useChatSessions } from './useChatSessions';
 
-const ChatWindow = () => {
+type ChatWindowProps = {
+  connectionStatus?: API.AiConnectionStatus;
+  onConnectionStatusChange?: (status: API.AiConnectionStatus) => void;
+};
+
+const ChatWindow = ({
+  connectionStatus,
+  onConnectionStatusChange,
+}: ChatWindowProps) => {
   const { styles } = useStyles();
   const {
     activeSession,
@@ -17,7 +25,7 @@ const ChatWindow = () => {
     sessions,
     setDraft,
     submitting,
-  } = useChatSessions();
+  } = useChatSessions({ connectionStatus, onConnectionStatusChange });
 
   return (
     <div className={styles.shell} data-chat-window="shell">
@@ -37,6 +45,9 @@ const ChatWindow = () => {
         </div>
         <PromptComposer
           disabled={!activeSession || loading}
+          sendDisabled={Boolean(
+            connectionStatus && connectionStatus !== 'connected',
+          )}
           submitting={submitting}
           value={draft}
           onChange={setDraft}

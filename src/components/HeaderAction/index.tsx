@@ -129,20 +129,23 @@ export type HeaderActionDrawerProps = {
   children?: ReactNode;
   drawerProps?: Omit<DrawerProps, 'onClose' | 'open' | 'title'>;
   icon: ReactNode;
-  title: string;
+  label?: string;
+  title: ReactNode;
 };
 
 export const HeaderActionDrawer = ({
   children,
   drawerProps,
   icon,
+  label,
   title,
 }: HeaderActionDrawerProps) => {
   const [open, setOpen] = useState(false);
+  const actionLabel = label || (typeof title === 'string' ? title : '');
 
   return (
     <>
-      <HeaderActionButton label={title} onClick={() => setOpen(true)}>
+      <HeaderActionButton label={actionLabel} onClick={() => setOpen(true)}>
         {icon}
       </HeaderActionButton>
       <Drawer
