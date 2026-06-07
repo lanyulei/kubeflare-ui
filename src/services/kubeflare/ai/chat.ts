@@ -3,6 +3,35 @@
 import { request } from '@umijs/max'
 import { getCsrfToken } from '@/utils/auth'
 
+const CURRENT_CLUSTER_STORAGE_KEY = 'kubeflare.currentClusterId'
+
+type RequestOptions = {
+  headers?: Record<string, string>
+  [key: string]: any
+}
+
+const getCurrentClusterId = () => {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+  return window.localStorage.getItem(CURRENT_CLUSTER_STORAGE_KEY) || undefined
+}
+
+const withClusterHeaders = (options?: RequestOptions): RequestOptions => {
+  const clusterId = getCurrentClusterId()
+  if (!clusterId) {
+    return options || {}
+  }
+
+  return {
+    ...(options || {}),
+    headers: {
+      ...(options?.headers || {}),
+      'X-Cluster-ID': clusterId,
+    },
+  }
+}
+
 export type AiChatStreamEventName =
   | 'message.completed'
   | 'message.created'
@@ -26,7 +55,7 @@ export async function getAiConnectionStatus(options?: { [key: string]: any }) {
     '/api/v1/ai/status',
     {
       method: 'GET',
-      ...(options || {}),
+      ...withClusterHeaders(options || {}),
     },
   )
 }
@@ -37,7 +66,7 @@ export async function getAiChatSessionList(options?: { [key: string]: any }) {
     '/api/v1/ai/session',
     {
       method: 'GET',
-      ...(options || {}),
+      ...withClusterHeaders(options || {}),
     },
   )
 }
@@ -52,7 +81,7 @@ export async function createAiChatSession(
     {
       method: 'POST',
       ...(typeof body === 'undefined' ? {} : { data: body }),
-      ...(options || {}),
+      ...withClusterHeaders(options || {}),
     },
   )
 }
@@ -66,7 +95,7 @@ export async function getAiChatSessionDetail(
     `/api/v1/ai/session/${sessionID}`,
     {
       method: 'GET',
-      ...(options || {}),
+      ...withClusterHeaders(options || {}),
     },
   )
 }
@@ -82,7 +111,7 @@ export async function updateAiChatSession(
     {
       method: 'PUT',
       data: body,
-      ...(options || {}),
+      ...withClusterHeaders(options || {}),
     },
   )
 }
@@ -94,7 +123,7 @@ export async function deleteAiChatSession(
 ) {
   return request<void>(`/api/v1/ai/session/${sessionID}`, {
     method: 'DELETE',
-    ...(options || {}),
+    ...withClusterHeaders(options || {}),
   })
 }
 
@@ -107,7 +136,7 @@ export async function getAiChatMessageList(
     `/api/v1/ai/session/${sessionID}/message`,
     {
       method: 'GET',
-      ...(options || {}),
+      ...withClusterHeaders(options || {}),
     },
   )
 }
@@ -123,7 +152,7 @@ export async function createAiChatMessage(
     {
       method: 'POST',
       data: body,
-      ...(options || {}),
+      ...withClusterHeaders(options || {}),
     },
   )
 }
@@ -142,6 +171,10 @@ export async function createAiChatMessageStream(
 
   if (csrfToken) {
     headers['X-Kubeflare-CSRF'] = csrfToken
+  }
+  const clusterId = getCurrentClusterId()
+  if (clusterId) {
+    headers['X-Cluster-ID'] = clusterId
   }
 
   const response = await fetch(
@@ -180,7 +213,7 @@ export async function cancelAiChatMessage(
     `/api/v1/ai/message/${messageID}/cancel`,
     {
       method: 'POST',
-      ...(options || {}),
+      ...withClusterHeaders(options || {}),
     },
   )
 }
