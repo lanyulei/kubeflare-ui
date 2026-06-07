@@ -365,6 +365,8 @@ export const ChatDrawerAction: React.FC = () => {
           }
         },
         destroyOnHidden: false,
+        keyboard: false,
+        maskClosable: false,
         styles: {
           body: {
             height: '100%',
