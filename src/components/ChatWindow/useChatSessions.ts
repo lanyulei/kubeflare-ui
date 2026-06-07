@@ -8,7 +8,7 @@ import {
   getAiChatSessionDetail,
   getAiChatSessionList,
 } from '@/services/kubeflare/ai/chat';
-import type { ChatMessageItem, ChatSession } from './types';
+import type { ChatMessageItem, ChatMessageRole, ChatSession } from './types';
 import {
   replaceSession,
   toChatMessage,
@@ -22,6 +22,30 @@ type ChatWindowState = {
   activeSessionId?: string;
   sessions: ChatSession[];
 };
+
+type OptimisticMessagePair = {
+  assistantMessageId: string;
+  sessionId: string;
+  userMessageId: string;
+};
+
+type StreamCompletion = {
+  message: ChatMessageItem;
+  session?: API.AiChatSessionItem;
+};
+
+type StreamTextBuffer = {
+  chunks: string[];
+  completed?: StreamCompletion;
+  displayedContent: string;
+  receivedContent: string;
+  sessionId: string;
+  timer?: ReturnType<typeof setTimeout>;
+};
+
+const LOCAL_MESSAGE_ID_PREFIX = 'local-message';
+const STREAM_RENDER_INTERVAL_MS = 24;
+const STREAM_RENDER_CHUNK_SIZE = 4;
 
 const upsertMessage = (
   messages: ChatMessageItem[],
@@ -49,8 +73,103 @@ const updateMessage = (
     message.id === messageId ? updater(message) : message,
   );
 
+const removeMessages = (messages: ChatMessageItem[], messageIds: string[]) => {
+  if (messageIds.length === 0) {
+    return messages;
+  }
+  const messageIdSet = new Set(messageIds);
+  return messages.filter((message) => !messageIdSet.has(message.id));
+};
+
 const isAbortError = (error: unknown) =>
   error instanceof DOMException && error.name === 'AbortError';
+
+const newLocalMessageId = (role: ChatMessageRole) =>
+  `${LOCAL_MESSAGE_ID_PREFIX}-${role}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+
+const splitStreamText = (content: string) => {
+  if (!content) {
+    return [];
+  }
+
+  const chars = Array.from(content);
+  const chunks: string[] = [];
+  for (let index = 0; index < chars.length; index += STREAM_RENDER_CHUNK_SIZE) {
+    chunks.push(chars.slice(index, index + STREAM_RENDER_CHUNK_SIZE).join(''));
+  }
+  return chunks;
+};
+
+const nextStreamTextBatch = (chunks: string[]) => {
+  const queuedLength = chunks.reduce((total, chunk) => total + chunk.length, 0);
+  const batchSize =
+    queuedLength > 3000
+      ? 72
+      : queuedLength > 1200
+        ? 40
+        : queuedLength > 360
+          ? 18
+          : STREAM_RENDER_CHUNK_SIZE;
+
+  let content = '';
+  while (chunks.length > 0 && content.length < batchSize) {
+    content += chunks.shift() || '';
+  }
+  return content;
+};
+
+const missingCompletionContent = (
+  receivedContent: string,
+  finalContent: string,
+) => {
+  if (!finalContent || finalContent === receivedContent) {
+    return '';
+  }
+  if (!receivedContent) {
+    return finalContent;
+  }
+  if (finalContent.startsWith(receivedContent)) {
+    return finalContent.slice(receivedContent.length);
+  }
+  return '';
+};
+
+const missingBufferCompletionContent = (
+  buffer: StreamTextBuffer,
+  finalContent: string,
+) => {
+  if (!finalContent) {
+    return '';
+  }
+
+  if (
+    buffer.receivedContent &&
+    (finalContent === buffer.receivedContent ||
+      finalContent.startsWith(buffer.receivedContent))
+  ) {
+    return missingCompletionContent(buffer.receivedContent, finalContent);
+  }
+
+  return missingCompletionContent(buffer.displayedContent, finalContent);
+};
+
+const armStreamTextTimer = (
+  messageId: string,
+  buffer: StreamTextBuffer,
+  flush: (messageId: string) => void,
+  delay = 0,
+) => {
+  if (buffer.timer) {
+    return;
+  }
+
+  buffer.timer = setTimeout(() => {
+    buffer.timer = undefined;
+    flush(messageId);
+  }, delay);
+};
 
 const hasInFlightMessage = (messages: ChatMessageItem[]) =>
   messages.some(
@@ -92,10 +211,15 @@ export const useChatSessions = ({
   const [submitting, setSubmitting] = useState(false);
   const mountedRef = useRef(true);
   const creatingRef = useRef(false);
+  const submittingRef = useRef(false);
   const detailRequestRef = useRef(0);
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
   const streamingMessageIdRef = useRef<string | undefined>(undefined);
   const streamingSessionIdRef = useRef<string | undefined>(undefined);
+  const optimisticMessagesRef = useRef<OptimisticMessagePair | undefined>(
+    undefined,
+  );
+  const streamTextBuffersRef = useRef(new Map<string, StreamTextBuffer>());
 
   const activeSession = useMemo(
     () =>
@@ -109,6 +233,12 @@ export const useChatSessions = ({
     return () => {
       mountedRef.current = false;
       abortControllerRef.current?.abort();
+      streamTextBuffersRef.current.forEach((buffer) => {
+        if (buffer.timer) {
+          clearTimeout(buffer.timer);
+        }
+      });
+      streamTextBuffersRef.current.clear();
     };
   }, []);
 
@@ -238,8 +368,51 @@ export const useChatSessions = ({
     void createSessionOnServer();
   }, [createSessionOnServer]);
 
+  const clearStreamTextBuffer = useCallback((messageId?: string) => {
+    if (!messageId) {
+      return;
+    }
+
+    const buffer = streamTextBuffersRef.current.get(messageId);
+    if (buffer?.timer) {
+      clearTimeout(buffer.timer);
+    }
+    streamTextBuffersRef.current.delete(messageId);
+  }, []);
+
+  const clearSessionStreamBuffers = useCallback((sessionId?: string) => {
+    if (!sessionId) {
+      return;
+    }
+
+    streamTextBuffersRef.current.forEach((buffer, messageId) => {
+      if (buffer.sessionId !== sessionId) {
+        return;
+      }
+      if (buffer.timer) {
+        clearTimeout(buffer.timer);
+      }
+      streamTextBuffersRef.current.delete(messageId);
+    });
+  }, []);
+
   const deleteSession = useCallback(
     async (sessionId: string) => {
+      clearSessionStreamBuffers(sessionId);
+      if (streamingSessionIdRef.current === sessionId) {
+        abortControllerRef.current?.abort();
+        streamingMessageIdRef.current = undefined;
+        streamingSessionIdRef.current = undefined;
+        submittingRef.current = false;
+        if (mountedRef.current) {
+          setSubmitting(false);
+        }
+      }
+
+      if (optimisticMessagesRef.current?.sessionId === sessionId) {
+        optimisticMessagesRef.current = undefined;
+      }
+
       try {
         await deleteAiChatSession(sessionId, {
           skipErrorHandler: true,
@@ -283,7 +456,287 @@ export const useChatSessions = ({
         antdMessage.error('删除会话失败');
       }
     },
-    [createSessionOnServer, loadSessionDetail],
+    [clearSessionStreamBuffers, createSessionOnServer, loadSessionDetail],
+  );
+
+  const removeOptimisticMessages = useCallback(
+    (pair?: OptimisticMessagePair) => {
+      if (!pair) {
+        return;
+      }
+
+      setChatState((prevState) => ({
+        ...prevState,
+        sessions: prevState.sessions.map((session) =>
+          session.id === pair.sessionId
+            ? {
+                ...session,
+                messages: removeMessages(session.messages, [
+                  pair.userMessageId,
+                  pair.assistantMessageId,
+                ]),
+              }
+            : session,
+        ),
+      }));
+
+      if (optimisticMessagesRef.current === pair) {
+        optimisticMessagesRef.current = undefined;
+      }
+    },
+    [],
+  );
+
+  const appendOptimisticMessages = useCallback(
+    (sessionId: string, content: string) => {
+      const now = Date.now();
+      const userMessageId = newLocalMessageId('user');
+      const assistantMessageId = newLocalMessageId('assistant');
+      const pair: OptimisticMessagePair = {
+        assistantMessageId,
+        sessionId,
+        userMessageId,
+      };
+      const userMessage: ChatMessageItem = {
+        content,
+        createdAt: now,
+        id: userMessageId,
+        role: 'user',
+        status: 'completed',
+      };
+      const assistantMessage: ChatMessageItem = {
+        content: '',
+        createdAt: now,
+        id: assistantMessageId,
+        role: 'assistant',
+        status: 'pending',
+      };
+
+      const previousPair = optimisticMessagesRef.current;
+      optimisticMessagesRef.current = pair;
+      setChatState((prevState) => {
+        const existingSession = prevState.sessions.find(
+          (session) => session.id === sessionId,
+        );
+        let messages = existingSession?.messages || [];
+        messages = removeMessages(
+          messages,
+          previousPair && previousPair.sessionId === sessionId
+            ? [previousPair.userMessageId, previousPair.assistantMessageId]
+            : [],
+        );
+        messages = upsertMessage(messages, userMessage);
+        messages = upsertMessage(messages, assistantMessage);
+
+        const updatedSession = {
+          ...(existingSession || {
+            createdAt: now,
+            id: sessionId,
+            title: '新会话',
+            updatedAt: now,
+          }),
+          messages,
+          updatedAt: now,
+        };
+
+        return {
+          activeSessionId: sessionId,
+          sessions: upsertSessionToTop(prevState.sessions, updatedSession),
+        };
+      });
+
+      return pair;
+    },
+    [],
+  );
+
+  const getStreamTextBuffer = useCallback(
+    (sessionId: string, messageId: string) => {
+      const existingBuffer = streamTextBuffersRef.current.get(messageId);
+      if (existingBuffer) {
+        existingBuffer.sessionId = sessionId;
+        return existingBuffer;
+      }
+
+      const buffer: StreamTextBuffer = {
+        chunks: [],
+        displayedContent: '',
+        receivedContent: '',
+        sessionId,
+      };
+      streamTextBuffersRef.current.set(messageId, buffer);
+      return buffer;
+    },
+    [],
+  );
+
+  const failStreamingMessage = useCallback(
+    (sessionId?: string, messageId?: string, errorMessage?: string) => {
+      if (!sessionId || !messageId) {
+        return;
+      }
+
+      clearStreamTextBuffer(messageId);
+      setChatState((prevState) => ({
+        ...prevState,
+        sessions: prevState.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                messages: updateMessage(
+                  session.messages,
+                  messageId,
+                  (message) => ({
+                    ...message,
+                    errorMessage:
+                      errorMessage || '消息生成中断，请重新发送消息',
+                    status: 'failed',
+                  }),
+                ),
+              }
+            : session,
+        ),
+      }));
+
+      if (streamingMessageIdRef.current === messageId) {
+        streamingMessageIdRef.current = undefined;
+        streamingSessionIdRef.current = undefined;
+      }
+    },
+    [clearStreamTextBuffer],
+  );
+
+  const applyCompletedStreamMessage = useCallback(
+    (
+      sessionId: string,
+      completedMessage: ChatMessageItem,
+      completedSession?: API.AiChatSessionItem,
+    ) => {
+      setChatState((prevState) => {
+        const existingSession = prevState.sessions.find(
+          (session) => session.id === sessionId,
+        );
+        if (!existingSession) {
+          return prevState;
+        }
+
+        const messages = upsertMessage(
+          existingSession.messages,
+          completedMessage,
+        );
+        const updatedSession = {
+          ...(completedSession
+            ? toChatSession(completedSession, messages)
+            : existingSession),
+          messages,
+        };
+
+        return {
+          activeSessionId: prevState.activeSessionId || sessionId,
+          sessions: upsertSessionToTop(prevState.sessions, updatedSession),
+        };
+      });
+    },
+    [],
+  );
+
+  const flushStreamTextBuffer = useCallback(
+    (messageId: string) => {
+      if (!mountedRef.current) {
+        return;
+      }
+
+      const buffer = streamTextBuffersRef.current.get(messageId);
+      if (!buffer) {
+        return;
+      }
+
+      const content = nextStreamTextBatch(buffer.chunks);
+      if (content) {
+        buffer.displayedContent += content;
+        setChatState((prevState) => ({
+          ...prevState,
+          sessions: prevState.sessions.map((session) =>
+            session.id === buffer.sessionId
+              ? {
+                  ...session,
+                  messages: updateMessage(
+                    session.messages,
+                    messageId,
+                    (message) => ({
+                      ...message,
+                      content: `${message.content}${content}`,
+                      status: 'streaming',
+                    }),
+                  ),
+                }
+              : session,
+          ),
+        }));
+      }
+
+      if (buffer.chunks.length > 0) {
+        armStreamTextTimer(
+          messageId,
+          buffer,
+          flushStreamTextBuffer,
+          STREAM_RENDER_INTERVAL_MS,
+        );
+        return;
+      }
+
+      if (buffer.completed) {
+        const completed = buffer.completed;
+        streamTextBuffersRef.current.delete(messageId);
+        applyCompletedStreamMessage(
+          buffer.sessionId,
+          completed.message,
+          completed.session,
+        );
+      }
+    },
+    [applyCompletedStreamMessage],
+  );
+
+  const enqueueStreamDelta = useCallback(
+    (sessionId: string, messageId: string, delta?: string) => {
+      if (!delta) {
+        return;
+      }
+
+      const buffer = getStreamTextBuffer(sessionId, messageId);
+      buffer.receivedContent += delta;
+      buffer.chunks.push(...splitStreamText(delta));
+      armStreamTextTimer(messageId, buffer, flushStreamTextBuffer);
+    },
+    [flushStreamTextBuffer, getStreamTextBuffer],
+  );
+
+  const completeStreamText = useCallback(
+    (
+      sessionId: string,
+      completedMessage: ChatMessageItem,
+      completedSession?: API.AiChatSessionItem,
+    ) => {
+      const buffer = getStreamTextBuffer(sessionId, completedMessage.id);
+      const finalContent = completedMessage.content || '';
+      const missingContent = missingBufferCompletionContent(
+        buffer,
+        finalContent,
+      );
+
+      if (missingContent) {
+        buffer.receivedContent = finalContent;
+        buffer.chunks.push(...splitStreamText(missingContent));
+      }
+
+      buffer.completed = {
+        message: completedMessage,
+        session: completedSession,
+      };
+      armStreamTextTimer(completedMessage.id, buffer, flushStreamTextBuffer);
+    },
+    [flushStreamTextBuffer, getStreamTextBuffer],
   );
 
   const applyStreamEvent = useCallback(
@@ -296,6 +749,7 @@ export const useChatSessions = ({
           ? toChatMessage(event.assistant_message)
           : undefined;
         if (assistantMessage) {
+          clearStreamTextBuffer(assistantMessage.id);
           streamingMessageIdRef.current = assistantMessage.id;
           streamingSessionIdRef.current = sessionId;
         }
@@ -304,7 +758,24 @@ export const useChatSessions = ({
           const existingSession = prevState.sessions.find(
             (session) => session.id === sessionId,
           );
+          const optimisticPair = optimisticMessagesRef.current;
+          if (
+            !existingSession &&
+            (!optimisticPair || optimisticPair.sessionId !== sessionId)
+          ) {
+            return prevState;
+          }
+
           let messages = existingSession?.messages || [];
+          messages = removeMessages(
+            messages,
+            optimisticPair && optimisticPair.sessionId === sessionId
+              ? [
+                  optimisticPair.userMessageId,
+                  optimisticPair.assistantMessageId,
+                ]
+              : [],
+          );
           messages = upsertMessage(messages, userMessage);
           messages = upsertMessage(messages, assistantMessage);
 
@@ -321,33 +792,16 @@ export const useChatSessions = ({
           };
 
           return {
-            activeSessionId: sessionId,
+            activeSessionId: prevState.activeSessionId || sessionId,
             sessions: upsertSessionToTop(prevState.sessions, updatedSession),
           };
         });
+        optimisticMessagesRef.current = undefined;
         return;
       }
 
       if (event.event === 'message.delta' && event.message_id) {
-        setChatState((prevState) => ({
-          ...prevState,
-          sessions: prevState.sessions.map((session) =>
-            session.id === sessionId
-              ? {
-                  ...session,
-                  messages: updateMessage(
-                    session.messages,
-                    event.message_id || '',
-                    (message) => ({
-                      ...message,
-                      content: `${message.content}${event.delta || ''}`,
-                      status: 'streaming',
-                    }),
-                  ),
-                }
-              : session,
-          ),
-        }));
+        enqueueStreamDelta(sessionId, event.message_id, event.delta);
         return;
       }
 
@@ -355,31 +809,7 @@ export const useChatSessions = ({
         const completedMessage = toChatMessage(event.message);
         streamingMessageIdRef.current = undefined;
         streamingSessionIdRef.current = undefined;
-        setChatState((prevState) => {
-          const existingSession = prevState.sessions.find(
-            (session) => session.id === sessionId,
-          );
-          const messages = upsertMessage(
-            existingSession?.messages || [],
-            completedMessage,
-          );
-          const updatedSession = {
-            ...(event.session
-              ? toChatSession(event.session, messages)
-              : existingSession || {
-                  createdAt: Date.now(),
-                  id: sessionId,
-                  title: '新会话',
-                  updatedAt: Date.now(),
-                }),
-            messages,
-          };
-
-          return {
-            activeSessionId: sessionId,
-            sessions: upsertSessionToTop(prevState.sessions, updatedSession),
-          };
-        });
+        completeStreamText(sessionId, completedMessage, event.session);
         return;
       }
 
@@ -387,6 +817,7 @@ export const useChatSessions = ({
         const failedMessage = event.message
           ? toChatMessage(event.message)
           : undefined;
+        clearStreamTextBuffer(event.message_id || failedMessage?.id);
         if (event.error_message !== 'generation canceled') {
           onConnectionStatusChange?.('failed');
         }
@@ -417,12 +848,17 @@ export const useChatSessions = ({
         }));
       }
     },
-    [onConnectionStatusChange],
+    [
+      clearStreamTextBuffer,
+      completeStreamText,
+      enqueueStreamDelta,
+      onConnectionStatusChange,
+    ],
   );
 
   const sendMessage = useCallback(async () => {
     const content = draft.trim();
-    if (!content || submitting) {
+    if (!content || submittingRef.current) {
       return;
     }
     if (connectionStatus && connectionStatus !== 'connected') {
@@ -432,11 +868,13 @@ export const useChatSessions = ({
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+    submittingRef.current = true;
     setSubmitting(true);
     let streamMessageCreated = false;
+    let optimisticPair: OptimisticMessagePair | undefined;
+    let sessionId: string | undefined = activeSession?.id;
 
     try {
-      let sessionId: string | undefined = activeSession?.id;
       if (!sessionId) {
         const session = await createSessionOnServer();
         sessionId = session?.id;
@@ -446,6 +884,7 @@ export const useChatSessions = ({
       }
 
       streamingSessionIdRef.current = sessionId;
+      optimisticPair = appendOptimisticMessages(sessionId, content);
       setDraft('');
       await readAiChatStream({
         body: { content },
@@ -461,20 +900,33 @@ export const useChatSessions = ({
     } catch (error) {
       if (isAbortError(error)) {
         if (!streamMessageCreated) {
+          removeOptimisticMessages(optimisticPair);
           setDraft((currentDraft) => currentDraft || content);
         }
       } else {
+        if (!streamMessageCreated) {
+          removeOptimisticMessages(optimisticPair);
+        }
         onConnectionStatusChange?.('failed');
-        antdMessage.error(
-          error instanceof Error ? error.message : '消息发送失败',
-        );
+        const errorMessage =
+          error instanceof Error ? error.message : '消息发送失败';
+        antdMessage.error(errorMessage);
+        if (streamMessageCreated) {
+          failStreamingMessage(
+            streamingSessionIdRef.current || sessionId,
+            streamingMessageIdRef.current,
+            errorMessage,
+          );
+        }
         setDraft((currentDraft) => currentDraft || content);
       }
     } finally {
+      submittingRef.current = false;
       if (mountedRef.current) {
         setSubmitting(false);
       }
       if (!streamMessageCreated) {
+        removeOptimisticMessages(optimisticPair);
         streamingMessageIdRef.current = undefined;
         streamingSessionIdRef.current = undefined;
       }
@@ -484,18 +936,21 @@ export const useChatSessions = ({
     }
   }, [
     activeSession?.id,
+    appendOptimisticMessages,
     applyStreamEvent,
     connectionStatus,
     createSessionOnServer,
     draft,
+    failStreamingMessage,
     onConnectionStatusChange,
-    submitting,
+    removeOptimisticMessages,
   ]);
 
   const cancelMessage = useCallback(async () => {
     const messageId = streamingMessageIdRef.current;
     const sessionId = streamingSessionIdRef.current;
     abortControllerRef.current?.abort();
+    clearStreamTextBuffer(messageId);
     if (!messageId || !sessionId) {
       return;
     }
@@ -524,11 +979,12 @@ export const useChatSessions = ({
     } finally {
       streamingMessageIdRef.current = undefined;
       streamingSessionIdRef.current = undefined;
+      submittingRef.current = false;
       if (mountedRef.current) {
         setSubmitting(false);
       }
     }
-  }, []);
+  }, [clearStreamTextBuffer]);
 
   const editMessage = useCallback((content: string) => {
     setDraft(content);

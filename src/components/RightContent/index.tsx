@@ -8,7 +8,7 @@ import { SelectLang as UmiSelectLang, useIntl } from '@umijs/max';
 import type { MenuProps } from 'antd';
 import { Spin, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getAiConnectionStatus } from '@/services/kubeflare/ai/chat';
 import { getClusterList } from '@/services/kubeflare/cluster/info';
 import ChatWindow from '../ChatWindow';
@@ -295,10 +295,22 @@ export const ChatDrawerAction: React.FC = () => {
   });
   const statusLabel = AI_CONNECTION_STATUS_LABEL[connectionStatus];
 
+  const loadConnectionStatus = useCallback(async () => {
+    setConnectionStatus('connecting');
+    try {
+      const res = await getAiConnectionStatus({
+        skipErrorHandler: true,
+      });
+      setConnectionStatus(res.data?.status || 'disconnected');
+    } catch (_error) {
+      setConnectionStatus('failed');
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
-    const loadConnectionStatus = async () => {
+    const loadInitialConnectionStatus = async () => {
       setConnectionStatus('connecting');
       try {
         const res = await getAiConnectionStatus({
@@ -315,7 +327,7 @@ export const ChatDrawerAction: React.FC = () => {
       }
     };
 
-    void loadConnectionStatus();
+    void loadInitialConnectionStatus();
 
     return () => {
       mounted = false;
@@ -347,6 +359,11 @@ export const ChatDrawerAction: React.FC = () => {
   return (
     <HeaderActionDrawer
       drawerProps={{
+        afterOpenChange: (open) => {
+          if (open) {
+            void loadConnectionStatus();
+          }
+        },
         destroyOnHidden: false,
         styles: {
           body: {
