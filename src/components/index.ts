@@ -23,6 +23,7 @@ import { HeaderActionButton, HeaderActionDrawer } from './HeaderAction';
 import KeyValueEditor from './KeyValueEditor';
 import KeyValueList from './KeyValueList';
 import KubernetesCompatibilityNotice from './KubernetesCompatibilityNotice';
+import MarkdownContent from './MarkdownContent';
 import ReplicaSummary from './ReplicaSummary';
 import {
   ChatDrawerAction,
@@ -65,6 +66,7 @@ export {
   KeyValueEditor,
   KeyValueList,
   KubernetesCompatibilityNotice,
+  MarkdownContent,
   Question,
   ReplicaSummary,
   SectionTitle,

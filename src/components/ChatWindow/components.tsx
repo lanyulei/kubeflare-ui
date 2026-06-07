@@ -10,7 +10,7 @@ import {
 import { Avatar, Button, Empty, Input, Popconfirm } from 'antd';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
-import MarkdownRenderer from './MarkdownRenderer';
+import MarkdownContent from '../MarkdownContent';
 import { useStyles } from './styles';
 import type { ChatMessageItem, ChatSession } from './types';
 
@@ -109,7 +109,7 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
             className={styles.responseCard}
             data-chat-window="response-card"
           >
-            <MarkdownRenderer content={assistantContent} />
+            <MarkdownContent content={assistantContent} />
           </article>
         )}
       </div>
