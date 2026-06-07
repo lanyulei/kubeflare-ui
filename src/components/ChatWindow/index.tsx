@@ -6,6 +6,7 @@ const ChatWindow = () => {
   const { styles } = useStyles();
   const {
     activeSession,
+    cancelMessage,
     createSession,
     deleteSession,
     draft,
@@ -35,9 +36,11 @@ const ChatWindow = () => {
           />
         </div>
         <PromptComposer
-          disabled={!activeSession || loading || submitting}
+          disabled={!activeSession || loading}
+          submitting={submitting}
           value={draft}
           onChange={setDraft}
+          onCancel={cancelMessage}
           onSubmit={sendMessage}
         />
       </main>

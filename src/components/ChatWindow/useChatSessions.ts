@@ -1,77 +1,79 @@
 import { message as antdMessage } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  createAiChatMessage,
+  type AiChatStreamEvent,
+  cancelAiChatMessage,
   createAiChatSession,
   deleteAiChatSession,
   getAiChatSessionDetail,
   getAiChatSessionList,
 } from '@/services/kubeflare/ai/chat';
-import type { ChatMessageItem, ChatMessageRole, ChatSession } from './types';
+import type { ChatMessageItem, ChatSession } from './types';
+import {
+  replaceSession,
+  toChatMessage,
+  toChatSession,
+  toChatSessionDetail,
+  upsertSessionToTop,
+} from './utils/mapper';
+import { readAiChatStream } from './utils/stream';
 
 type ChatWindowState = {
   activeSessionId?: string;
   sessions: ChatSession[];
 };
 
-const toTimestamp = (value?: string) => {
-  if (!value) {
-    return Date.now();
-  }
-
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : Date.now();
-};
-
-const toChatRole = (role?: API.AiChatMessageRole): ChatMessageRole => {
-  if (role === 'user' || role === 'system') {
-    return role;
-  }
-  return 'assistant';
-};
-
-const toChatMessage = (message: API.AiChatMessageItem): ChatMessageItem => ({
-  content: message.content || '',
-  createdAt: toTimestamp(message.created_at),
-  id: message.id,
-  role: toChatRole(message.role),
-});
-
-const toChatSession = (
-  session: API.AiChatSessionItem,
-  messages: ChatMessageItem[] = [],
-): ChatSession => ({
-  createdAt: toTimestamp(session.created_at),
-  id: session.id,
-  messages,
-  summary: session.summary,
-  title: session.title || '新会话',
-  updatedAt: toTimestamp(session.updated_at || session.created_at),
-});
-
-const toChatSessionDetail = (detail: API.AiChatSessionDetail): ChatSession =>
-  toChatSession(detail, (detail.messages || []).map(toChatMessage));
-
-const replaceSession = (
-  sessions: ChatSession[],
-  updatedSession: ChatSession,
+const upsertMessage = (
+  messages: ChatMessageItem[],
+  updatedMessage?: ChatMessageItem,
 ) => {
-  if (!sessions.some((session) => session.id === updatedSession.id)) {
-    return [updatedSession, ...sessions];
+  if (!updatedMessage) {
+    return messages;
   }
 
-  return sessions.map((session) =>
-    session.id === updatedSession.id ? updatedSession : session,
+  if (!messages.some((message) => message.id === updatedMessage.id)) {
+    return [...messages, updatedMessage];
+  }
+
+  return messages.map((message) =>
+    message.id === updatedMessage.id ? updatedMessage : message,
   );
 };
 
-const upsertSessionToTop = (
-  sessions: ChatSession[],
-  updatedSession: ChatSession,
-) => [
-  updatedSession,
-  ...sessions.filter((session) => session.id !== updatedSession.id),
-];
+const updateMessage = (
+  messages: ChatMessageItem[],
+  messageId: string,
+  updater: (message: ChatMessageItem) => ChatMessageItem,
+) =>
+  messages.map((message) =>
+    message.id === messageId ? updater(message) : message,
+  );
+
+const isAbortError = (error: unknown) =>
+  error instanceof DOMException && error.name === 'AbortError';
+
+const hasInFlightMessage = (messages: ChatMessageItem[]) =>
+  messages.some(
+    (message) => message.status === 'pending' || message.status === 'streaming',
+  );
+
+const mergeSessionDetail = (
+  existingSession: ChatSession | undefined,
+  incomingSession: ChatSession,
+) => {
+  if (
+    existingSession &&
+    (hasInFlightMessage(existingSession.messages) ||
+      existingSession.messages.length > incomingSession.messages.length)
+  ) {
+    return {
+      ...incomingSession,
+      messages: existingSession.messages,
+    };
+  }
+
+  return incomingSession;
+};
 
 export const useChatSessions = () => {
   const [chatState, setChatState] = useState<ChatWindowState>({
@@ -83,6 +85,9 @@ export const useChatSessions = () => {
   const mountedRef = useRef(true);
   const creatingRef = useRef(false);
   const detailRequestRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | undefined>(undefined);
+  const streamingMessageIdRef = useRef<string | undefined>(undefined);
+  const streamingSessionIdRef = useRef<string | undefined>(undefined);
 
   const activeSession = useMemo(
     () =>
@@ -95,6 +100,7 @@ export const useChatSessions = () => {
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      abortControllerRef.current?.abort();
     };
   }, []);
 
@@ -114,10 +120,17 @@ export const useChatSessions = () => {
         return;
       }
 
-      setChatState((prevState) => ({
-        activeSessionId: prevState.activeSessionId || detail.id,
-        sessions: replaceSession(prevState.sessions, detail),
-      }));
+      setChatState((prevState) => {
+        const existingSession = prevState.sessions.find(
+          (session) => session.id === detail.id,
+        );
+        const mergedDetail = mergeSessionDetail(existingSession, detail);
+
+        return {
+          activeSessionId: prevState.activeSessionId || mergedDetail.id,
+          sessions: replaceSession(prevState.sessions, mergedDetail),
+        };
+      });
     } catch (_error) {
       if (mountedRef.current && requestId === detailRequestRef.current) {
         antdMessage.error('加载会话详情失败');
@@ -265,13 +278,148 @@ export const useChatSessions = () => {
     [createSessionOnServer, loadSessionDetail],
   );
 
+  const applyStreamEvent = useCallback(
+    (sessionId: string, event: AiChatStreamEvent) => {
+      if (event.event === 'message.created') {
+        const userMessage = event.user_message
+          ? toChatMessage(event.user_message)
+          : undefined;
+        const assistantMessage = event.assistant_message
+          ? toChatMessage(event.assistant_message)
+          : undefined;
+        if (assistantMessage) {
+          streamingMessageIdRef.current = assistantMessage.id;
+          streamingSessionIdRef.current = sessionId;
+        }
+
+        setChatState((prevState) => {
+          const existingSession = prevState.sessions.find(
+            (session) => session.id === sessionId,
+          );
+          let messages = existingSession?.messages || [];
+          messages = upsertMessage(messages, userMessage);
+          messages = upsertMessage(messages, assistantMessage);
+
+          const updatedSession = {
+            ...(event.session
+              ? toChatSession(event.session, messages)
+              : existingSession || {
+                  createdAt: Date.now(),
+                  id: sessionId,
+                  title: '新会话',
+                  updatedAt: Date.now(),
+                }),
+            messages,
+          };
+
+          return {
+            activeSessionId: sessionId,
+            sessions: upsertSessionToTop(prevState.sessions, updatedSession),
+          };
+        });
+        return;
+      }
+
+      if (event.event === 'message.delta' && event.message_id) {
+        setChatState((prevState) => ({
+          ...prevState,
+          sessions: prevState.sessions.map((session) =>
+            session.id === sessionId
+              ? {
+                  ...session,
+                  messages: updateMessage(
+                    session.messages,
+                    event.message_id || '',
+                    (message) => ({
+                      ...message,
+                      content: `${message.content}${event.delta || ''}`,
+                      status: 'streaming',
+                    }),
+                  ),
+                }
+              : session,
+          ),
+        }));
+        return;
+      }
+
+      if (event.event === 'message.completed' && event.message) {
+        const completedMessage = toChatMessage(event.message);
+        streamingMessageIdRef.current = undefined;
+        streamingSessionIdRef.current = undefined;
+        setChatState((prevState) => {
+          const existingSession = prevState.sessions.find(
+            (session) => session.id === sessionId,
+          );
+          const messages = upsertMessage(
+            existingSession?.messages || [],
+            completedMessage,
+          );
+          const updatedSession = {
+            ...(event.session
+              ? toChatSession(event.session, messages)
+              : existingSession || {
+                  createdAt: Date.now(),
+                  id: sessionId,
+                  title: '新会话',
+                  updatedAt: Date.now(),
+                }),
+            messages,
+          };
+
+          return {
+            activeSessionId: sessionId,
+            sessions: upsertSessionToTop(prevState.sessions, updatedSession),
+          };
+        });
+        return;
+      }
+
+      if (event.event === 'message.failed') {
+        const failedMessage = event.message
+          ? toChatMessage(event.message)
+          : undefined;
+        streamingMessageIdRef.current = undefined;
+        streamingSessionIdRef.current = undefined;
+
+        setChatState((prevState) => ({
+          ...prevState,
+          sessions: prevState.sessions.map((session) =>
+            session.id === sessionId
+              ? {
+                  ...session,
+                  messages: failedMessage
+                    ? upsertMessage(session.messages, failedMessage)
+                    : updateMessage(
+                        session.messages,
+                        event.message_id || '',
+                        (message) => ({
+                          ...message,
+                          errorMessage:
+                            event.error_message || '消息生成失败，请重试',
+                          status: 'failed',
+                        }),
+                      ),
+                }
+              : session,
+          ),
+        }));
+      }
+    },
+    [],
+  );
+
   const sendMessage = useCallback(async () => {
     const content = draft.trim();
     if (!content || submitting) {
       return;
     }
 
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
     setSubmitting(true);
+    let streamMessageCreated = false;
+
     try {
       let sessionId: string | undefined = activeSession?.id;
       if (!sessionId) {
@@ -282,34 +430,87 @@ export const useChatSessions = () => {
         return;
       }
 
-      const res = await createAiChatMessage(
-        sessionId,
-        { content },
-        {
-          skipErrorHandler: true,
-        },
-      );
-      const detail = res.data ? toChatSessionDetail(res.data) : undefined;
-      if (!detail || !mountedRef.current) {
-        return;
-      }
-
-      setChatState((prevState) => ({
-        activeSessionId:
-          prevState.activeSessionId === sessionId || !prevState.activeSessionId
-            ? detail.id
-            : prevState.activeSessionId,
-        sessions: upsertSessionToTop(prevState.sessions, detail),
-      }));
+      streamingSessionIdRef.current = sessionId;
       setDraft('');
-    } catch (_error) {
-      antdMessage.error('消息发送失败');
+      await readAiChatStream({
+        body: { content },
+        onEvent: (event) => {
+          if (event.event === 'message.created') {
+            streamMessageCreated = true;
+          }
+          applyStreamEvent(sessionId || '', event);
+        },
+        sessionID: sessionId,
+        signal: abortController.signal,
+      });
+    } catch (error) {
+      if (isAbortError(error)) {
+        if (!streamMessageCreated) {
+          setDraft((currentDraft) => currentDraft || content);
+        }
+      } else {
+        antdMessage.error(
+          error instanceof Error ? error.message : '消息发送失败',
+        );
+        setDraft((currentDraft) => currentDraft || content);
+      }
     } finally {
       if (mountedRef.current) {
         setSubmitting(false);
       }
+      if (!streamMessageCreated) {
+        streamingMessageIdRef.current = undefined;
+        streamingSessionIdRef.current = undefined;
+      }
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = undefined;
+      }
     }
-  }, [activeSession?.id, createSessionOnServer, draft, submitting]);
+  }, [
+    activeSession?.id,
+    applyStreamEvent,
+    createSessionOnServer,
+    draft,
+    submitting,
+  ]);
+
+  const cancelMessage = useCallback(async () => {
+    const messageId = streamingMessageIdRef.current;
+    const sessionId = streamingSessionIdRef.current;
+    abortControllerRef.current?.abort();
+    if (!messageId || !sessionId) {
+      return;
+    }
+
+    try {
+      const res = await cancelAiChatMessage(messageId, {
+        skipErrorHandler: true,
+      });
+      const canceledMessage = res.data ? toChatMessage(res.data) : undefined;
+      if (!canceledMessage) {
+        return;
+      }
+
+      setChatState((prevState) => ({
+        ...prevState,
+        sessions: prevState.sessions.map((session) => ({
+          ...session,
+          messages:
+            session.id === sessionId
+              ? upsertMessage(session.messages, canceledMessage)
+              : session.messages,
+        })),
+      }));
+    } catch (_error) {
+      antdMessage.error('停止生成失败');
+    } finally {
+      streamingMessageIdRef.current = undefined;
+      streamingSessionIdRef.current = undefined;
+      if (mountedRef.current) {
+        setSubmitting(false);
+      }
+    }
+  }, []);
 
   const editMessage = useCallback((content: string) => {
     setDraft(content);
@@ -317,6 +518,7 @@ export const useChatSessions = () => {
 
   return {
     activeSession,
+    cancelMessage,
     createSession,
     deleteSession,
     draft,

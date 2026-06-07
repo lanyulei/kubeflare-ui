@@ -99,6 +99,7 @@ declare namespace API {
     content_type: string
     status: AiChatMessageStatus
     sequence: number
+    provider?: string
     model?: string
     prompt_tokens?: number
     completion_tokens?: number

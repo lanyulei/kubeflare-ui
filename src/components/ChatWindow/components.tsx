@@ -4,6 +4,7 @@ import {
   PlusOutlined,
   RobotOutlined,
   SendOutlined,
+  StopOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Avatar, Button, Empty, Input, Popconfirm } from 'antd';
@@ -39,8 +40,10 @@ type ConversationPanelProps = {
 
 type PromptComposerProps = {
   disabled?: boolean;
+  submitting?: boolean;
   value: string;
   onChange: (value: string) => void;
+  onCancel: () => void;
   onSubmit: () => void;
 };
 
@@ -60,6 +63,13 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
   const { styles, cx } = useStyles();
   const isUser = message.role === 'user';
   const avatar: ReactNode = isUser ? <UserOutlined /> : <RobotOutlined />;
+  const assistantContent =
+    message.status === 'failed'
+      ? message.errorMessage || '消息生成失败，请重试'
+      : message.content ||
+        (message.status === 'pending' || message.status === 'streaming'
+          ? '正在生成...'
+          : '');
 
   return (
     <div
@@ -98,7 +108,7 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
             className={styles.responseCard}
             data-chat-window="response-card"
           >
-            <MarkdownRenderer content={message.content} />
+            <MarkdownRenderer content={assistantContent} />
           </article>
         )}
       </div>
@@ -200,10 +210,16 @@ export const ConversationPanel = ({
 }: ConversationPanelProps) => {
   const { styles } = useStyles();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastMessage = session?.messages[session.messages.length - 1];
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [session?.id, session?.messages.length]);
+  }, [
+    lastMessage?.content.length,
+    lastMessage?.status,
+    session?.id,
+    session?.messages.length,
+  ]);
 
   if (!session || session.messages.length === 0) {
     return (
@@ -236,14 +252,20 @@ export const ConversationPanel = ({
 
 export const PromptComposer = ({
   disabled,
+  submitting,
   value,
   onChange,
+  onCancel,
   onSubmit,
 }: PromptComposerProps) => {
   const { styles } = useStyles();
-  const canSubmit = Boolean(value.trim()) && !disabled;
+  const canSubmit = Boolean(value.trim()) && !disabled && !submitting;
 
   const handleSubmit = () => {
+    if (submitting) {
+      onCancel();
+      return;
+    }
     if (canSubmit) {
       onSubmit();
     }
@@ -268,7 +290,7 @@ export const PromptComposer = ({
       <TextArea
         autoSize={{ maxRows: 4, minRows: 1 }}
         className={styles.promptInput}
-        disabled={disabled}
+        disabled={disabled || submitting}
         placeholder="输入消息"
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -276,12 +298,12 @@ export const PromptComposer = ({
       />
       <Button
         className={styles.submitButton}
-        disabled={!canSubmit}
+        disabled={submitting ? false : !canSubmit}
         htmlType="submit"
-        icon={<SendOutlined />}
+        icon={submitting ? <StopOutlined /> : <SendOutlined />}
         type="primary"
       >
-        发送
+        {submitting ? '停止' : '发送'}
       </Button>
     </form>
   );

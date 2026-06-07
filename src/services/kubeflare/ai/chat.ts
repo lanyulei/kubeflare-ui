@@ -1,6 +1,24 @@
 // @ts-ignore
 /* eslint-disable */
 import { request } from '@umijs/max'
+import { getCsrfToken } from '@/utils/auth'
+
+export type AiChatStreamEventName =
+  | 'message.completed'
+  | 'message.created'
+  | 'message.delta'
+  | 'message.failed'
+
+export type AiChatStreamEvent = {
+  assistant_message?: API.AiChatMessageItem
+  delta?: string
+  error_message?: string
+  event: AiChatStreamEventName
+  message?: API.AiChatMessageItem
+  message_id?: string
+  session?: API.AiChatSessionItem
+  user_message?: API.AiChatMessageItem
+}
 
 /** 获取 AI 会话列表 GET /api/v1/ai/session */
 export async function getAiChatSessionList(options?: { [key: string]: any }) {
@@ -97,6 +115,49 @@ export async function createAiChatMessage(
       ...(options || {}),
     },
   )
+}
+
+/** 流式发送 AI 会话消息 POST /api/v1/ai/session/:sessionID/message/stream */
+export async function createAiChatMessageStream(
+  sessionID: string,
+  body: API.CreateAiChatMessageParams,
+  options?: { signal?: AbortSignal },
+) {
+  const csrfToken = getCsrfToken()
+  const headers: Record<string, string> = {
+    Accept: 'text/event-stream',
+    'Content-Type': 'application/json',
+  }
+
+  if (csrfToken) {
+    headers['X-Kubeflare-CSRF'] = csrfToken
+  }
+
+  const response = await fetch(
+    `/api/v1/ai/session/${sessionID}/message/stream`,
+    {
+      body: JSON.stringify(body),
+      credentials: 'include',
+      headers,
+      method: 'POST',
+      signal: options?.signal,
+    },
+  )
+
+  if (!response.ok) {
+    let errorMessage = `消息发送失败(${response.status})`
+    try {
+      const payload = await response.json()
+      if (payload?.message) {
+        errorMessage = payload.message
+      }
+    } catch (_error) {
+      // ignore non-json error bodies
+    }
+    throw new Error(errorMessage)
+  }
+
+  return response
 }
 
 /** 取消 AI 消息生成 POST /api/v1/ai/message/:messageID/cancel */
