@@ -1,5 +1,6 @@
 import { message as antdMessage } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { AgentStreamEvent } from '@/services/kubeflare/agent';
 import {
   type AiChatStreamEvent,
   cancelAiChatMessage,
@@ -8,7 +9,14 @@ import {
   getAiChatSessionDetail,
   getAiChatSessionList,
 } from '@/services/kubeflare/ai/chat';
-import type { ChatMessageItem, ChatMessageRole, ChatSession } from './types';
+import type {
+  ChatAgentMode,
+  ChatAgentRun,
+  ChatMessageItem,
+  ChatMessageRole,
+  ChatSession,
+} from './types';
+import { readAgentRunStream } from './utils/agentStream';
 import {
   replaceSession,
   toChatMessage,
@@ -65,6 +73,59 @@ const removeMessages = (messages: ChatMessageItem[], messageIds: string[]) => {
   return messages.filter((message) => !messageIdSet.has(message.id));
 };
 
+const upsertToolCall = (
+  toolCalls: API.AgentToolCall[],
+  updatedToolCall?: API.AgentToolCall,
+) => {
+  if (!updatedToolCall) {
+    return toolCalls;
+  }
+
+  if (!toolCalls.some((toolCall) => toolCall.id === updatedToolCall.id)) {
+    return [...toolCalls, updatedToolCall];
+  }
+
+  return toolCalls.map((toolCall) =>
+    toolCall.id === updatedToolCall.id ? updatedToolCall : toolCall,
+  );
+};
+
+const upsertEvidence = (
+  evidences: API.AgentEvidence[],
+  updatedEvidence?: API.AgentEvidence,
+) => {
+  if (!updatedEvidence) {
+    return evidences;
+  }
+
+  if (!evidences.some((evidence) => evidence.id === updatedEvidence.id)) {
+    return [...evidences, updatedEvidence];
+  }
+
+  return evidences.map((evidence) =>
+    evidence.id === updatedEvidence.id ? updatedEvidence : evidence,
+  );
+};
+
+const mergeAgentRun = (
+  agentRun: ChatAgentRun | undefined,
+  patch: Partial<ChatAgentRun>,
+): ChatAgentRun => ({
+  evidences: patch.evidences || agentRun?.evidences || [],
+  errorMessage: patch.errorMessage ?? agentRun?.errorMessage,
+  route: patch.route || agentRun?.route,
+  run: patch.run || agentRun?.run,
+  status: patch.status || agentRun?.status,
+  toolCalls: patch.toolCalls || agentRun?.toolCalls || [],
+});
+
+const toAgentScopePayload = (scope: API.AgentScope): API.AgentScope => ({
+  container: scope.container?.trim() || undefined,
+  namespace: scope.namespace?.trim() || undefined,
+  resource_kind: scope.resource_kind?.trim() || undefined,
+  resource_name: scope.resource_name?.trim() || undefined,
+});
+
 const isAbortError = (error: unknown) =>
   error instanceof DOMException && error.name === 'AbortError';
 
@@ -109,6 +170,8 @@ export const useChatSessions = ({
     sessions: [],
   });
   const [draft, setDraft] = useState('');
+  const [agentMode, setAgentMode] = useState<ChatAgentMode>('assistant');
+  const [agentScope, setAgentScope] = useState<API.AgentScope>({});
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const mountedRef = useRef(true);
@@ -354,7 +417,7 @@ export const useChatSessions = ({
   );
 
   const appendOptimisticMessages = useCallback(
-    (sessionId: string, content: string) => {
+    (sessionId: string, content: string, agentRun?: ChatAgentRun) => {
       const now = Date.now();
       const userMessageId = newLocalMessageId('user');
       const assistantMessageId = newLocalMessageId('assistant');
@@ -371,6 +434,7 @@ export const useChatSessions = ({
         status: 'completed',
       };
       const assistantMessage: ChatMessageItem = {
+        agentRun,
         content: '',
         createdAt: now,
         id: assistantMessageId,
@@ -431,12 +495,21 @@ export const useChatSessions = ({
                 messages: updateMessage(
                   session.messages,
                   messageId,
-                  (message) => ({
-                    ...message,
-                    errorMessage:
-                      errorMessage || '消息生成中断，请重新发送消息',
-                    status: 'failed',
-                  }),
+                  (message) => {
+                    const nextErrorMessage =
+                      errorMessage || '消息生成中断，请重新发送消息';
+                    return {
+                      ...message,
+                      agentRun: message.agentRun
+                        ? mergeAgentRun(message.agentRun, {
+                            errorMessage: nextErrorMessage,
+                            status: 'failed',
+                          })
+                        : message.agentRun,
+                      errorMessage: nextErrorMessage,
+                      status: 'failed',
+                    };
+                  },
                 ),
               }
             : session,
@@ -624,9 +697,193 @@ export const useChatSessions = ({
     [appendStreamDelta, applyCompletedStreamMessage, onConnectionStatusChange],
   );
 
+  const applyAgentStreamEvent = useCallback(
+    (sessionId: string, messageId: string, event: AgentStreamEvent) => {
+      setChatState((prevState) => ({
+        ...prevState,
+        sessions: prevState.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                messages: updateMessage(
+                  session.messages,
+                  messageId,
+                  (message) => {
+                    const currentAgentRun = message.agentRun;
+                    const toolCalls = event.tool_call
+                      ? upsertToolCall(
+                          currentAgentRun?.toolCalls || [],
+                          event.tool_call,
+                        )
+                      : currentAgentRun?.toolCalls || [];
+                    const evidences = event.evidence
+                      ? upsertEvidence(
+                          currentAgentRun?.evidences || [],
+                          event.evidence,
+                        )
+                      : currentAgentRun?.evidences || [];
+                    const status =
+                      event.run?.status || currentAgentRun?.status || 'running';
+                    const nextContent = event.delta
+                      ? `${message.content}${event.delta}`
+                      : event.run?.summary && !message.content
+                        ? event.run.summary
+                        : message.content;
+                    const runFailed = event.event === 'agent.run.failed';
+
+                    return {
+                      ...message,
+                      agentRun: mergeAgentRun(currentAgentRun, {
+                        evidences,
+                        errorMessage:
+                          event.error_message ||
+                          event.run?.error_message ||
+                          currentAgentRun?.errorMessage,
+                        route: event.route,
+                        run: event.run,
+                        status: runFailed ? 'failed' : status,
+                        toolCalls,
+                      }),
+                      content: nextContent,
+                      errorMessage:
+                        event.event === 'agent.run.failed'
+                          ? event.error_message || event.run?.error_message
+                          : message.errorMessage,
+                      status:
+                        event.event === 'agent.run.completed'
+                          ? 'completed'
+                          : runFailed
+                            ? 'failed'
+                            : 'streaming',
+                    };
+                  },
+                ),
+                updatedAt: Date.now(),
+              }
+            : session,
+        ),
+      }));
+
+      if (
+        event.event === 'agent.run.completed' ||
+        event.event === 'agent.run.failed'
+      ) {
+        streamingMessageIdRef.current = undefined;
+        streamingSessionIdRef.current = undefined;
+      }
+    },
+    [],
+  );
+
+  const sendAgentMessage = useCallback(
+    async (content: string) => {
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      submittingRef.current = true;
+      setSubmitting(true);
+      let runStarted = false;
+      let optimisticPair: OptimisticMessagePair | undefined;
+      let sessionId: string | undefined = activeSession?.id;
+
+      try {
+        if (!sessionId) {
+          const session = await createSessionOnServer();
+          sessionId = session?.id;
+        }
+        if (!sessionId) {
+          return;
+        }
+
+        optimisticPair = appendOptimisticMessages(sessionId, content, {
+          evidences: [],
+          status: 'pending',
+          toolCalls: [],
+        });
+        streamingMessageIdRef.current = optimisticPair.assistantMessageId;
+        streamingSessionIdRef.current = sessionId;
+        setDraft('');
+
+        await readAgentRunStream({
+          agentType: agentMode,
+          body: {
+            message: content,
+            scope: toAgentScopePayload(agentScope),
+            selected_agent: agentMode,
+          },
+          onEvent: (event) => {
+            if (event.event === 'agent.run.created') {
+              runStarted = true;
+            }
+            applyAgentStreamEvent(
+              sessionId || '',
+              optimisticPair?.assistantMessageId || '',
+              event,
+            );
+          },
+          signal: abortController.signal,
+        });
+      } catch (error) {
+        if (isAbortError(error)) {
+          if (!runStarted) {
+            removeOptimisticMessages(optimisticPair);
+            setDraft((currentDraft) => currentDraft || content);
+          } else {
+            failStreamingMessage(
+              sessionId,
+              optimisticPair?.assistantMessageId,
+              '已停止诊断',
+            );
+          }
+        } else {
+          if (!runStarted) {
+            removeOptimisticMessages(optimisticPair);
+          }
+          const errorMessage =
+            error instanceof Error ? error.message : 'Agent 执行失败';
+          antdMessage.error(errorMessage);
+          if (runStarted) {
+            failStreamingMessage(
+              sessionId,
+              optimisticPair?.assistantMessageId,
+              errorMessage,
+            );
+          }
+          setDraft((currentDraft) => currentDraft || content);
+        }
+      } finally {
+        submittingRef.current = false;
+        if (mountedRef.current) {
+          setSubmitting(false);
+        }
+        if (!runStarted) {
+          removeOptimisticMessages(optimisticPair);
+          streamingMessageIdRef.current = undefined;
+          streamingSessionIdRef.current = undefined;
+        }
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = undefined;
+        }
+      }
+    },
+    [
+      activeSession?.id,
+      agentMode,
+      agentScope,
+      appendOptimisticMessages,
+      applyAgentStreamEvent,
+      createSessionOnServer,
+      failStreamingMessage,
+      removeOptimisticMessages,
+    ],
+  );
+
   const sendMessage = useCallback(async () => {
     const content = draft.trim();
     if (!content || submittingRef.current) {
+      return;
+    }
+    if (agentMode !== 'assistant') {
+      await sendAgentMessage(content);
       return;
     }
     if (connectionStatus && connectionStatus !== 'connected') {
@@ -704,6 +961,7 @@ export const useChatSessions = ({
     }
   }, [
     activeSession?.id,
+    agentMode,
     appendOptimisticMessages,
     applyStreamEvent,
     connectionStatus,
@@ -712,6 +970,7 @@ export const useChatSessions = ({
     failStreamingMessage,
     onConnectionStatusChange,
     removeOptimisticMessages,
+    sendAgentMessage,
   ]);
 
   const cancelMessage = useCallback(async () => {
@@ -719,6 +978,14 @@ export const useChatSessions = ({
     const sessionId = streamingSessionIdRef.current;
     abortControllerRef.current?.abort();
     if (!messageId || !sessionId) {
+      return;
+    }
+    if (messageId.startsWith(LOCAL_MESSAGE_ID_PREFIX)) {
+      failStreamingMessage(sessionId, messageId, '已停止诊断');
+      submittingRef.current = false;
+      if (mountedRef.current) {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -751,7 +1018,7 @@ export const useChatSessions = ({
         setSubmitting(false);
       }
     }
-  }, []);
+  }, [failStreamingMessage]);
 
   const editMessage = useCallback((content: string) => {
     setDraft(content);
@@ -759,6 +1026,8 @@ export const useChatSessions = ({
 
   return {
     activeSession,
+    agentMode,
+    agentScope,
     cancelMessage,
     createSession,
     deleteSession,
@@ -768,6 +1037,8 @@ export const useChatSessions = ({
     selectSession,
     sendMessage,
     sessions: chatState.sessions,
+    setAgentMode,
+    setAgentScope,
     setDraft,
     submitting,
   };

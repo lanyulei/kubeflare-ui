@@ -148,6 +148,141 @@ declare namespace API {
     content: string
   }
 
+  type AgentType =
+    | 'assistant'
+    | 'auto'
+    | 'capacity'
+    | 'change'
+    | 'cost'
+    | 'diagnostic'
+    | 'remediate'
+    | 'security'
+
+  type AgentRunStatus =
+    | 'cancelled'
+    | 'completed'
+    | 'failed'
+    | 'pending'
+    | 'running'
+
+  type AgentToolCallStatus = 'completed' | 'failed' | 'running'
+
+  type AgentDefinition = {
+    type: AgentType
+    name: string
+    description: string
+    version: string
+    available: boolean
+    capabilities: string[]
+    default_tools: string[]
+  }
+
+  type AgentCandidate = {
+    agent_type: AgentType
+    name: string
+    reason: string
+    confidence: number
+    available: boolean
+  }
+
+  type AgentRouteResult = {
+    agent_type: AgentType
+    confidence: number
+    reason: string
+    need_confirm: boolean
+    candidates: AgentCandidate[]
+    alternatives?: AgentType[]
+  }
+
+  type AgentToolDefinition = {
+    id: string
+    name: string
+    category: string
+    description: string
+    read_only: boolean
+    agent_types: AgentType[]
+    timeout_ms: number
+    max_bytes: number
+  }
+
+  type AgentScope = {
+    namespace?: string
+    resource_kind?: string
+    resource_name?: string
+    container?: string
+  }
+
+  type AgentRun = {
+    id: string
+    agent_type: AgentType
+    user_id: string
+    cluster_id: string
+    input: string
+    scope?: AgentScope
+    status: AgentRunStatus
+    confidence: number
+    route_reason: string
+    summary: string
+    error_message?: string
+    created_at: string
+    completed_at?: string
+    deleted_at?: string
+  }
+
+  type AgentToolCall = {
+    id: string
+    run_id: string
+    agent_type: AgentType
+    tool_id: string
+    input?: Record<string, any>
+    output_summary?: string
+    status: AgentToolCallStatus
+    error_message?: string
+    started_at: string
+    completed_at?: string
+    deleted_at?: string
+  }
+
+  type AgentEvidence = {
+    id: string
+    run_id: string
+    tool_call_id: string
+    source_kind: string
+    api_group?: string
+    api_version?: string
+    resource_kind?: string
+    namespace?: string
+    name?: string
+    resource_version?: string
+    summary: string
+    raw_json?: Record<string, any>
+    hash?: string
+    redacted: boolean
+    collected_at: string
+    deleted_at?: string
+  }
+
+  type AgentListData = {
+    items: AgentDefinition[]
+  }
+
+  type AgentToolListData = {
+    items: AgentToolDefinition[]
+  }
+
+  type AgentEvidenceListData = {
+    items: AgentEvidence[]
+  }
+
+  type RouteAgentParams = {
+    message: string
+    selected_agent?: AgentType
+    cluster_id?: string
+    scope?: AgentScope
+  }
+
+  type RunAgentParams = RouteAgentParams
+
   type UpdateCurrentUserParams = {
     nickname: string
     email?: string

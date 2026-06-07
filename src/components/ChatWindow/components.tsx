@@ -1,18 +1,28 @@
 import {
+  BranchesOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
   DeleteOutlined,
   EditOutlined,
+  FileSearchOutlined,
+  LoadingOutlined,
   PlusOutlined,
   RobotOutlined,
   SendOutlined,
   StopOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Button, Empty, Input, Popconfirm } from 'antd';
+import { Avatar, Button, Empty, Input, Popconfirm, Select, Tag } from 'antd';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 import MarkdownContent from '../MarkdownContent';
 import { useStyles } from './styles';
-import type { ChatMessageItem, ChatSession } from './types';
+import type {
+  ChatAgentMode,
+  ChatAgentRun,
+  ChatMessageItem,
+  ChatSession,
+} from './types';
 
 const { TextArea } = Input;
 const sessionTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -39,14 +49,32 @@ type ConversationPanelProps = {
 };
 
 type PromptComposerProps = {
+  agentMode: ChatAgentMode;
+  agentScope: API.AgentScope;
   disabled?: boolean;
   sendDisabled?: boolean;
   submitting?: boolean;
   value: string;
+  onAgentModeChange: (mode: ChatAgentMode) => void;
+  onAgentScopeChange: (scope: API.AgentScope) => void;
   onChange: (value: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
 };
+
+const agentModeOptions: { label: string; value: ChatAgentMode }[] = [
+  { label: '普通助手', value: 'assistant' },
+  { label: '自动选择', value: 'auto' },
+  { label: '诊断 Agent', value: 'diagnostic' },
+];
+
+const resourceKindOptions = [
+  { label: 'Pod', value: 'pod' },
+  { label: 'Node', value: 'node' },
+  { label: 'Deployment', value: 'deployment' },
+  { label: 'StatefulSet', value: 'statefulset' },
+  { label: 'DaemonSet', value: 'daemonset' },
+];
 
 const formatSessionTime = (timestamp: number) =>
   sessionTimeFormatter.format(timestamp);
@@ -109,10 +137,83 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
             className={styles.responseCard}
             data-chat-window="response-card"
           >
+            <AgentRunPanel agentRun={message.agentRun} />
             <MarkdownContent content={assistantContent} />
           </article>
         )}
       </div>
+    </div>
+  );
+};
+
+const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
+  const { styles } = useStyles();
+  if (!agentRun) {
+    return null;
+  }
+
+  const route = agentRun.route || agentRun.run;
+  const status = agentRun.status || agentRun.run?.status || 'running';
+  const confidence =
+    agentRun.route?.confidence ?? agentRun.run?.confidence ?? undefined;
+  const statusIcon =
+    status === 'completed' ? (
+      <CheckCircleOutlined />
+    ) : status === 'failed' ? (
+      <CloseCircleOutlined />
+    ) : (
+      <LoadingOutlined />
+    );
+
+  return (
+    <div className={styles.agentRunPanel} data-chat-window="agent-run">
+      <div className={styles.agentRunHeader}>
+        <Tag icon={<BranchesOutlined />} color="processing">
+          {route?.agent_type || 'diagnostic'}
+        </Tag>
+        <Tag icon={statusIcon} color={status === 'failed' ? 'error' : 'blue'}>
+          {status}
+        </Tag>
+        {typeof confidence === 'number' ? (
+          <span className={styles.agentConfidence}>
+            {Math.round(confidence * 100)}%
+          </span>
+        ) : null}
+      </div>
+      {agentRun.route?.reason ? (
+        <div className={styles.agentReason}>{agentRun.route.reason}</div>
+      ) : null}
+      {agentRun.toolCalls.length > 0 ? (
+        <div className={styles.agentToolList}>
+          {agentRun.toolCalls.map((toolCall) => (
+            <Tag
+              key={toolCall.id}
+              color={
+                toolCall.status === 'failed'
+                  ? 'error'
+                  : toolCall.status === 'completed'
+                    ? 'success'
+                    : 'processing'
+              }
+            >
+              {toolCall.tool_id}
+            </Tag>
+          ))}
+        </div>
+      ) : null}
+      {agentRun.evidences.length > 0 ? (
+        <div className={styles.agentEvidenceList}>
+          {agentRun.evidences.slice(0, 6).map((evidence) => (
+            <div className={styles.agentEvidenceItem} key={evidence.id}>
+              <FileSearchOutlined />
+              <span>{evidence.summary}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {agentRun.errorMessage ? (
+        <div className={styles.agentError}>{agentRun.errorMessage}</div>
+      ) : null}
     </div>
   );
 };
@@ -216,6 +317,9 @@ export const ConversationPanel = ({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
   }, [
+    lastMessage?.agentRun?.evidences.length,
+    lastMessage?.agentRun?.status,
+    lastMessage?.agentRun?.toolCalls.length,
     lastMessage?.content.length,
     lastMessage?.status,
     session?.id,
@@ -252,10 +356,14 @@ export const ConversationPanel = ({
 };
 
 export const PromptComposer = ({
+  agentMode,
+  agentScope,
   disabled,
   sendDisabled,
   submitting,
   value,
+  onAgentModeChange,
+  onAgentScopeChange,
   onChange,
   onCancel,
   onSubmit,
@@ -290,24 +398,117 @@ export const PromptComposer = ({
         handleSubmit();
       }}
     >
-      <TextArea
-        autoSize={{ maxRows: 4, minRows: 1 }}
-        className={styles.promptInput}
+      <AgentControlBar
+        agentMode={agentMode}
+        agentScope={agentScope}
         disabled={disabled || submitting}
-        placeholder="输入消息"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onPressEnter={handlePressEnter}
+        onAgentModeChange={onAgentModeChange}
+        onAgentScopeChange={onAgentScopeChange}
       />
-      <Button
-        className={styles.submitButton}
-        disabled={submitting ? false : !canSubmit}
-        htmlType="submit"
-        icon={submitting ? <StopOutlined /> : <SendOutlined />}
-        type="primary"
-      >
-        {submitting ? '停止' : '发送'}
-      </Button>
+      <div className={styles.composerRow}>
+        <TextArea
+          autoSize={{ maxRows: 4, minRows: 1 }}
+          className={styles.promptInput}
+          disabled={disabled || submitting}
+          placeholder="输入消息"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onPressEnter={handlePressEnter}
+        />
+        <Button
+          className={styles.submitButton}
+          disabled={submitting ? false : !canSubmit}
+          htmlType="submit"
+          icon={submitting ? <StopOutlined /> : <SendOutlined />}
+          type="primary"
+        >
+          {submitting ? '停止' : '发送'}
+        </Button>
+      </div>
     </form>
+  );
+};
+
+const AgentControlBar = ({
+  agentMode,
+  agentScope,
+  disabled,
+  onAgentModeChange,
+  onAgentScopeChange,
+}: {
+  agentMode: ChatAgentMode;
+  agentScope: API.AgentScope;
+  disabled?: boolean;
+  onAgentModeChange: (mode: ChatAgentMode) => void;
+  onAgentScopeChange: (scope: API.AgentScope) => void;
+}) => {
+  const { styles } = useStyles();
+  const scopeDisabled = disabled || agentMode === 'assistant';
+
+  return (
+    <div className={styles.agentControlBar} data-chat-window="agent-control">
+      <Select
+        className={styles.agentModeSelect}
+        disabled={disabled}
+        options={agentModeOptions}
+        size="small"
+        value={agentMode}
+        onChange={onAgentModeChange}
+      />
+      <Input
+        className={styles.agentScopeInput}
+        disabled={scopeDisabled}
+        placeholder="namespace"
+        size="small"
+        value={agentScope.namespace || ''}
+        onChange={(event) =>
+          onAgentScopeChange({
+            ...agentScope,
+            namespace: event.target.value,
+          })
+        }
+      />
+      <Select
+        allowClear
+        className={styles.agentKindSelect}
+        disabled={scopeDisabled}
+        options={resourceKindOptions}
+        placeholder="resource"
+        size="small"
+        value={agentScope.resource_kind || undefined}
+        onChange={(value) =>
+          onAgentScopeChange({
+            ...agentScope,
+            resource_kind: value,
+          })
+        }
+      />
+      <Input
+        className={styles.agentScopeInput}
+        disabled={scopeDisabled}
+        placeholder="name"
+        size="small"
+        value={agentScope.resource_name || ''}
+        onChange={(event) =>
+          onAgentScopeChange({
+            ...agentScope,
+            resource_name: event.target.value,
+          })
+        }
+      />
+      <Input
+        className={styles.agentScopeInput}
+        disabled={scopeDisabled}
+        placeholder="container"
+        size="small"
+        value={agentScope.container || ''}
+        onChange={(event) =>
+          onAgentScopeChange({
+            ...agentScope,
+            container: event.target.value,
+          })
+        }
+      />
+    </div>
   );
 };

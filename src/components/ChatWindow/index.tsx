@@ -14,6 +14,8 @@ const ChatWindow = ({
   const { styles } = useStyles();
   const {
     activeSession,
+    agentMode,
+    agentScope,
     cancelMessage,
     createSession,
     deleteSession,
@@ -23,6 +25,8 @@ const ChatWindow = ({
     selectSession,
     sendMessage,
     sessions,
+    setAgentMode,
+    setAgentScope,
     setDraft,
     submitting,
   } = useChatSessions({ connectionStatus, onConnectionStatusChange });
@@ -44,12 +48,18 @@ const ChatWindow = ({
           />
         </div>
         <PromptComposer
+          agentMode={agentMode}
+          agentScope={agentScope}
           disabled={!activeSession || loading}
           sendDisabled={Boolean(
-            connectionStatus && connectionStatus !== 'connected',
+            agentMode === 'assistant' &&
+              connectionStatus &&
+              connectionStatus !== 'connected',
           )}
           submitting={submitting}
           value={draft}
+          onAgentModeChange={setAgentMode}
+          onAgentScopeChange={setAgentScope}
           onChange={setDraft}
           onCancel={cancelMessage}
           onSubmit={sendMessage}

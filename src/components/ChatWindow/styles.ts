@@ -273,6 +273,56 @@ export const useStyles = createStyles(({ token }) => ({
     fontSize: 13,
     lineHeight: 1.7,
   },
+  agentRunPanel: {
+    display: 'grid',
+    gap: 8,
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottom: '1px solid #edf1f7',
+    color: '#4f5f7a',
+    fontSize: 12,
+    lineHeight: 1.5,
+  },
+  agentRunHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  agentConfidence: {
+    color: '#7b89a4',
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  agentReason: {
+    overflowWrap: 'anywhere',
+  },
+  agentToolList: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  agentEvidenceList: {
+    display: 'grid',
+    gap: 6,
+  },
+  agentEvidenceItem: {
+    display: 'grid',
+    minWidth: 0,
+    gridTemplateColumns: '14px minmax(0, 1fr)',
+    alignItems: 'start',
+    gap: 6,
+    color: '#60708d',
+
+    '& > span': {
+      minWidth: 0,
+      overflowWrap: 'anywhere',
+    },
+  },
+  agentError: {
+    color: token.colorError,
+    overflowWrap: 'anywhere',
+  },
   userInputCard: {
     display: 'flex',
     minHeight: 45,
@@ -302,18 +352,46 @@ export const useStyles = createStyles(({ token }) => ({
   },
   composer: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 150px',
-    gap: 18,
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    gap: 10,
     width: '100%',
-    maxWidth: 780,
+    maxWidth: 860,
     boxSizing: 'border-box',
-    alignItems: 'end',
     margin: '0 auto',
     padding: '16px 40px 16px',
 
     '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
       padding: '0 16px 16px',
+    },
+  },
+  agentControlBar: {
+    display: 'grid',
+    gridTemplateColumns: '132px 112px 138px minmax(120px, 1fr) 120px',
+    gap: 8,
+    alignItems: 'center',
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    },
+  },
+  agentModeSelect: {
+    minWidth: 0,
+  },
+  agentKindSelect: {
+    minWidth: 0,
+  },
+  agentScopeInput: {
+    minWidth: 0,
+  },
+  composerRow: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) 150px',
+    gap: 18,
+    alignItems: 'end',
+
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+      gap: 10,
     },
   },
   promptInput: {
