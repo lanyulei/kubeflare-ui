@@ -1,6 +1,9 @@
 import { message as antdMessage } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { AgentStreamEvent } from '@/services/kubeflare/agent';
+import {
+  type AgentStreamEvent,
+  cancelAgentRun,
+} from '@/services/kubeflare/agent';
 import {
   type AiChatStreamEvent,
   cancelAiChatMessage,
@@ -170,7 +173,7 @@ export const useChatSessions = ({
     sessions: [],
   });
   const [draft, setDraft] = useState('');
-  const [agentMode, setAgentMode] = useState<ChatAgentMode>('assistant');
+  const [agentMode, setAgentMode] = useState<ChatAgentMode>('auto');
   const [agentScope, setAgentScope] = useState<API.AgentScope>({});
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -179,6 +182,7 @@ export const useChatSessions = ({
   const submittingRef = useRef(false);
   const detailRequestRef = useRef(0);
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
+  const streamingAgentRunIdRef = useRef<string | undefined>(undefined);
   const streamingMessageIdRef = useRef<string | undefined>(undefined);
   const streamingSessionIdRef = useRef<string | undefined>(undefined);
   const optimisticMessagesRef = useRef<OptimisticMessagePair | undefined>(
@@ -330,6 +334,7 @@ export const useChatSessions = ({
     async (sessionId: string) => {
       if (streamingSessionIdRef.current === sessionId) {
         abortControllerRef.current?.abort();
+        streamingAgentRunIdRef.current = undefined;
         streamingMessageIdRef.current = undefined;
         streamingSessionIdRef.current = undefined;
         submittingRef.current = false;
@@ -517,6 +522,7 @@ export const useChatSessions = ({
       }));
 
       if (streamingMessageIdRef.current === messageId) {
+        streamingAgentRunIdRef.current = undefined;
         streamingMessageIdRef.current = undefined;
         streamingSessionIdRef.current = undefined;
       }
@@ -699,15 +705,82 @@ export const useChatSessions = ({
 
   const applyAgentStreamEvent = useCallback(
     (sessionId: string, messageId: string, event: AgentStreamEvent) => {
+      const serverUserMessage = event.user_message
+        ? toChatMessage(event.user_message)
+        : undefined;
+      const serverAssistantMessage = event.assistant_message
+        ? toChatMessage(event.assistant_message)
+        : undefined;
+      const completedMessage = event.message
+        ? toChatMessage(event.message)
+        : undefined;
+      const targetMessageId =
+        serverAssistantMessage?.id ||
+        completedMessage?.id ||
+        event.message_id ||
+        streamingMessageIdRef.current ||
+        messageId;
+      const currentOptimisticPair = optimisticMessagesRef.current;
+
+      if (event.run?.id) {
+        streamingAgentRunIdRef.current = event.run.id;
+      }
+      if (serverAssistantMessage) {
+        streamingMessageIdRef.current = serverAssistantMessage.id;
+        streamingSessionIdRef.current = sessionId;
+      }
+
       setChatState((prevState) => ({
         ...prevState,
         sessions: prevState.sessions.map((session) =>
           session.id === sessionId
-            ? {
-                ...session,
-                messages: updateMessage(
-                  session.messages,
-                  messageId,
+            ? (() => {
+                const optimisticAssistantRun =
+                  currentOptimisticPair?.sessionId === sessionId
+                    ? session.messages.find(
+                        (message) =>
+                          message.id ===
+                          currentOptimisticPair.assistantMessageId,
+                      )?.agentRun
+                    : undefined;
+                let messages = session.messages;
+
+                if (serverUserMessage || serverAssistantMessage) {
+                  messages = removeMessages(
+                    messages,
+                    currentOptimisticPair &&
+                      currentOptimisticPair.sessionId === sessionId
+                      ? [
+                          currentOptimisticPair.userMessageId,
+                          currentOptimisticPair.assistantMessageId,
+                        ]
+                      : [],
+                  );
+                }
+                messages = upsertMessage(messages, serverUserMessage);
+                messages = upsertMessage(
+                  messages,
+                  serverAssistantMessage
+                    ? {
+                        ...serverAssistantMessage,
+                        agentRun: optimisticAssistantRun,
+                      }
+                    : undefined,
+                );
+                if (completedMessage) {
+                  const existingMessage = messages.find(
+                    (message) => message.id === completedMessage.id,
+                  );
+                  messages = upsertMessage(messages, {
+                    ...completedMessage,
+                    agentRun:
+                      existingMessage?.agentRun || completedMessage.agentRun,
+                  });
+                }
+
+                messages = updateMessage(
+                  messages,
+                  targetMessageId,
                   (message) => {
                     const currentAgentRun = message.agentRun;
                     const toolCalls = event.tool_call
@@ -724,11 +797,13 @@ export const useChatSessions = ({
                       : currentAgentRun?.evidences || [];
                     const status =
                       event.run?.status || currentAgentRun?.status || 'running';
+                    const contentFromServer =
+                      completedMessage?.content || message.content;
                     const nextContent = event.delta
-                      ? `${message.content}${event.delta}`
-                      : event.run?.summary && !message.content
+                      ? `${contentFromServer}${event.delta}`
+                      : event.run?.summary
                         ? event.run.summary
-                        : message.content;
+                        : contentFromServer;
                     const runFailed = event.event === 'agent.run.failed';
 
                     return {
@@ -745,10 +820,9 @@ export const useChatSessions = ({
                         toolCalls,
                       }),
                       content: nextContent,
-                      errorMessage:
-                        event.event === 'agent.run.failed'
-                          ? event.error_message || event.run?.error_message
-                          : message.errorMessage,
+                      errorMessage: runFailed
+                        ? event.error_message || event.run?.error_message
+                        : message.errorMessage,
                       status:
                         event.event === 'agent.run.completed'
                           ? 'completed'
@@ -757,17 +831,29 @@ export const useChatSessions = ({
                             : 'streaming',
                     };
                   },
-                ),
-                updatedAt: Date.now(),
-              }
+                );
+
+                if (event.session) {
+                  return toChatSession(event.session, messages);
+                }
+                return {
+                  ...session,
+                  messages,
+                  updatedAt: Date.now(),
+                };
+              })()
             : session,
         ),
       }));
+      if (serverUserMessage || serverAssistantMessage) {
+        optimisticMessagesRef.current = undefined;
+      }
 
       if (
         event.event === 'agent.run.completed' ||
         event.event === 'agent.run.failed'
       ) {
+        streamingAgentRunIdRef.current = undefined;
         streamingMessageIdRef.current = undefined;
         streamingSessionIdRef.current = undefined;
       }
@@ -807,6 +893,7 @@ export const useChatSessions = ({
           agentType: agentMode,
           body: {
             message: content,
+            session_id: sessionId,
             scope: toAgentScopePayload(agentScope),
             selected_agent: agentMode,
           },
@@ -830,7 +917,8 @@ export const useChatSessions = ({
           } else {
             failStreamingMessage(
               sessionId,
-              optimisticPair?.assistantMessageId,
+              streamingMessageIdRef.current ||
+                optimisticPair?.assistantMessageId,
               '已停止诊断',
             );
           }
@@ -844,7 +932,8 @@ export const useChatSessions = ({
           if (runStarted) {
             failStreamingMessage(
               sessionId,
-              optimisticPair?.assistantMessageId,
+              streamingMessageIdRef.current ||
+                optimisticPair?.assistantMessageId,
               errorMessage,
             );
           }
@@ -857,6 +946,7 @@ export const useChatSessions = ({
         }
         if (!runStarted) {
           removeOptimisticMessages(optimisticPair);
+          streamingAgentRunIdRef.current = undefined;
           streamingMessageIdRef.current = undefined;
           streamingSessionIdRef.current = undefined;
         }
@@ -974,14 +1064,35 @@ export const useChatSessions = ({
   ]);
 
   const cancelMessage = useCallback(async () => {
+    const agentRunId = streamingAgentRunIdRef.current;
     const messageId = streamingMessageIdRef.current;
     const sessionId = streamingSessionIdRef.current;
     abortControllerRef.current?.abort();
     if (!messageId || !sessionId) {
       return;
     }
+    if (agentRunId) {
+      failStreamingMessage(sessionId, messageId, '已停止诊断');
+      try {
+        await cancelAgentRun(agentRunId, {
+          skipErrorHandler: true,
+        });
+      } catch (_error) {
+        antdMessage.error('停止诊断失败');
+      } finally {
+        streamingAgentRunIdRef.current = undefined;
+        streamingMessageIdRef.current = undefined;
+        streamingSessionIdRef.current = undefined;
+        submittingRef.current = false;
+        if (mountedRef.current) {
+          setSubmitting(false);
+        }
+      }
+      return;
+    }
     if (messageId.startsWith(LOCAL_MESSAGE_ID_PREFIX)) {
       failStreamingMessage(sessionId, messageId, '已停止诊断');
+      streamingAgentRunIdRef.current = undefined;
       submittingRef.current = false;
       if (mountedRef.current) {
         setSubmitting(false);
@@ -1011,6 +1122,7 @@ export const useChatSessions = ({
     } catch (_error) {
       antdMessage.error('停止生成失败');
     } finally {
+      streamingAgentRunIdRef.current = undefined;
       streamingMessageIdRef.current = undefined;
       streamingSessionIdRef.current = undefined;
       submittingRef.current = false;

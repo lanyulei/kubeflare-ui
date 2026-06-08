@@ -114,6 +114,7 @@ declare namespace API {
     sequence: number
     provider?: string
     model?: string
+    metadata?: AiChatMessageMetadata
     prompt_tokens?: number
     completion_tokens?: number
     total_tokens?: number
@@ -121,6 +122,19 @@ declare namespace API {
     created_at: string
     completed_at?: string
     deleted_at?: string
+  }
+
+  type AiChatMessageMetadata = {
+    agent_run?: AiChatMessageAgentRunMetadata
+  }
+
+  type AiChatMessageAgentRunMetadata = {
+    run?: AgentRun
+    route?: AgentRouteResult
+    tool_calls?: AgentToolCall[]
+    evidences?: AgentEvidence[]
+    status?: AgentRunStatus
+    error_message?: string
   }
 
   type AiChatSessionDetail = AiChatSessionItem & {
@@ -281,7 +295,9 @@ declare namespace API {
     scope?: AgentScope
   }
 
-  type RunAgentParams = RouteAgentParams
+  type RunAgentParams = RouteAgentParams & {
+    session_id?: string
+  }
 
   type UpdateCurrentUserParams = {
     nickname: string

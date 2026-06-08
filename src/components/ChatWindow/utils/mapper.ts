@@ -1,4 +1,9 @@
-import type { ChatMessageItem, ChatMessageRole, ChatSession } from '../types';
+import type {
+  ChatAgentRun,
+  ChatMessageItem,
+  ChatMessageRole,
+  ChatSession,
+} from '../types';
 
 export const toTimestamp = (value?: string) => {
   if (!value) {
@@ -19,6 +24,7 @@ export const toChatRole = (role?: API.AiChatMessageRole): ChatMessageRole => {
 export const toChatMessage = (
   message: API.AiChatMessageItem,
 ): ChatMessageItem => ({
+  agentRun: toChatAgentRun(message.metadata?.agent_run),
   completionTokens: message.completion_tokens,
   content: message.content || '',
   createdAt: toTimestamp(message.created_at),
@@ -31,6 +37,23 @@ export const toChatMessage = (
   status: message.status,
   totalTokens: message.total_tokens,
 });
+
+const toChatAgentRun = (
+  agentRun?: API.AiChatMessageAgentRunMetadata,
+): ChatAgentRun | undefined => {
+  if (!agentRun) {
+    return undefined;
+  }
+
+  return {
+    evidences: agentRun.evidences || [],
+    errorMessage: agentRun.error_message || agentRun.run?.error_message,
+    route: agentRun.route,
+    run: agentRun.run,
+    status: agentRun.status || agentRun.run?.status,
+    toolCalls: agentRun.tool_calls || [],
+  };
+};
 
 export const toChatSession = (
   session: API.AiChatSessionItem,

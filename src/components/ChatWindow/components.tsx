@@ -50,31 +50,26 @@ type ConversationPanelProps = {
 
 type PromptComposerProps = {
   agentMode: ChatAgentMode;
-  agentScope: API.AgentScope;
   disabled?: boolean;
   sendDisabled?: boolean;
   submitting?: boolean;
   value: string;
   onAgentModeChange: (mode: ChatAgentMode) => void;
-  onAgentScopeChange: (scope: API.AgentScope) => void;
   onChange: (value: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
 };
 
 const agentModeOptions: { label: string; value: ChatAgentMode }[] = [
-  { label: '普通助手', value: 'assistant' },
   { label: '自动选择', value: 'auto' },
+  { label: '普通助手', value: 'assistant' },
   { label: '诊断 Agent', value: 'diagnostic' },
 ];
 
-const resourceKindOptions = [
-  { label: 'Pod', value: 'pod' },
-  { label: 'Node', value: 'node' },
-  { label: 'Deployment', value: 'deployment' },
-  { label: 'StatefulSet', value: 'statefulset' },
-  { label: 'DaemonSet', value: 'daemonset' },
-];
+const getAgentModeLabel = (agentType?: string) =>
+  agentModeOptions.find((option) => option.value === agentType)?.label ||
+  agentType ||
+  '诊断 Agent';
 
 const formatSessionTime = (timestamp: number) =>
   sessionTimeFormatter.format(timestamp);
@@ -169,7 +164,7 @@ const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
     <div className={styles.agentRunPanel} data-chat-window="agent-run">
       <div className={styles.agentRunHeader}>
         <Tag icon={<BranchesOutlined />} color="processing">
-          {route?.agent_type || 'diagnostic'}
+          {getAgentModeLabel(route?.agent_type)}
         </Tag>
         <Tag icon={statusIcon} color={status === 'failed' ? 'error' : 'blue'}>
           {status}
@@ -357,13 +352,11 @@ export const ConversationPanel = ({
 
 export const PromptComposer = ({
   agentMode,
-  agentScope,
   disabled,
   sendDisabled,
   submitting,
   value,
   onAgentModeChange,
-  onAgentScopeChange,
   onChange,
   onCancel,
   onSubmit,
@@ -398,23 +391,23 @@ export const PromptComposer = ({
         handleSubmit();
       }}
     >
-      <AgentControlBar
-        agentMode={agentMode}
-        agentScope={agentScope}
-        disabled={disabled || submitting}
-        onAgentModeChange={onAgentModeChange}
-        onAgentScopeChange={onAgentScopeChange}
-      />
       <div className={styles.composerRow}>
-        <TextArea
-          autoSize={{ maxRows: 4, minRows: 1 }}
-          className={styles.promptInput}
-          disabled={disabled || submitting}
-          placeholder="输入消息"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onPressEnter={handlePressEnter}
-        />
+        <div className={styles.promptInputShell}>
+          <AgentModePrefix
+            agentMode={agentMode}
+            disabled={disabled || submitting}
+            onAgentModeChange={onAgentModeChange}
+          />
+          <TextArea
+            autoSize={{ maxRows: 4, minRows: 1 }}
+            className={styles.promptInput}
+            disabled={disabled || submitting}
+            placeholder="输入消息"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onPressEnter={handlePressEnter}
+          />
+        </div>
         <Button
           className={styles.submitButton}
           disabled={submitting ? false : !canSubmit}
@@ -429,85 +422,27 @@ export const PromptComposer = ({
   );
 };
 
-const AgentControlBar = ({
+const AgentModePrefix = ({
   agentMode,
-  agentScope,
   disabled,
   onAgentModeChange,
-  onAgentScopeChange,
 }: {
   agentMode: ChatAgentMode;
-  agentScope: API.AgentScope;
   disabled?: boolean;
   onAgentModeChange: (mode: ChatAgentMode) => void;
-  onAgentScopeChange: (scope: API.AgentScope) => void;
 }) => {
   const { styles } = useStyles();
-  const scopeDisabled = disabled || agentMode === 'assistant';
 
   return (
-    <div className={styles.agentControlBar} data-chat-window="agent-control">
+    <div className={styles.agentModePrefix} data-chat-window="agent-control">
       <Select
         className={styles.agentModeSelect}
         disabled={disabled}
         options={agentModeOptions}
         size="small"
         value={agentMode}
+        variant="borderless"
         onChange={onAgentModeChange}
-      />
-      <Input
-        className={styles.agentScopeInput}
-        disabled={scopeDisabled}
-        placeholder="namespace"
-        size="small"
-        value={agentScope.namespace || ''}
-        onChange={(event) =>
-          onAgentScopeChange({
-            ...agentScope,
-            namespace: event.target.value,
-          })
-        }
-      />
-      <Select
-        allowClear
-        className={styles.agentKindSelect}
-        disabled={scopeDisabled}
-        options={resourceKindOptions}
-        placeholder="resource"
-        size="small"
-        value={agentScope.resource_kind || undefined}
-        onChange={(value) =>
-          onAgentScopeChange({
-            ...agentScope,
-            resource_kind: value,
-          })
-        }
-      />
-      <Input
-        className={styles.agentScopeInput}
-        disabled={scopeDisabled}
-        placeholder="name"
-        size="small"
-        value={agentScope.resource_name || ''}
-        onChange={(event) =>
-          onAgentScopeChange({
-            ...agentScope,
-            resource_name: event.target.value,
-          })
-        }
-      />
-      <Input
-        className={styles.agentScopeInput}
-        disabled={scopeDisabled}
-        placeholder="container"
-        size="small"
-        value={agentScope.container || ''}
-        onChange={(event) =>
-          onAgentScopeChange({
-            ...agentScope,
-            container: event.target.value,
-          })
-        }
       />
     </div>
   );

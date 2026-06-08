@@ -307,15 +307,27 @@ export const useStyles = createStyles(({ token }) => ({
     gap: 6,
   },
   agentEvidenceItem: {
-    display: 'grid',
+    display: 'flex',
+    minHeight: 22,
     minWidth: 0,
-    gridTemplateColumns: '14px minmax(0, 1fr)',
-    alignItems: 'start',
+    alignItems: 'center',
     gap: 6,
     color: '#60708d',
+    lineHeight: '20px',
+
+    '.anticon': {
+      display: 'inline-flex',
+      flex: '0 0 auto',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#7b89a4',
+      fontSize: 13,
+      lineHeight: 1,
+    },
 
     '& > span': {
       minWidth: 0,
+      lineHeight: '20px',
       overflowWrap: 'anywhere',
     },
   },
@@ -364,29 +376,37 @@ export const useStyles = createStyles(({ token }) => ({
       padding: '0 16px 16px',
     },
   },
-  agentControlBar: {
-    display: 'grid',
-    gridTemplateColumns: '132px 112px 138px minmax(120px, 1fr) 120px',
-    gap: 8,
+  agentModePrefix: {
+    position: 'absolute',
+    top: 5,
+    bottom: 5,
+    left: 6,
+    zIndex: 1,
+    display: 'flex',
     alignItems: 'center',
-
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
+    marginLeft: 6,
+    borderRight: `1px solid ${token.colorBorderSecondary}`,
   },
   agentModeSelect: {
+    width: 116,
     minWidth: 0,
-  },
-  agentKindSelect: {
-    minWidth: 0,
-  },
-  agentScopeInput: {
-    minWidth: 0,
+
+    '.ant-select-selector': {
+      paddingInline: '8px 10px',
+      color: token.colorText,
+      background: 'transparent',
+      boxShadow: 'none',
+    },
+
+    '.ant-select-arrow': {
+      color: token.colorTextTertiary,
+      fontSize: 10,
+    },
   },
   composerRow: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 150px',
-    gap: 18,
+    gridTemplateColumns: 'minmax(0, 1fr) 96px',
+    gap: 12,
     alignItems: 'end',
 
     '@media (max-width: 768px)': {
@@ -394,18 +414,48 @@ export const useStyles = createStyles(({ token }) => ({
       gap: 10,
     },
   },
-  promptInput: {
+  promptInputShell: {
+    position: 'relative',
     minHeight: 44,
-    padding: '10px 16px',
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: 22,
+    background: token.colorBgContainer,
+    transition:
+      'border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+
+    '&:hover': {
+      borderColor: token.colorPrimaryBorderHover,
+    },
+
+    '&:focus-within': {
+      borderColor: token.colorPrimary,
+      boxShadow: `0 0 0 2px ${token.colorPrimaryBg}`,
+    },
+  },
+  promptInput: {
+    minHeight: 42,
+    padding: '10px 16px 10px 144px',
     resize: 'none',
-    borderColor: '#dbe3f0',
+    border: 0,
     borderRadius: 22,
     color: '#1f2c5b',
     boxShadow: 'none',
     fontSize: 13,
     lineHeight: 1.5,
+    background: 'transparent',
+
+    '&:hover, &:focus': {
+      border: 0,
+      boxShadow: 'none',
+      background: 'transparent',
+    },
+
+    '@media (max-width: 768px)': {
+      paddingLeft: 140,
+    },
   },
   submitButton: {
+    width: 96,
     minHeight: 44,
     border: 0,
     borderRadius: 999,

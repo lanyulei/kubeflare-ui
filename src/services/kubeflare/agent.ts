@@ -40,18 +40,24 @@ export type AgentStreamEventName =
   | 'agent.run.completed'
   | 'agent.run.created'
   | 'agent.run.failed'
+  | 'agent.thinking'
   | 'agent.tool.completed'
   | 'agent.tool.failed'
   | 'agent.tool.started'
 
 export type AgentStreamEvent = {
+  assistant_message?: API.AiChatMessageItem
   delta?: string
   error_message?: string
   event: AgentStreamEventName
   evidence?: API.AgentEvidence
+  message?: API.AiChatMessageItem
+  message_id?: string
   route?: API.AgentRouteResult
   run?: API.AgentRun
+  session?: API.AiChatSessionItem
   tool_call?: API.AgentToolCall
+  user_message?: API.AiChatMessageItem
 }
 
 export async function getAgentList(options?: { [key: string]: any }) {
@@ -133,4 +139,17 @@ export async function createAgentRunStream(
   }
 
   return response
+}
+
+export async function cancelAgentRun(
+  runID: string,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.AgentRun>>(
+    `/api/v1/agent/run/${runID}/cancel`,
+    {
+      method: 'POST',
+      ...withClusterHeaders(options || {}),
+    },
+  )
 }
