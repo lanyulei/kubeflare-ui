@@ -145,13 +145,19 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
 
 const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
   const { styles, cx } = useStyles();
+  const [evidenceListExpanded, setEvidenceListExpanded] = useState(false);
   const [toolListExpanded, setToolListExpanded] = useState(false);
   if (!agentRun) {
     return null;
   }
 
   const route = agentRun.route || agentRun.run;
+  if (route?.agent_type === 'assistant') {
+    return null;
+  }
+
   const status = agentRun.status || agentRun.run?.status || 'running';
+  const evidenceListFoldable = status === 'completed' || status === 'failed';
   const confidence =
     agentRun.route?.confidence ?? agentRun.run?.confidence ?? undefined;
   const statusIcon =
@@ -215,13 +221,39 @@ const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
         </div>
       ) : null}
       {agentRun.evidences.length > 0 ? (
-        <div className={styles.agentEvidenceList}>
-          {agentRun.evidences.slice(0, 6).map((evidence) => (
-            <div className={styles.agentEvidenceItem} key={evidence.id}>
-              <FileSearchOutlined />
-              <span>{evidence.summary}</span>
-            </div>
-          ))}
+        <div
+          className={cx(
+            styles.agentEvidenceSummary,
+            !evidenceListFoldable && styles.agentEvidenceSummaryOpen,
+          )}
+        >
+          <div
+            className={cx(
+              styles.agentEvidenceList,
+              evidenceListFoldable &&
+                !evidenceListExpanded &&
+                styles.agentEvidenceListCollapsed,
+            )}
+          >
+            {agentRun.evidences.slice(0, 6).map((evidence) => (
+              <div className={styles.agentEvidenceItem} key={evidence.id}>
+                <FileSearchOutlined />
+                <span>{evidence.summary}</span>
+              </div>
+            ))}
+          </div>
+          {evidenceListFoldable ? (
+            <Button
+              aria-label={
+                evidenceListExpanded ? '收起证据列表' : '展开证据列表'
+              }
+              className={styles.agentToolToggle}
+              icon={evidenceListExpanded ? <UpOutlined /> : <DownOutlined />}
+              size="small"
+              type="text"
+              onClick={() => setEvidenceListExpanded((expanded) => !expanded)}
+            />
+          ) : null}
         </div>
       ) : null}
       {agentRun.errorMessage ? (

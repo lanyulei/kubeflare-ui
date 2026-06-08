@@ -319,7 +319,13 @@ export const useStyles = createStyles(({ token }) => ({
     height: 22,
     minWidth: 24,
     padding: 0,
-    color: token.colorPrimary,
+    color: '#7b89a4',
+    transition: 'background-color 0.2s ease, color 0.2s ease',
+
+    '&:hover, &:focus-visible': {
+      color: token.colorPrimary,
+      background: token.colorPrimaryBg,
+    },
 
     '.ant-btn-icon': {
       display: 'inline-flex',
@@ -328,9 +334,30 @@ export const useStyles = createStyles(({ token }) => ({
       fontSize: 12,
     },
   },
+  agentEvidenceSummary: {
+    display: 'grid',
+    minWidth: 0,
+    gridTemplateColumns: 'minmax(0, 1fr) 24px',
+    gap: 6,
+    alignItems: 'start',
+  },
+  agentEvidenceSummaryOpen: {
+    gridTemplateColumns: 'minmax(0, 1fr)',
+  },
   agentEvidenceList: {
     display: 'grid',
     gap: 6,
+    minWidth: 0,
+    overflow: 'hidden',
+  },
+  agentEvidenceListCollapsed: {
+    maxHeight: 22,
+
+    '.anticon + span': {
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
   },
   agentEvidenceItem: {
     display: 'flex',
