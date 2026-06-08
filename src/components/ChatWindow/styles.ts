@@ -297,10 +297,36 @@ export const useStyles = createStyles(({ token }) => ({
   agentReason: {
     overflowWrap: 'anywhere',
   },
+  agentToolSummary: {
+    display: 'grid',
+    minWidth: 0,
+    gridTemplateColumns: 'minmax(0, 1fr) 24px',
+    gap: 6,
+    alignItems: 'start',
+  },
   agentToolList: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: 6,
+    minWidth: 0,
+    overflow: 'hidden',
+  },
+  agentToolListCollapsed: {
+    maxHeight: 24,
+  },
+  agentToolToggle: {
+    width: 24,
+    height: 22,
+    minWidth: 24,
+    padding: 0,
+    color: token.colorPrimary,
+
+    '.ant-btn-icon': {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 12,
+    },
   },
   agentEvidenceList: {
     display: 'grid',

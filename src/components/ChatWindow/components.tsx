@@ -3,6 +3,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
+  DownOutlined,
   EditOutlined,
   FileSearchOutlined,
   LoadingOutlined,
@@ -10,11 +11,12 @@ import {
   RobotOutlined,
   SendOutlined,
   StopOutlined,
+  UpOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Avatar, Button, Empty, Input, Popconfirm, Select, Tag } from 'antd';
 import type { KeyboardEvent, ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import MarkdownContent from '../MarkdownContent';
 import { useStyles } from './styles';
 import type {
@@ -142,7 +144,8 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
 };
 
 const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
-  const { styles } = useStyles();
+  const { styles, cx } = useStyles();
+  const [toolListExpanded, setToolListExpanded] = useState(false);
   if (!agentRun) {
     return null;
   }
@@ -179,21 +182,36 @@ const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
         <div className={styles.agentReason}>{agentRun.route.reason}</div>
       ) : null}
       {agentRun.toolCalls.length > 0 ? (
-        <div className={styles.agentToolList}>
-          {agentRun.toolCalls.map((toolCall) => (
-            <Tag
-              key={toolCall.id}
-              color={
-                toolCall.status === 'failed'
-                  ? 'error'
-                  : toolCall.status === 'completed'
-                    ? 'success'
-                    : 'processing'
-              }
-            >
-              {toolCall.tool_id}
-            </Tag>
-          ))}
+        <div className={styles.agentToolSummary}>
+          <div
+            className={cx(
+              styles.agentToolList,
+              !toolListExpanded && styles.agentToolListCollapsed,
+            )}
+          >
+            {agentRun.toolCalls.map((toolCall) => (
+              <Tag
+                key={toolCall.id}
+                color={
+                  toolCall.status === 'failed'
+                    ? 'error'
+                    : toolCall.status === 'completed'
+                      ? 'success'
+                      : 'processing'
+                }
+              >
+                {toolCall.tool_id}
+              </Tag>
+            ))}
+          </div>
+          <Button
+            aria-label={toolListExpanded ? '收起工具列表' : '展开工具列表'}
+            className={styles.agentToolToggle}
+            icon={toolListExpanded ? <UpOutlined /> : <DownOutlined />}
+            size="small"
+            type="text"
+            onClick={() => setToolListExpanded((expanded) => !expanded)}
+          />
         </div>
       ) : null}
       {agentRun.evidences.length > 0 ? (
@@ -362,6 +380,7 @@ export const PromptComposer = ({
   onSubmit,
 }: PromptComposerProps) => {
   const { styles } = useStyles();
+  const composingRef = useRef(false);
   const canSubmit =
     Boolean(value.trim()) && !disabled && !sendDisabled && !submitting;
 
@@ -376,6 +395,13 @@ export const PromptComposer = ({
   };
 
   const handlePressEnter = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      composingRef.current ||
+      event.nativeEvent.isComposing ||
+      event.keyCode === 229
+    ) {
+      return;
+    }
     if (!event.shiftKey) {
       event.preventDefault();
       handleSubmit();
@@ -405,6 +431,12 @@ export const PromptComposer = ({
             placeholder="输入消息"
             value={value}
             onChange={(event) => onChange(event.target.value)}
+            onCompositionEnd={() => {
+              composingRef.current = false;
+            }}
+            onCompositionStart={() => {
+              composingRef.current = true;
+            }}
             onPressEnter={handlePressEnter}
           />
         </div>
