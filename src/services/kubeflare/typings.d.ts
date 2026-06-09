@@ -238,6 +238,7 @@ declare namespace API {
     source?: AgentToolSource
     origin?: AgentToolOrigin
     enabled: boolean
+    overridden?: boolean
     parameters?: Record<string, any>
   }
 
@@ -334,6 +335,8 @@ declare namespace API {
   }
 
   type ReloadAgentRuntimeParams = {
+    reason?: string
+    remove_overrides?: string[]
     reset?: boolean
     overrides?: Record<string, ReloadAgentToolOverride>
     skills?: ReloadAgentSkill[]
@@ -341,9 +344,72 @@ declare namespace API {
 
   type ReloadAgentRuntimeResult = {
     reverted: boolean
+    changed: boolean
+    version_id?: string
+    version?: number
+    audit_id?: string
+    rolled_back_from_version?: string
     tools_enabled: number
     tools_disabled: number
     skills_active: number
+  }
+
+  type RollbackAgentRuntimeParams = {
+    reason?: string
+  }
+
+  type AgentRuntimeConfigSnapshot = {
+    overrides?: Record<string, ReloadAgentToolOverride>
+    skills?: AgentSkillDefinition[]
+  }
+
+  type AgentRuntimeConfigDiff = {
+    tool_changes?: AgentRuntimeToolChange[]
+    skill_changes?: AgentRuntimeSkillChange[]
+  }
+
+  type AgentRuntimeToolChange = {
+    tool_id: string
+    change_type: 'add' | 'update' | 'remove' | string
+    before?: ReloadAgentToolOverride
+    after?: ReloadAgentToolOverride
+  }
+
+  type AgentRuntimeSkillChange = {
+    skill_id: string
+    change_type: 'add' | 'update' | 'remove' | string
+    before?: AgentSkillDefinition
+    after?: AgentSkillDefinition
+  }
+
+  type AgentRuntimeConfigVersion = {
+    id: string
+    version: number
+    operator_id: string
+    reason?: string
+    snapshot: AgentRuntimeConfigSnapshot
+    diff: AgentRuntimeConfigDiff
+    created_at: string
+    deleted_at?: string
+  }
+
+  type AgentRuntimeConfigAudit = {
+    id: string
+    version_id: string
+    action: 'reload' | 'reset' | 'rollback' | string
+    operator_id: string
+    reason?: string
+    diff: AgentRuntimeConfigDiff
+    created_at: string
+    deleted_at?: string
+  }
+
+  type AgentRuntimeConfigVersionListData = {
+    items: AgentRuntimeConfigVersion[]
+  }
+
+  type AgentRuntimeConfigAuditListData = {
+    items: AgentRuntimeConfigAudit[]
   }
 
   type RouteAgentParams = {

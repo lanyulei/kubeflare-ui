@@ -56,27 +56,25 @@ export const matchKeyword = (
   );
 };
 
-export const buildToolOverrides = (
-  tools: API.AgentToolDefinition[],
-): Record<string, API.ReloadAgentToolOverride> =>
-  tools.reduce<Record<string, API.ReloadAgentToolOverride>>(
-    (overrides, tool) => {
-      const id = tool.id?.trim();
-      if (!id) {
-        return overrides;
-      }
+export const toReloadToolOverride = (
+  tool: Pick<
+    API.AgentToolDefinition,
+    'description' | 'enabled' | 'read_only' | 'timeout_ms'
+  >,
+): API.ReloadAgentToolOverride => ({
+  description: tool.description || '',
+  enabled: Boolean(tool.enabled),
+  read_only: Boolean(tool.read_only),
+  timeout_ms: tool.timeout_ms,
+});
 
-      overrides[id] = {
-        description: tool.description || '',
-        enabled: Boolean(tool.enabled),
-        read_only: Boolean(tool.read_only),
-        timeout_ms: tool.timeout_ms,
-      };
-
-      return overrides;
-    },
-    {},
-  );
+export const buildToolOverridePatch = (
+  toolID: string,
+  override: API.ReloadAgentToolOverride,
+): Record<string, API.ReloadAgentToolOverride> => {
+  const id = toolID.trim();
+  return id ? { [id]: override } : {};
+};
 
 export const toReloadSkill = (
   skill: API.AgentSkillDefinition,

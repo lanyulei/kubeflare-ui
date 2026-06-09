@@ -2,6 +2,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -14,15 +15,17 @@ import {
   getAgentSkillList,
   getAgentToolList,
   reloadAgentRuntime,
+  rollbackAgentRuntimeConfigVersion,
 } from '@/services/kubeflare/agent';
 import { AgentTypeTags, EnabledTag } from '../components/AgentTags';
+import RuntimeChangeReasonModal from '../components/RuntimeChangeReasonModal';
+import RuntimeHistoryDrawer from '../components/RuntimeHistoryDrawer';
 import SkillDetailDrawer from '../components/SkillDetailDrawer';
 import SkillFormDrawer, {
   type SkillFormValues,
 } from '../components/SkillFormDrawer';
 import {
   buildSkillPayload,
-  buildToolOverrides,
   ensureStringList,
   getErrorMessage,
   matchKeyword,
@@ -63,6 +66,16 @@ const toSkillDefinition = (
   hints: values.hints || [],
 });
 
+type PendingSkillChange =
+  | {
+      type: 'skills';
+      operation: 'create' | 'delete' | 'edit';
+      nextSkills: API.AgentSkillDefinition[];
+      successText: string;
+    }
+  | { type: 'reset' }
+  | { type: 'rollback'; version: API.AgentRuntimeConfigVersion };
+
 const Skills = () => {
   const { message } = App.useApp();
   const actionRef = useRef<ActionType | null>(null);
@@ -72,8 +85,12 @@ const Skills = () => {
   const [detailSkill, setDetailSkill] = useState<API.AgentSkillDefinition>();
   const [editingSkill, setEditingSkill] = useState<API.AgentSkillDefinition>();
   const [createOpen, setCreateOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [pendingChange, setPendingChange] = useState<PendingSkillChange>();
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [rollingBack, setRollingBack] = useState(false);
 
   const toolOptions = useMemo(
     () =>
@@ -84,32 +101,19 @@ const Skills = () => {
     [tools],
   );
 
-  const ensureTools = async () => {
-    if (tools.length) {
-      return tools;
-    }
-
-    const res = await getAgentToolList({ skipErrorHandler: true });
-    const items = res.data.items || [];
-    setTools(items);
-    return items;
-  };
-
   const reloadSkills = async (
     nextSkills: API.AgentSkillDefinition[],
     successText: string,
+    reason: string,
   ) => {
     setSaving(true);
     try {
-      const currentTools = await ensureTools();
-      await reloadAgentRuntime(
-        {
-          overrides: buildToolOverrides(currentTools),
-          skills: buildSkillPayload(nextSkills),
-        },
+      const res = await reloadAgentRuntime(
+        { reason, skills: buildSkillPayload(nextSkills) },
         { skipErrorHandler: true },
       );
-      message.success(successText);
+      const versionText = res.data.version ? `，版本 #${res.data.version}` : '';
+      message.success(`${successText}${versionText}`);
       setCreateOpen(false);
       setEditingSkill(undefined);
       actionRef.current?.reload();
@@ -129,7 +133,13 @@ const Skills = () => {
       return false;
     }
 
-    return reloadSkills([...skills, nextSkill], '技能已创建');
+    setPendingChange({
+      type: 'skills',
+      operation: 'create',
+      nextSkills: [...skills, nextSkill],
+      successText: '技能已创建',
+    });
+    return false;
   };
 
   const handleEdit = async (values: SkillFormValues) => {
@@ -138,31 +148,102 @@ const Skills = () => {
     }
 
     const nextSkill = toSkillDefinition(values);
-    return reloadSkills(
-      skills.map((skill) => (skill.id === editingSkill.id ? nextSkill : skill)),
-      '技能已更新',
-    );
+    setPendingChange({
+      type: 'skills',
+      operation: 'edit',
+      nextSkills: skills.map((skill) =>
+        skill.id === editingSkill.id ? nextSkill : skill,
+      ),
+      successText: '技能已更新',
+    });
+    return false;
   };
 
   const handleDelete = async (skillID: string) => {
-    await reloadSkills(
-      skills.filter((skill) => skill.id !== skillID),
-      '技能已删除',
-    );
+    setPendingChange({
+      type: 'skills',
+      operation: 'delete',
+      nextSkills: skills.filter((skill) => skill.id !== skillID),
+      successText: '技能已删除',
+    });
   };
 
-  const handleReset = async () => {
-    setResetting(true);
+  const handleReset = () => {
+    setPendingChange({ type: 'reset' });
+  };
+
+  const handleRollback = (version: API.AgentRuntimeConfigVersion) => {
+    setPendingChange({ type: 'rollback', version });
+  };
+
+  const submitRuntimeChange = async (reason: string) => {
+    if (!pendingChange) {
+      return;
+    }
+
     try {
-      await reloadAgentRuntime({ reset: true }, { skipErrorHandler: true });
-      message.success('已回滚到启动配置');
+      if (pendingChange.type === 'skills') {
+        const saved = await reloadSkills(
+          pendingChange.nextSkills,
+          pendingChange.successText,
+          reason,
+        );
+        if (!saved) {
+          return;
+        }
+      }
+
+      if (pendingChange.type === 'reset') {
+        setResetting(true);
+        const res = await reloadAgentRuntime(
+          { reason, reset: true },
+          { skipErrorHandler: true },
+        );
+        const versionText = res.data.version
+          ? `，版本 #${res.data.version}`
+          : '';
+        message.success(`已回滚到启动配置${versionText}`);
+      }
+
+      if (pendingChange.type === 'rollback') {
+        setRollingBack(true);
+        const res = await rollbackAgentRuntimeConfigVersion(
+          pendingChange.version.id,
+          { reason },
+          { skipErrorHandler: true },
+        );
+        const versionText = res.data.version
+          ? `，版本 #${res.data.version}`
+          : '';
+        message.success(
+          `已回滚到版本 #${pendingChange.version.version}${versionText}`,
+        );
+      }
+
+      setPendingChange(undefined);
+      setHistoryRefreshKey((value) => value + 1);
       actionRef.current?.reloadAndRest?.();
     } catch (error) {
-      message.error(getErrorMessage(error, '回滚失败'));
+      message.error(getErrorMessage(error, 'Agent 运行时配置保存失败'));
     } finally {
       setResetting(false);
+      setRollingBack(false);
     }
   };
+
+  const reasonModalTitle =
+    pendingChange?.type === 'skills'
+      ? pendingChange.operation === 'delete'
+        ? '删除技能'
+        : pendingChange.operation === 'create'
+          ? '新建技能'
+          : '保存技能变更'
+      : pendingChange?.type === 'rollback'
+        ? `回滚到版本 #${pendingChange.version.version}`
+        : '回滚启动配置';
+  const reasonModalConfirm =
+    pendingChange?.type === 'skills' ? '保存' : '确认回滚';
+  const reasonModalLoading = saving || resetting || rollingBack;
 
   const columns: ProColumns<API.AgentSkillDefinition>[] = [
     {
@@ -317,19 +398,41 @@ const Skills = () => {
                 actionRef.current?.reloadAndRest?.();
               }}
             />
-            <Popconfirm
-              title="确认回滚 Agent 运行时配置吗？"
-              description="将回滚工具覆盖与技能配置到服务启动时的快照。"
-              okText="回滚"
-              cancelText="取消"
-              onConfirm={handleReset}
+            <Button
+              icon={<HistoryOutlined />}
+              onClick={() => setHistoryOpen(true)}
             >
-              <Button icon={<ReloadOutlined />} loading={resetting}>
-                回滚启动配置
-              </Button>
-            </Popconfirm>
+              配置历史
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              loading={resetting}
+              onClick={handleReset}
+            >
+              回滚启动配置
+            </Button>
           </Space>
         }
+      />
+      <RuntimeHistoryDrawer
+        open={historyOpen}
+        refreshKey={historyRefreshKey}
+        rollingBack={rollingBack}
+        onClose={() => setHistoryOpen(false)}
+        onRollback={handleRollback}
+      />
+      <RuntimeChangeReasonModal
+        danger={pendingChange?.type !== 'skills'}
+        open={Boolean(pendingChange)}
+        title={reasonModalTitle}
+        confirmText={reasonModalConfirm}
+        loading={reasonModalLoading}
+        onCancel={() => {
+          if (!reasonModalLoading) {
+            setPendingChange(undefined);
+          }
+        }}
+        onSubmit={submitRuntimeChange}
       />
       <SkillDetailDrawer
         open={Boolean(detailSkill)}

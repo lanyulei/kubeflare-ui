@@ -95,6 +95,49 @@ export async function reloadAgentRuntime(
   )
 }
 
+export async function getAgentRuntimeConfigVersionList(
+  params?: { limit?: number },
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.AgentRuntimeConfigVersionListData>>(
+    '/api/v1/agent/runtime/version',
+    {
+      method: 'GET',
+      params,
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function getAgentRuntimeConfigAuditList(
+  params?: { limit?: number; version_id?: string },
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.AgentRuntimeConfigAuditListData>>(
+    '/api/v1/agent/runtime/audit',
+    {
+      method: 'GET',
+      params,
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function rollbackAgentRuntimeConfigVersion(
+  versionID: string,
+  body: API.RollbackAgentRuntimeParams,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.ReloadAgentRuntimeResult>>(
+    `/api/v1/agent/runtime/version/${versionID}/rollback`,
+    {
+      data: body,
+      method: 'POST',
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
 export async function routeAgent(
   body: API.RouteAgentParams,
   options?: { [key: string]: any },

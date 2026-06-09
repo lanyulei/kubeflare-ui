@@ -1,13 +1,19 @@
-import { EditOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  ReloadOutlined,
+  RollbackOutlined,
+} from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { App, Button, Popconfirm, Space, Typography } from 'antd';
+import { App, Button, Space, Typography } from 'antd';
 import { useRef, useState } from 'react';
 import { ClusterTableSearch } from '@/components';
 import {
-  getAgentSkillList,
   getAgentToolList,
   reloadAgentRuntime,
+  rollbackAgentRuntimeConfigVersion,
 } from '@/services/kubeflare/agent';
 import {
   AgentTypeTags,
@@ -16,29 +22,39 @@ import {
   ToolOriginTag,
   ToolSourceTag,
 } from '../components/AgentTags';
+import RuntimeChangeReasonModal from '../components/RuntimeChangeReasonModal';
+import RuntimeHistoryDrawer from '../components/RuntimeHistoryDrawer';
 import ToolDetailDrawer from '../components/ToolDetailDrawer';
 import ToolOverrideDrawer, {
   type ToolOverrideFormValues,
 } from '../components/ToolOverrideDrawer';
 import {
-  buildSkillPayload,
-  buildToolOverrides,
+  buildToolOverridePatch,
   ensureStringList,
   getErrorMessage,
   matchKeyword,
+  toReloadToolOverride,
 } from '../utils';
 
 const TABLE_DEFAULT_PAGE_SIZE = 10;
+
+type PendingRuntimeChange =
+  | { type: 'restore'; tool: API.AgentToolDefinition }
+  | { type: 'reset' }
+  | { type: 'rollback'; version: API.AgentRuntimeConfigVersion };
 
 const Tools = () => {
   const { message } = App.useApp();
   const actionRef = useRef<ActionType | null>(null);
   const keywordRef = useRef('');
-  const [tools, setTools] = useState<API.AgentToolDefinition[]>([]);
   const [detailTool, setDetailTool] = useState<API.AgentToolDefinition>();
   const [editingTool, setEditingTool] = useState<API.AgentToolDefinition>();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [pendingChange, setPendingChange] = useState<PendingRuntimeChange>();
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [rollingBack, setRollingBack] = useState(false);
 
   const handleSaveTool = async (values: ToolOverrideFormValues) => {
     if (!editingTool) {
@@ -47,28 +63,32 @@ const Tools = () => {
 
     setSaving(true);
     try {
-      const nextTools = tools.map((tool) =>
-        tool.id === editingTool.id
-          ? {
-              ...tool,
-              description: values.description.trim(),
-              enabled: values.enabled,
-              read_only: values.read_only,
-              timeout_ms: values.timeout_ms,
-            }
-          : tool,
-      );
-      const skillsRes = await getAgentSkillList({ skipErrorHandler: true });
-
-      await reloadAgentRuntime(
+      const nextTool = {
+        ...editingTool,
+        description: values.description.trim(),
+        enabled: values.enabled,
+        read_only: values.read_only,
+        timeout_ms: values.timeout_ms,
+      };
+      const res = await reloadAgentRuntime(
         {
-          overrides: buildToolOverrides(nextTools),
-          skills: buildSkillPayload(skillsRes.data.items || []),
+          overrides: buildToolOverridePatch(
+            editingTool.id,
+            toReloadToolOverride(nextTool),
+          ),
         },
         { skipErrorHandler: true },
       );
-      message.success('工具配置已更新');
+      const versionText = res.data.version ? `，版本 #${res.data.version}` : '';
+      if (res.data.changed) {
+        message.success(`工具配置已更新${versionText}`);
+      } else {
+        message.info('工具配置无变化');
+      }
       setEditingTool(undefined);
+      if (res.data.changed) {
+        setHistoryRefreshKey((value) => value + 1);
+      }
       actionRef.current?.reload();
       return true;
     } catch (error) {
@@ -79,18 +99,87 @@ const Tools = () => {
     }
   };
 
-  const handleReset = async () => {
-    setResetting(true);
+  const handleReset = () => {
+    setPendingChange({ type: 'reset' });
+  };
+
+  const handleRestoreTool = (tool: API.AgentToolDefinition) => {
+    setPendingChange({ type: 'restore', tool });
+  };
+
+  const handleRollback = (version: API.AgentRuntimeConfigVersion) => {
+    setPendingChange({ type: 'rollback', version });
+  };
+
+  const submitRuntimeChange = async (reason: string) => {
+    if (!pendingChange) {
+      return;
+    }
+
     try {
-      await reloadAgentRuntime({ reset: true }, { skipErrorHandler: true });
-      message.success('已回滚到启动配置');
-      actionRef.current?.reloadAndRest?.();
+      if (pendingChange.type === 'reset') {
+        setResetting(true);
+        const res = await reloadAgentRuntime(
+          { reason, reset: true },
+          { skipErrorHandler: true },
+        );
+        const versionText = res.data.version
+          ? `，版本 #${res.data.version}`
+          : '';
+        message.success(`已回滚到启动配置${versionText}`);
+      }
+
+      if (pendingChange.type === 'restore') {
+        setSaving(true);
+        const res = await reloadAgentRuntime(
+          {
+            reason,
+            remove_overrides: [pendingChange.tool.id],
+          },
+          { skipErrorHandler: true },
+        );
+        const versionText = res.data.version
+          ? `，版本 #${res.data.version}`
+          : '';
+        message.success(`工具已恢复默认${versionText}`);
+      }
+
+      if (pendingChange.type === 'rollback') {
+        setRollingBack(true);
+        const res = await rollbackAgentRuntimeConfigVersion(
+          pendingChange.version.id,
+          { reason },
+          { skipErrorHandler: true },
+        );
+        const versionText = res.data.version
+          ? `，版本 #${res.data.version}`
+          : '';
+        message.success(
+          `已回滚到版本 #${pendingChange.version.version}${versionText}`,
+        );
+      }
+
+      setPendingChange(undefined);
+      setHistoryRefreshKey((value) => value + 1);
+      actionRef.current?.reload();
     } catch (error) {
-      message.error(getErrorMessage(error, '回滚失败'));
+      message.error(getErrorMessage(error, 'Agent 运行时配置保存失败'));
     } finally {
+      setSaving(false);
       setResetting(false);
+      setRollingBack(false);
     }
   };
+
+  const reasonModalTitle =
+    pendingChange?.type === 'restore'
+      ? `恢复工具默认 / ${pendingChange.tool.name}`
+      : pendingChange?.type === 'rollback'
+        ? `回滚到版本 #${pendingChange.version.version}`
+        : '回滚启动配置';
+  const reasonModalConfirm =
+    pendingChange?.type === 'restore' ? '恢复' : '确认回滚';
+  const reasonModalLoading = saving || resetting || rollingBack;
 
   const columns: ProColumns<API.AgentToolDefinition>[] = [
     {
@@ -111,8 +200,15 @@ const Tools = () => {
     {
       title: '状态',
       dataIndex: 'enabled',
-      width: 100,
-      render: (_, record) => <EnabledTag enabled={record.enabled} />,
+      width: 130,
+      render: (_, record) => (
+        <Space size={4}>
+          <EnabledTag enabled={record.enabled} />
+          {record.overridden ? (
+            <Typography.Text type="warning">已覆盖</Typography.Text>
+          ) : null}
+        </Space>
+      ),
     },
     {
       title: '属性',
@@ -157,16 +253,22 @@ const Tools = () => {
     {
       title: '操作',
       valueType: 'option',
-      width: 150,
+      width: 210,
       fixed: 'right',
-      render: (_, record) => [
-        <a key="detail" onClick={() => setDetailTool(record)}>
-          <EyeOutlined /> 详情
-        </a>,
-        <a key="edit" onClick={() => setEditingTool(record)}>
-          <EditOutlined /> 编辑
-        </a>,
-      ],
+      render: (_, record) =>
+        [
+          <a key="detail" onClick={() => setDetailTool(record)}>
+            <EyeOutlined /> 详情
+          </a>,
+          <a key="edit" onClick={() => setEditingTool(record)}>
+            <EditOutlined /> 编辑
+          </a>,
+          record.overridden ? (
+            <a key="restore" onClick={() => handleRestoreTool(record)}>
+              <RollbackOutlined /> 恢复默认
+            </a>
+          ) : null,
+        ].filter(Boolean),
     },
   ];
 
@@ -181,7 +283,8 @@ const Tools = () => {
         pagination={{ defaultPageSize: TABLE_DEFAULT_PAGE_SIZE }}
         request={async (params) => {
           const res = await getAgentToolList();
-          const items = (res.data.items || []).filter((item) => {
+          const nextTools = res.data.items || [];
+          const items = nextTools.filter((item) => {
             const agentTypes = ensureStringList(item.agent_types);
 
             return matchKeyword(
@@ -197,7 +300,6 @@ const Tools = () => {
               keywordRef.current,
             );
           });
-          setTools(res.data.items || []);
 
           const current = params.current || 1;
           const pageSize = params.pageSize || TABLE_DEFAULT_PAGE_SIZE;
@@ -219,19 +321,41 @@ const Tools = () => {
                 actionRef.current?.reloadAndRest?.();
               }}
             />
-            <Popconfirm
-              title="确认回滚 Agent 运行时配置吗？"
-              description="将回滚工具覆盖与技能配置到服务启动时的快照。"
-              okText="回滚"
-              cancelText="取消"
-              onConfirm={handleReset}
+            <Button
+              icon={<HistoryOutlined />}
+              onClick={() => setHistoryOpen(true)}
             >
-              <Button icon={<ReloadOutlined />} loading={resetting}>
-                回滚启动配置
-              </Button>
-            </Popconfirm>
+              配置历史
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              loading={resetting}
+              onClick={handleReset}
+            >
+              回滚启动配置
+            </Button>
           </Space>
         }
+      />
+      <RuntimeHistoryDrawer
+        open={historyOpen}
+        refreshKey={historyRefreshKey}
+        rollingBack={rollingBack}
+        onClose={() => setHistoryOpen(false)}
+        onRollback={handleRollback}
+      />
+      <RuntimeChangeReasonModal
+        danger
+        open={Boolean(pendingChange)}
+        title={reasonModalTitle}
+        confirmText={reasonModalConfirm}
+        loading={reasonModalLoading}
+        onCancel={() => {
+          if (!reasonModalLoading) {
+            setPendingChange(undefined);
+          }
+        }}
+        onSubmit={submitRuntimeChange}
       />
       <ToolDetailDrawer
         open={Boolean(detailTool)}
