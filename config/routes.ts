@@ -198,6 +198,32 @@ export default [
     ],
   },
   {
+    path: '/ai',
+    name: 'systemAI',
+    icon: 'robot',
+    routes: [
+      {
+        path: '/ai',
+        redirect: '/ai/agent',
+      },
+      {
+        path: '/ai/agent',
+        name: 'systemAIAgent',
+        component: './system/ai/agents',
+      },
+      {
+        path: '/ai/tool',
+        name: 'systemAITool',
+        component: './system/ai/tools',
+      },
+      {
+        path: '/ai/skill',
+        name: 'systemAISkill',
+        component: './system/ai/skills',
+      },
+    ],
+  },
+  {
     path: '/system',
     name: 'system',
     icon: 'setting',

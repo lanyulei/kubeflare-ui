@@ -181,6 +181,8 @@ declare namespace API {
 
   type AgentToolCallStatus = 'completed' | 'failed' | 'running'
 
+  type AgentToolReadOnly = boolean
+
   type AgentToolSource = 'cluster' | 'monitoring' | string
 
   type AgentToolOrigin = 'builtin' | 'config' | 'mcp' | string
@@ -191,8 +193,20 @@ declare namespace API {
     description: string
     version: string
     available: boolean
-    capabilities: string[]
-    default_tools: string[]
+    capabilities?: string[] | null
+    default_tools?: string[] | null
+  }
+
+  type AgentSkillDefinition = {
+    id: string
+    name: string
+    description: string
+    enabled: boolean
+    agent_types?: AgentType[] | null
+    triggers?: string[] | null
+    system_prompt?: string
+    allowed_tools?: string[] | null
+    hints?: string[] | null
   }
 
   type AgentCandidate = {
@@ -217,8 +231,8 @@ declare namespace API {
     name: string
     category: string
     description: string
-    read_only: boolean
-    agent_types: AgentType[]
+    read_only: AgentToolReadOnly
+    agent_types?: AgentType[] | null
     timeout_ms: number
     max_bytes: number
     source?: AgentToolSource
@@ -292,8 +306,44 @@ declare namespace API {
     items: AgentToolDefinition[]
   }
 
+  type AgentSkillListData = {
+    items: AgentSkillDefinition[]
+  }
+
   type AgentEvidenceListData = {
     items: AgentEvidence[]
+  }
+
+  type ReloadAgentToolOverride = {
+    enabled?: boolean
+    description?: string
+    timeout_ms?: number
+    read_only?: boolean
+  }
+
+  type ReloadAgentSkill = {
+    id: string
+    name: string
+    description?: string
+    enabled?: boolean
+    agent_types?: AgentType[]
+    triggers?: string[]
+    system_prompt?: string
+    allowed_tools?: string[]
+    hints?: string[]
+  }
+
+  type ReloadAgentRuntimeParams = {
+    reset?: boolean
+    overrides?: Record<string, ReloadAgentToolOverride>
+    skills?: ReloadAgentSkill[]
+  }
+
+  type ReloadAgentRuntimeResult = {
+    reverted: boolean
+    tools_enabled: number
+    tools_disabled: number
+    skills_active: number
   }
 
   type RouteAgentParams = {

@@ -74,6 +74,27 @@ export async function getAgentToolList(options?: { [key: string]: any }) {
   })
 }
 
+export async function getAgentSkillList(options?: { [key: string]: any }) {
+  return request<API.ApiResponse<API.AgentSkillListData>>('/api/v1/agent/skill', {
+    method: 'GET',
+    ...withClusterHeaders(options || {}),
+  })
+}
+
+export async function reloadAgentRuntime(
+  body: API.ReloadAgentRuntimeParams,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.ReloadAgentRuntimeResult>>(
+    '/api/v1/agent/tool/reload',
+    {
+      data: body,
+      method: 'POST',
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
 export async function routeAgent(
   body: API.RouteAgentParams,
   options?: { [key: string]: any },
