@@ -14,7 +14,16 @@ import {
   UpOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Button, Empty, Input, Popconfirm, Select, Tag } from 'antd';
+import {
+  Avatar,
+  Button,
+  Empty,
+  Input,
+  Popconfirm,
+  Select,
+  Tag,
+  Tooltip,
+} from 'antd';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import MarkdownContent from '../MarkdownContent';
@@ -25,6 +34,8 @@ import type {
   ChatMessageItem,
   ChatSession,
 } from './types';
+import type { AgentToolNameMap } from './useAgentToolNames';
+import { getAgentToolDisplayName } from './useAgentToolNames';
 
 const { TextArea } = Input;
 const sessionTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -33,6 +44,7 @@ const sessionTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
 });
 
 type ChatMessageProps = {
+  agentToolNameMap: AgentToolNameMap;
   message: ChatMessageItem;
   onEditMessage: (content: string) => void;
 };
@@ -46,6 +58,7 @@ type ChatSidebarProps = {
 };
 
 type ConversationPanelProps = {
+  agentToolNameMap: AgentToolNameMap;
   session?: ChatSession;
   onEditMessage: (content: string) => void;
 };
@@ -73,6 +86,17 @@ const getAgentModeLabel = (agentType?: string) =>
   agentType ||
   '诊断 Agent';
 
+const agentRunStatusText: Record<API.AgentRunStatus, string> = {
+  cancelled: '已取消',
+  completed: '已完成',
+  failed: '失败',
+  pending: '等待中',
+  running: '运行中',
+};
+
+const getAgentRunStatusText = (status: API.AgentRunStatus) =>
+  agentRunStatusText[status] || status;
+
 const formatSessionTime = (timestamp: number) =>
   sessionTimeFormatter.format(timestamp);
 
@@ -85,7 +109,11 @@ const getSessionPreview = (session: ChatSession) => {
   return preview.length > 42 ? `${preview.slice(0, 42)}...` : preview;
 };
 
-const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
+const ChatMessage = ({
+  agentToolNameMap,
+  message,
+  onEditMessage,
+}: ChatMessageProps) => {
   const { styles, cx } = useStyles();
   const isUser = message.role === 'user';
   const avatar: ReactNode = isUser ? <UserOutlined /> : <RobotOutlined />;
@@ -134,7 +162,10 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
             className={styles.responseCard}
             data-chat-window="response-card"
           >
-            <AgentRunPanel agentRun={message.agentRun} />
+            <AgentRunPanel
+              agentRun={message.agentRun}
+              toolNameMap={agentToolNameMap}
+            />
             <MarkdownContent content={assistantContent} />
           </article>
         )}
@@ -143,7 +174,13 @@ const ChatMessage = ({ message, onEditMessage }: ChatMessageProps) => {
   );
 };
 
-const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
+const AgentRunPanel = ({
+  agentRun,
+  toolNameMap,
+}: {
+  agentRun?: ChatAgentRun;
+  toolNameMap: AgentToolNameMap;
+}) => {
   const { styles, cx } = useStyles();
   const [evidenceListExpanded, setEvidenceListExpanded] = useState(false);
   const [toolListExpanded, setToolListExpanded] = useState(false);
@@ -176,7 +213,7 @@ const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
           {getAgentModeLabel(route?.agent_type)}
         </Tag>
         <Tag icon={statusIcon} color={status === 'failed' ? 'error' : 'blue'}>
-          {status}
+          {getAgentRunStatusText(status)}
         </Tag>
         {typeof confidence === 'number' ? (
           <span className={styles.agentConfidence}>
@@ -195,20 +232,30 @@ const AgentRunPanel = ({ agentRun }: { agentRun?: ChatAgentRun }) => {
               !toolListExpanded && styles.agentToolListCollapsed,
             )}
           >
-            {agentRun.toolCalls.map((toolCall) => (
-              <Tag
-                key={toolCall.id}
-                color={
-                  toolCall.status === 'failed'
-                    ? 'error'
-                    : toolCall.status === 'completed'
-                      ? 'success'
-                      : 'processing'
-                }
-              >
-                {toolCall.tool_id}
-              </Tag>
-            ))}
+            {agentRun.toolCalls.map((toolCall) => {
+              const toolID = toolCall.tool_id?.trim();
+              const toolName = getAgentToolDisplayName(toolID, toolNameMap);
+              const tooltipTitle =
+                toolID && toolName !== toolID
+                  ? `${toolName} (${toolID})`
+                  : toolName;
+
+              return (
+                <Tooltip key={toolCall.id} title={tooltipTitle}>
+                  <Tag
+                    color={
+                      toolCall.status === 'failed'
+                        ? 'error'
+                        : toolCall.status === 'completed'
+                          ? 'success'
+                          : 'processing'
+                    }
+                  >
+                    {toolName}
+                  </Tag>
+                </Tooltip>
+              );
+            })}
           </div>
           <Button
             aria-label={toolListExpanded ? '收起工具列表' : '展开工具列表'}
@@ -352,6 +399,7 @@ export const ChatSidebar = ({
 };
 
 export const ConversationPanel = ({
+  agentToolNameMap,
   session,
   onEditMessage,
 }: ConversationPanelProps) => {
@@ -389,6 +437,7 @@ export const ConversationPanel = ({
       <div className={styles.messageStack}>
         {session.messages.map((message) => (
           <ChatMessage
+            agentToolNameMap={agentToolNameMap}
             key={message.id}
             message={message}
             onEditMessage={onEditMessage}

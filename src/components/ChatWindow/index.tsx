@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { ChatSidebar, ConversationPanel, PromptComposer } from './components';
 import { useStyles } from './styles';
+import { useAgentToolNames } from './useAgentToolNames';
 import { useChatSessions } from './useChatSessions';
 
 type ChatWindowProps = {
@@ -28,6 +30,16 @@ const ChatWindow = ({
     setDraft,
     submitting,
   } = useChatSessions({ connectionStatus, onConnectionStatusChange });
+  const hasAgentToolCalls = useMemo(
+    () =>
+      Boolean(
+        activeSession?.messages.some(
+          (message) => (message.agentRun?.toolCalls.length || 0) > 0,
+        ),
+      ),
+    [activeSession],
+  );
+  const agentToolNameMap = useAgentToolNames(hasAgentToolCalls);
 
   return (
     <div className={styles.shell} data-chat-window="shell">
@@ -41,6 +53,7 @@ const ChatWindow = ({
       <main className={styles.main}>
         <div className={styles.content}>
           <ConversationPanel
+            agentToolNameMap={agentToolNameMap}
             session={activeSession}
             onEditMessage={editMessage}
           />

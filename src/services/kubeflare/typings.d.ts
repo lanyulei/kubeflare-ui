@@ -166,10 +166,10 @@ declare namespace API {
     | 'assistant'
     | 'auto'
     | 'capacity'
-    | 'change'
+    | 'change_review'
     | 'cost'
     | 'diagnostic'
-    | 'remediate'
+    | 'remediation'
     | 'security'
 
   type AgentRunStatus =
@@ -180,6 +180,10 @@ declare namespace API {
     | 'running'
 
   type AgentToolCallStatus = 'completed' | 'failed' | 'running'
+
+  type AgentToolSource = 'cluster' | 'monitoring' | string
+
+  type AgentToolOrigin = 'builtin' | 'config' | 'mcp' | string
 
   type AgentDefinition = {
     type: AgentType
@@ -217,6 +221,10 @@ declare namespace API {
     agent_types: AgentType[]
     timeout_ms: number
     max_bytes: number
+    source?: AgentToolSource
+    origin?: AgentToolOrigin
+    enabled: boolean
+    parameters?: Record<string, any>
   }
 
   type AgentScope = {
