@@ -1,5 +1,6 @@
 import { message as antdMessage } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   type AgentStreamEvent,
   cancelAgentRun,
@@ -785,7 +786,19 @@ export const useChatSessions = ({
         streamingSessionIdRef.current = sessionId;
       }
 
-      setChatState((prevState) => ({
+      const applyStateUpdate = (
+        updater: (prevState: ChatWindowState) => ChatWindowState,
+      ) => {
+        if (event.event === 'agent.answer.delta') {
+          flushSync(() => {
+            setChatState(updater);
+          });
+          return;
+        }
+        setChatState(updater);
+      };
+
+      applyStateUpdate((prevState) => ({
         ...prevState,
         sessions: prevState.sessions.map((session) =>
           session.id === sessionId

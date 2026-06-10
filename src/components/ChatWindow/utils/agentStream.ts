@@ -46,6 +46,9 @@ export const readAgentRunStream = async ({
       const event = toAgentStreamEvent(parsed);
       if (event) {
         onEvent(event);
+        if (shouldYieldAfterEvent(event)) {
+          await waitForNextPaint();
+        }
       }
     }
   }
@@ -57,6 +60,23 @@ export const readAgentRunStream = async ({
     onEvent(event);
   }
 };
+
+const shouldYieldAfterEvent = (event: AgentStreamEvent) =>
+  event.event === 'agent.answer.delta';
+
+const waitForNextPaint = () =>
+  new Promise<void>((resolve) => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.requestAnimationFrame !== 'function'
+    ) {
+      setTimeout(resolve, 16);
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
 
 const parseSseBlock = (block: string): ParsedSseEvent | undefined => {
   const lines = block.split(/\r?\n/);
