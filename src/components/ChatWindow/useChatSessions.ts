@@ -115,7 +115,9 @@ const mergeAgentRun = (
   patch: Partial<ChatAgentRun>,
 ): ChatAgentRun => ({
   evidences: patch.evidences || agentRun?.evidences || [],
-  errorMessage: patch.errorMessage ?? agentRun?.errorMessage,
+  errorMessage: Object.hasOwn(patch, 'errorMessage')
+    ? patch.errorMessage
+    : agentRun?.errorMessage,
   route: patch.route || agentRun?.route,
   run: patch.run || agentRun?.run,
   status: patch.status || agentRun?.status,
@@ -141,6 +143,59 @@ const hasInFlightMessage = (messages: ChatMessageItem[]) =>
   messages.some(
     (message) => message.status === 'pending' || message.status === 'streaming',
   );
+
+// Completion events may carry an empty or stale message; keep the streamed
+// answer unless the server has at least as much content.
+const pickAgentMessageContent = (
+  currentContent: string,
+  serverContent?: string,
+) => {
+  if (!serverContent) {
+    return currentContent;
+  }
+  if (!currentContent) {
+    return serverContent;
+  }
+  return serverContent.length >= currentContent.length
+    ? serverContent
+    : currentContent;
+};
+
+const getNextAgentMessageContent = (
+  message: ChatMessageItem,
+  event: AgentStreamEvent,
+  completedMessage?: ChatMessageItem,
+) => {
+  if (event.event === 'agent.answer.delta' && event.delta) {
+    return `${message.content}${event.delta}`;
+  }
+
+  return (
+    pickAgentMessageContent(message.content, completedMessage?.content) ||
+    event.run?.summary ||
+    ''
+  );
+};
+
+const getNextAgentRunErrorMessage = (
+  currentAgentRun: ChatAgentRun | undefined,
+  event: AgentStreamEvent,
+) => {
+  if (event.event === 'agent.run.failed') {
+    return (
+      event.error_message ||
+      event.run?.error_message ||
+      currentAgentRun?.errorMessage ||
+      'Agent 执行失败'
+    );
+  }
+
+  if (event.event === 'agent.run.completed') {
+    return undefined;
+  }
+
+  return currentAgentRun?.errorMessage;
+};
 
 const mergeSessionDetail = (
   existingSession: ChatSession | undefined,
@@ -774,7 +829,7 @@ export const useChatSessions = ({
                   messages = upsertMessage(messages, {
                     ...completedMessage,
                     agentRun:
-                      existingMessage?.agentRun || completedMessage.agentRun,
+                      completedMessage.agentRun || existingMessage?.agentRun,
                   });
                 }
 
@@ -797,23 +852,21 @@ export const useChatSessions = ({
                       : currentAgentRun?.evidences || [];
                     const status =
                       event.run?.status || currentAgentRun?.status || 'running';
-                    const contentFromServer =
-                      completedMessage?.content || message.content;
-                    const nextContent = event.delta
-                      ? `${contentFromServer}${event.delta}`
-                      : event.run?.summary
-                        ? event.run.summary
-                        : contentFromServer;
+                    const nextContent = getNextAgentMessageContent(
+                      message,
+                      event,
+                      completedMessage,
+                    );
                     const runFailed = event.event === 'agent.run.failed';
 
                     return {
                       ...message,
                       agentRun: mergeAgentRun(currentAgentRun, {
                         evidences,
-                        errorMessage:
-                          event.error_message ||
-                          event.run?.error_message ||
-                          currentAgentRun?.errorMessage,
+                        errorMessage: getNextAgentRunErrorMessage(
+                          currentAgentRun,
+                          event,
+                        ),
                         route: event.route,
                         run: event.run,
                         status: runFailed ? 'failed' : status,

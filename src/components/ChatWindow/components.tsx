@@ -236,9 +236,11 @@ const AgentRunPanel = ({
               const toolID = toolCall.tool_id?.trim();
               const toolName = getAgentToolDisplayName(toolID, toolNameMap);
               const tooltipTitle =
-                toolID && toolName !== toolID
-                  ? `${toolName} (${toolID})`
-                  : toolName;
+                toolCall.status === 'failed' && toolCall.error_message
+                  ? `${toolName}：${toolCall.error_message}`
+                  : toolID && toolName !== toolID
+                    ? `${toolName} (${toolID})`
+                    : toolName;
 
               return (
                 <Tooltip key={toolCall.id} title={tooltipTitle}>

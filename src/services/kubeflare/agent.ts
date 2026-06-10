@@ -36,6 +36,7 @@ export type AgentStreamEventName =
   | 'agent.answer.delta'
   | 'agent.evidence.created'
   | 'agent.plan.created'
+  | 'agent.plan.generated'
   | 'agent.route.completed'
   | 'agent.run.completed'
   | 'agent.run.created'
