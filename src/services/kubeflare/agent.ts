@@ -218,3 +218,32 @@ export async function cancelAgentRun(
     },
   )
 }
+
+export async function submitAgentRunFeedback(
+  runID: string,
+  body: API.SubmitAgentRunFeedbackParams,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.AgentRunFeedback>>(
+    `/api/v1/agent/run/${runID}/feedback`,
+    {
+      data: body,
+      method: 'POST',
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function getAgentRunMetricsEvaluation(
+  params?: API.AgentRunMetricsEvaluationParams,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.AgentRunMetricsEvaluation>>(
+    '/api/v1/agent/metrics/evaluation',
+    {
+      method: 'GET',
+      params,
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}

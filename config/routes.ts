@@ -212,6 +212,11 @@ export default [
         component: './system/ai/agents',
       },
       {
+        path: '/ai/evaluation',
+        name: 'systemAIEvaluation',
+        component: './system/ai/evaluation',
+      },
+      {
         path: '/ai/tool',
         name: 'systemAITool',
         component: './system/ai/tools',

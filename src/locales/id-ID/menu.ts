@@ -37,6 +37,7 @@ export default {
   'menu.system.systemUser': 'Pengguna',
   'menu.systemAI': 'AI Management',
   'menu.systemAI.systemAIAgent': 'Agents',
+  'menu.systemAI.systemAIEvaluation': 'Evaluation',
   'menu.systemAI.systemAITool': 'Tool Governance',
   'menu.systemAI.systemAISkill': 'Skills',
   'menu.login': 'Masuk',

@@ -8,6 +8,7 @@ export type ChatAgentMode = Extract<
 export type ChatAgentRun = {
   evidences: API.AgentEvidence[];
   errorMessage?: string;
+  feedback?: API.AgentRunFeedback;
   route?: API.AgentRouteResult;
   run?: API.AgentRun;
   status?: API.AgentRunStatus;

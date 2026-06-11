@@ -388,6 +388,36 @@ export const useStyles = createStyles(({ token }) => ({
     color: token.colorError,
     overflowWrap: 'anywhere',
   },
+  agentFeedback: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingTop: 2,
+  },
+  agentFeedbackText: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 6,
+    color: '#60708d',
+    fontSize: 12,
+  },
+  agentFeedbackActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  agentFeedbackButton: {
+    minWidth: 70,
+    borderRadius: 8,
+  },
+  agentFeedbackModalBody: {
+    display: 'grid',
+    gap: 10,
+  },
   userInputCard: {
     display: 'flex',
     minHeight: 45,

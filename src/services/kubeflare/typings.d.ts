@@ -133,6 +133,7 @@ declare namespace API {
     route?: AgentRouteResult
     tool_calls?: AgentToolCall[]
     evidences?: AgentEvidence[]
+    feedback?: AgentRunFeedback
     status?: AgentRunStatus
     error_message?: string
   }
@@ -297,6 +298,53 @@ declare namespace API {
     redacted: boolean
     collected_at: string
     deleted_at?: string
+  }
+
+  type AgentRunFeedback = {
+    id: string
+    run_id: string
+    user_id: string
+    agent_type: AgentType
+    cluster_id: string
+    useful: boolean
+    comment?: string
+    created_at: string
+    updated_at: string
+  }
+
+  type SubmitAgentRunFeedbackParams = {
+    useful: boolean
+    comment?: string
+  }
+
+  type AgentRunMetricsEvaluationParams = {
+    days?: number
+  }
+
+  type AgentFeatureBucket = {
+    run_count: number
+    feedback_count: number
+    useful_count: number
+    avg_step_count: number
+    avg_tool_call_count: number
+    avg_token_total: number
+    avg_duration_ms: number
+  }
+
+  type AgentFeatureComparison = {
+    on: AgentFeatureBucket
+    off: AgentFeatureBucket
+  }
+
+  type AgentRunMetricsEvaluation = {
+    window_days: number
+    since: string
+    overall: AgentFeatureBucket
+    planning: AgentFeatureComparison
+    reflection: AgentFeatureComparison
+    replan: AgentFeatureComparison
+    semantic_retrieval: AgentFeatureComparison
+    case_hit: AgentFeatureComparison
   }
 
   type AgentListData = {

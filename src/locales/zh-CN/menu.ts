@@ -35,6 +35,7 @@ export default {
   'menu.system.systemUser': '用户管理',
   'menu.systemAI': 'AI 管理',
   'menu.systemAI.systemAIAgent': 'Agent 总览',
+  'menu.systemAI.systemAIEvaluation': '评估看板',
   'menu.systemAI.systemAITool': '工具治理',
   'menu.systemAI.systemAISkill': '技能管理',
   'menu.login': '登录',

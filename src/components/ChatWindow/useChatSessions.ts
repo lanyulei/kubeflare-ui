@@ -4,6 +4,7 @@ import { flushSync } from 'react-dom';
 import {
   type AgentStreamEvent,
   cancelAgentRun,
+  submitAgentRunFeedback,
 } from '@/services/kubeflare/agent';
 import {
   type AiChatStreamEvent,
@@ -39,6 +40,12 @@ type OptimisticMessagePair = {
   assistantMessageId: string;
   sessionId: string;
   userMessageId: string;
+};
+
+type APIError = {
+  info?: { message?: string };
+  message?: string;
+  response?: { data?: { message?: string } };
 };
 
 const LOCAL_MESSAGE_ID_PREFIX = 'local-message';
@@ -119,11 +126,49 @@ const mergeAgentRun = (
   errorMessage: Object.hasOwn(patch, 'errorMessage')
     ? patch.errorMessage
     : agentRun?.errorMessage,
+  feedback: Object.hasOwn(patch, 'feedback')
+    ? patch.feedback
+    : agentRun?.feedback,
   route: patch.route || agentRun?.route,
   run: patch.run || agentRun?.run,
   status: patch.status || agentRun?.status,
   toolCalls: patch.toolCalls || agentRun?.toolCalls || [],
 });
+
+const applyAgentRunFeedback = (
+  sessions: ChatSession[],
+  runID: string,
+  feedback: API.AgentRunFeedback,
+) => {
+  let changed = false;
+
+  const nextSessions = sessions.map((session) => {
+    let sessionChanged = false;
+    const messages = session.messages.map((message) => {
+      if (message.agentRun?.run?.id !== runID) {
+        return message;
+      }
+
+      sessionChanged = true;
+      return {
+        ...message,
+        agentRun: mergeAgentRun(message.agentRun, { feedback }),
+      };
+    });
+
+    if (!sessionChanged) {
+      return session;
+    }
+
+    changed = true;
+    return {
+      ...session,
+      messages,
+    };
+  });
+
+  return changed ? nextSessions : sessions;
+};
 
 const toAgentScopePayload = (scope: API.AgentScope): API.AgentScope => ({
   container: scope.container?.trim() || undefined,
@@ -144,6 +189,16 @@ const hasInFlightMessage = (messages: ChatMessageItem[]) =>
   messages.some(
     (message) => message.status === 'pending' || message.status === 'streaming',
   );
+
+const getAPIErrorMessage = (error: unknown, fallback: string) => {
+  const apiError = error as APIError;
+  return (
+    apiError.info?.message ||
+    apiError.response?.data?.message ||
+    apiError.message ||
+    fallback
+  );
+};
 
 // Completion events may carry an empty or stale message; keep the streamed
 // answer unless the server has at least as much content.
@@ -1202,6 +1257,59 @@ export const useChatSessions = ({
     setDraft(content);
   }, []);
 
+  const submitAgentFeedback = useCallback(
+    async (runID: string, body: API.SubmitAgentRunFeedbackParams) => {
+      const comment = body.comment?.trim();
+
+      try {
+        const res = await submitAgentRunFeedback(
+          runID,
+          {
+            comment: comment || undefined,
+            useful: body.useful,
+          },
+          { skipErrorHandler: true },
+        );
+        const feedback = res.data;
+
+        if (!feedback) {
+          if (mountedRef.current) {
+            antdMessage.error('诊断反馈提交失败');
+          }
+          return false;
+        }
+
+        if (mountedRef.current) {
+          setChatState((prevState) => {
+            const sessions = applyAgentRunFeedback(
+              prevState.sessions,
+              runID,
+              feedback,
+            );
+
+            if (sessions === prevState.sessions) {
+              return prevState;
+            }
+
+            return {
+              ...prevState,
+              sessions,
+            };
+          });
+          antdMessage.success('诊断反馈已提交');
+        }
+
+        return true;
+      } catch (error) {
+        if (mountedRef.current) {
+          antdMessage.error(getAPIErrorMessage(error, '诊断反馈提交失败'));
+        }
+        return false;
+      }
+    },
+    [],
+  );
+
   return {
     activeSession,
     agentMode,
@@ -1218,6 +1326,7 @@ export const useChatSessions = ({
     setAgentMode,
     setAgentScope,
     setDraft,
+    submitAgentFeedback,
     submitting,
   };
 };

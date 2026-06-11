@@ -37,6 +37,7 @@ export default {
   'menu.system.systemUser': 'ユーザー管理',
   'menu.systemAI': 'AI 管理',
   'menu.systemAI.systemAIAgent': 'Agent 一覧',
+  'menu.systemAI.systemAIEvaluation': '評価ダッシュボード',
   'menu.systemAI.systemAITool': 'ツール管理',
   'menu.systemAI.systemAISkill': 'スキル管理',
   'menu.login': 'ログイン',

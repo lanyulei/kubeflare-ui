@@ -3,9 +3,11 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
+  DislikeOutlined,
   DownOutlined,
   EditOutlined,
   FileSearchOutlined,
+  LikeOutlined,
   LoadingOutlined,
   PlusOutlined,
   RobotOutlined,
@@ -19,6 +21,7 @@ import {
   Button,
   Empty,
   Input,
+  Modal,
   Popconfirm,
   Select,
   Tag,
@@ -43,10 +46,16 @@ const sessionTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
   minute: '2-digit',
 });
 
+type SubmitAgentFeedback = (
+  runID: string,
+  body: API.SubmitAgentRunFeedbackParams,
+) => Promise<boolean>;
+
 type ChatMessageProps = {
   agentToolNameMap: AgentToolNameMap;
   message: ChatMessageItem;
   onEditMessage: (content: string) => void;
+  onSubmitAgentFeedback: SubmitAgentFeedback;
 };
 
 type ChatSidebarProps = {
@@ -61,6 +70,7 @@ type ConversationPanelProps = {
   agentToolNameMap: AgentToolNameMap;
   session?: ChatSession;
   onEditMessage: (content: string) => void;
+  onSubmitAgentFeedback: SubmitAgentFeedback;
 };
 
 type PromptComposerProps = {
@@ -113,6 +123,7 @@ const ChatMessage = ({
   agentToolNameMap,
   message,
   onEditMessage,
+  onSubmitAgentFeedback,
 }: ChatMessageProps) => {
   const { styles, cx } = useStyles();
   const isUser = message.role === 'user';
@@ -165,6 +176,7 @@ const ChatMessage = ({
             <AgentRunPanel
               agentRun={message.agentRun}
               toolNameMap={agentToolNameMap}
+              onSubmitAgentFeedback={onSubmitAgentFeedback}
             />
             <MarkdownContent content={assistantContent} />
           </article>
@@ -177,13 +189,37 @@ const ChatMessage = ({
 const AgentRunPanel = ({
   agentRun,
   toolNameMap,
+  onSubmitAgentFeedback,
 }: {
   agentRun?: ChatAgentRun;
+  onSubmitAgentFeedback: SubmitAgentFeedback;
   toolNameMap: AgentToolNameMap;
 }) => {
   const { styles, cx } = useStyles();
+  const runID = agentRun?.run?.id;
   const [evidenceListExpanded, setEvidenceListExpanded] = useState(false);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [toolListExpanded, setToolListExpanded] = useState(false);
+  const feedbackMountedRef = useRef(true);
+  const feedbackSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    setFeedbackComment('');
+    setFeedbackOpen(false);
+    setFeedbackSubmitting(false);
+    feedbackSubmittingRef.current = false;
+  }, [runID]);
+
+  useEffect(() => {
+    feedbackMountedRef.current = true;
+
+    return () => {
+      feedbackMountedRef.current = false;
+    };
+  }, []);
+
   if (!agentRun) {
     return null;
   }
@@ -195,6 +231,9 @@ const AgentRunPanel = ({
 
   const status = agentRun.status || agentRun.run?.status || 'running';
   const evidenceListFoldable = status === 'completed' || status === 'failed';
+  const canSubmitFeedback = Boolean(
+    runID && (status === 'completed' || status === 'failed'),
+  );
   const confidence =
     agentRun.route?.confidence ?? agentRun.run?.confidence ?? undefined;
   const statusIcon =
@@ -205,6 +244,33 @@ const AgentRunPanel = ({
     ) : (
       <LoadingOutlined />
     );
+
+  const submitFeedback = async (useful: boolean, comment?: string) => {
+    if (!runID || feedbackSubmittingRef.current) {
+      return;
+    }
+
+    feedbackSubmittingRef.current = true;
+    setFeedbackSubmitting(true);
+    try {
+      const submitted = await onSubmitAgentFeedback(runID, {
+        comment,
+        useful,
+      });
+
+      if (submitted) {
+        if (feedbackMountedRef.current) {
+          setFeedbackComment('');
+          setFeedbackOpen(false);
+        }
+      }
+    } finally {
+      feedbackSubmittingRef.current = false;
+      if (feedbackMountedRef.current) {
+        setFeedbackSubmitting(false);
+      }
+    }
+  };
 
   return (
     <div className={styles.agentRunPanel} data-chat-window="agent-run">
@@ -308,6 +374,73 @@ const AgentRunPanel = ({
       {agentRun.errorMessage ? (
         <div className={styles.agentError}>{agentRun.errorMessage}</div>
       ) : null}
+      {canSubmitFeedback || agentRun.feedback ? (
+        <div className={styles.agentFeedback}>
+          <div className={styles.agentFeedbackText}>
+            <span>
+              {agentRun.feedback ? '已记录诊断反馈' : '这次诊断是否有帮助？'}
+            </span>
+            {agentRun.feedback ? (
+              <Tag color={agentRun.feedback.useful ? 'green' : 'orange'}>
+                {agentRun.feedback.useful ? '有用' : '需改进'}
+              </Tag>
+            ) : null}
+          </div>
+          <div className={styles.agentFeedbackActions}>
+            <Button
+              aria-label="标记这次诊断有用"
+              className={styles.agentFeedbackButton}
+              disabled={!canSubmitFeedback || feedbackSubmitting}
+              icon={<LikeOutlined />}
+              loading={feedbackSubmitting && !feedbackOpen}
+              size="small"
+              type={agentRun.feedback?.useful ? 'primary' : 'default'}
+              onClick={() => submitFeedback(true)}
+            >
+              有用
+            </Button>
+            <Button
+              aria-label="标记这次诊断需要改进"
+              className={styles.agentFeedbackButton}
+              danger={agentRun.feedback?.useful === false}
+              disabled={!canSubmitFeedback || feedbackSubmitting}
+              icon={<DislikeOutlined />}
+              size="small"
+              type={agentRun.feedback?.useful === false ? 'primary' : 'default'}
+              onClick={() => {
+                setFeedbackComment(agentRun.feedback?.comment || '');
+                setFeedbackOpen(true);
+              }}
+            >
+              需改进
+            </Button>
+          </div>
+          <Modal
+            title="诊断反馈"
+            open={feedbackOpen}
+            okText="提交反馈"
+            cancelText="取消"
+            confirmLoading={feedbackSubmitting}
+            onCancel={() => {
+              if (!feedbackSubmitting) {
+                setFeedbackOpen(false);
+              }
+            }}
+            onOk={() => submitFeedback(false, feedbackComment)}
+          >
+            <div className={styles.agentFeedbackModalBody}>
+              <TextArea
+                autoSize={{ minRows: 3, maxRows: 6 }}
+                maxLength={1024}
+                placeholder="例如：证据不足、判断不准确、修复建议不可执行"
+                showCount
+                value={feedbackComment}
+                onChange={(event) => setFeedbackComment(event.target.value)}
+              />
+            </div>
+          </Modal>
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -404,6 +537,7 @@ export const ConversationPanel = ({
   agentToolNameMap,
   session,
   onEditMessage,
+  onSubmitAgentFeedback,
 }: ConversationPanelProps) => {
   const { styles } = useStyles();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -443,6 +577,7 @@ export const ConversationPanel = ({
             key={message.id}
             message={message}
             onEditMessage={onEditMessage}
+            onSubmitAgentFeedback={onSubmitAgentFeedback}
           />
         ))}
         <div ref={bottomRef} />

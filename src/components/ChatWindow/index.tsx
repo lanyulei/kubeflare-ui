@@ -28,6 +28,7 @@ const ChatWindow = ({
     sessions,
     setAgentMode,
     setDraft,
+    submitAgentFeedback,
     submitting,
   } = useChatSessions({ connectionStatus, onConnectionStatusChange });
   const hasAgentToolCalls = useMemo(
@@ -56,6 +57,7 @@ const ChatWindow = ({
             agentToolNameMap={agentToolNameMap}
             session={activeSession}
             onEditMessage={editMessage}
+            onSubmitAgentFeedback={submitAgentFeedback}
           />
         </div>
         <PromptComposer

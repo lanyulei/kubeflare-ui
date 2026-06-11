@@ -48,6 +48,7 @@ const toChatAgentRun = (
   return {
     evidences: agentRun.evidences || [],
     errorMessage: agentRun.error_message || agentRun.run?.error_message,
+    feedback: agentRun.feedback,
     route: agentRun.route,
     run: agentRun.run,
     status: agentRun.status || agentRun.run?.status,
