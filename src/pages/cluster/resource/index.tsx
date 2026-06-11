@@ -6,6 +6,7 @@ import {
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Link, useIntl } from '@umijs/max';
+import type { TableProps } from 'antd';
 import {
   App,
   Button,
@@ -114,6 +115,7 @@ type ClusterResourceListPageProps<
   defaultTitle: string;
   columns: ProColumns<T>[];
   rowKey?: string | ((record: T) => string);
+  tableScroll?: TableProps<T>['scroll'];
   createButtonText?: string;
   createConfig?: CreateResourceConfig;
   renderCreateDrawer?: (props: {
@@ -335,6 +337,7 @@ const ClusterResourceListPage = <
   defaultTitle,
   columns,
   rowKey = (record) => record.id || record.name,
+  tableScroll,
   createButtonText = '新建',
   createConfig,
   extraContent,
@@ -556,6 +559,7 @@ const ClusterResourceListPage = <
         actionRef={actionRef}
         search={false}
         columns={tableColumns}
+        scroll={tableScroll}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,
