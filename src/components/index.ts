@@ -6,6 +6,7 @@
  * 布局组件
  */
 
+import AgentDiagnoseButton from './AgentDiagnoseButton';
 import ChatWindow from './ChatWindow';
 import {
   EventDetailDrawer,
@@ -41,6 +42,10 @@ import TaintEditor from './TaintEditor';
 import UnitInputNumber from './UnitInputNumber';
 import YamlEditor from './YamlEditor';
 
+export type {
+  AgentDiagnoseButtonProps,
+  AgentDiagnoseRequest,
+} from './AgentDiagnoseButton';
 export type { WatchStatus } from './ClusterEventCenter';
 export type {
   HeaderActionButtonProps,
@@ -49,6 +54,7 @@ export type {
 export type { ResourceCreateWizardStep } from './ResourceCreateWizardDrawer';
 export type { SettingsNavDrawerSection } from './SettingsNavDrawer';
 export {
+  AgentDiagnoseButton,
   AvatarDropdown,
   AvatarName,
   ChatDrawerAction,

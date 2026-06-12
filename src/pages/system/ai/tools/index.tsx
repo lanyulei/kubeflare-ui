@@ -67,6 +67,7 @@ const Tools = () => {
         ...editingTool,
         description: values.description.trim(),
         enabled: values.enabled,
+        observe_max_chars: values.observe_max_chars,
         read_only: values.read_only,
         timeout_ms: values.timeout_ms,
       };
@@ -241,6 +242,13 @@ const Tools = () => {
       renderText: (_, record) => `${record.timeout_ms} ms`,
     },
     {
+      title: '观察上限',
+      dataIndex: 'observe_max_chars',
+      width: 120,
+      renderText: (_, record) =>
+        record.observe_max_chars ? `${record.observe_max_chars} 字符` : '默认',
+    },
+    {
       title: '描述',
       dataIndex: 'description',
       ellipsis: true,
@@ -295,6 +303,7 @@ const Tools = () => {
                 item.description,
                 item.source,
                 item.origin,
+                item.observe_max_chars ? String(item.observe_max_chars) : '',
                 ...agentTypes,
               ],
               keywordRef.current,

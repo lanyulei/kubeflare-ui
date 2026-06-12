@@ -23,7 +23,12 @@ import {
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useState } from 'react';
 import { parse, stringify } from 'yaml';
-import { ReplicaSummary, SectionTitle, YamlEditor } from '@/components';
+import {
+  AgentDiagnoseButton,
+  ReplicaSummary,
+  SectionTitle,
+  YamlEditor,
+} from '@/components';
 import {
   deleteClusterWorkload,
   getClusterWorkloadDetail,
@@ -240,6 +245,11 @@ const WorkloadDetail = () => {
           name,
         }
       : undefined;
+  const agentScope: API.AgentScope = {
+    namespace,
+    resource_kind: type,
+    resource_name: name,
+  };
   const statusDotClassNames = {
     default: styles.statusDotDefault,
     error: styles.statusDotError,
@@ -542,6 +552,11 @@ const WorkloadDetail = () => {
         })
       }
       extra={[
+        <AgentDiagnoseButton
+          disabled={!detailParams}
+          key="agent-diagnose"
+          scope={agentScope}
+        />,
         <Dropdown
           disabled={!detailParams}
           key="workload-actions"

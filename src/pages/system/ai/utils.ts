@@ -59,11 +59,12 @@ export const matchKeyword = (
 export const toReloadToolOverride = (
   tool: Pick<
     API.AgentToolDefinition,
-    'description' | 'enabled' | 'read_only' | 'timeout_ms'
+    'description' | 'enabled' | 'observe_max_chars' | 'read_only' | 'timeout_ms'
   >,
 ): API.ReloadAgentToolOverride => ({
   description: tool.description || '',
   enabled: Boolean(tool.enabled),
+  observe_max_chars: tool.observe_max_chars,
   read_only: Boolean(tool.read_only),
   timeout_ms: tool.timeout_ms,
 });

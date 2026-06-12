@@ -9,6 +9,7 @@ import { PageContainer } from '@ant-design/pro-components';
 import { history, useParams } from '@umijs/max';
 import { App, Button, Card, Dropdown, Tabs } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AgentDiagnoseButton } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 import type { TaintEditorItem, TaintEffect } from '@/components/TaintEditor';
 import {
@@ -274,6 +275,14 @@ const ClusterNodeDetail = () => {
       title={nodeName || '节点详情'}
       onBack={() => history.back()}
       extra={[
+        <AgentDiagnoseButton
+          disabled={!node}
+          key="agent-diagnose"
+          scope={{
+            resource_kind: 'Node',
+            resource_name: nodeName,
+          }}
+        />,
         <Dropdown
           disabled={!node}
           key="node-actions"

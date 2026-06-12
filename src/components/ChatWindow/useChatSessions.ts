@@ -4,6 +4,7 @@ import { flushSync } from 'react-dom';
 import {
   type AgentStreamEvent,
   cancelAgentRun,
+  routeAgent,
   submitAgentRunFeedback,
 } from '@/services/kubeflare/agent';
 import {
@@ -14,6 +15,8 @@ import {
   getAiChatSessionDetail,
   getAiChatSessionList,
 } from '@/services/kubeflare/ai/chat';
+import { buildAgentDiagnosePrompt, normalizeAgentScope } from '@/utils/agent';
+import type { AgentDiagnoseRequest } from '../AgentDiagnoseButton';
 import type {
   ChatAgentMode,
   ChatAgentRun,
@@ -43,11 +46,12 @@ type OptimisticMessagePair = {
 };
 
 type APIError = {
-  info?: { message?: string };
+  info?: { code?: number; message?: string };
   message?: string;
-  response?: { data?: { message?: string } };
+  response?: { data?: { code?: number; message?: string } };
 };
 
+const API_CONFLICT_CODE = 30005;
 const LOCAL_MESSAGE_ID_PREFIX = 'local-message';
 
 const upsertMessage = (
@@ -170,12 +174,8 @@ const applyAgentRunFeedback = (
   return changed ? nextSessions : sessions;
 };
 
-const toAgentScopePayload = (scope: API.AgentScope): API.AgentScope => ({
-  container: scope.container?.trim() || undefined,
-  namespace: scope.namespace?.trim() || undefined,
-  resource_kind: scope.resource_kind?.trim() || undefined,
-  resource_name: scope.resource_name?.trim() || undefined,
-});
+const toAgentScopePayload = (scope: API.AgentScope): API.AgentScope =>
+  normalizeAgentScope(scope);
 
 const isAbortError = (error: unknown) =>
   error instanceof DOMException && error.name === 'AbortError';
@@ -273,11 +273,13 @@ const mergeSessionDetail = (
 
 type UseChatSessionsOptions = {
   connectionStatus?: API.AiConnectionStatus;
+  onConfirmAgentRoute?: (route: API.AgentRouteResult) => Promise<boolean>;
   onConnectionStatusChange?: (status: API.AiConnectionStatus) => void;
 };
 
 export const useChatSessions = ({
   connectionStatus,
+  onConfirmAgentRoute,
   onConnectionStatusChange,
 }: UseChatSessionsOptions = {}) => {
   const [chatState, setChatState] = useState<ChatWindowState>({
@@ -440,6 +442,15 @@ export const useChatSessions = ({
     setDraft('');
     void createSessionOnServer();
   }, [createSessionOnServer]);
+
+  const applyAgentRequest = useCallback((request: AgentDiagnoseRequest) => {
+    const scope = normalizeAgentScope(request.scope);
+    const nextAgentMode = request.selectedAgent || 'diagnostic';
+
+    setAgentMode(nextAgentMode);
+    setAgentScope(scope);
+    setDraft(request.prompt || buildAgentDiagnosePrompt(scope));
+  }, []);
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
@@ -991,8 +1002,29 @@ export const useChatSessions = ({
       let runStarted = false;
       let optimisticPair: OptimisticMessagePair | undefined;
       let sessionId: string | undefined = activeSession?.id;
+      const scope = toAgentScopePayload(agentScope);
 
       try {
+        if (agentMode === 'auto') {
+          const routeRes = await routeAgent(
+            {
+              message: content,
+              scope,
+            },
+            { skipErrorHandler: true },
+          );
+          const route = routeRes.data;
+
+          if (route?.need_confirm) {
+            const confirmed = onConfirmAgentRoute
+              ? await onConfirmAgentRoute(route)
+              : false;
+            if (!confirmed) {
+              return;
+            }
+          }
+        }
+
         if (!sessionId) {
           const session = await createSessionOnServer();
           sessionId = session?.id;
@@ -1015,8 +1047,8 @@ export const useChatSessions = ({
           body: {
             message: content,
             session_id: sessionId,
-            scope: toAgentScopePayload(agentScope),
-            selected_agent: agentMode,
+            scope,
+            selected_agent: agentMode === 'auto' ? undefined : agentMode,
           },
           onEvent: (event) => {
             if (event.event === 'agent.run.created') {
@@ -1084,6 +1116,7 @@ export const useChatSessions = ({
       applyAgentStreamEvent,
       createSessionOnServer,
       failStreamingMessage,
+      onConfirmAgentRoute,
       removeOptimisticMessages,
     ],
   );
@@ -1302,7 +1335,15 @@ export const useChatSessions = ({
         return true;
       } catch (error) {
         if (mountedRef.current) {
-          antdMessage.error(getAPIErrorMessage(error, '诊断反馈提交失败'));
+          const apiError = error as APIError;
+          const isConflict =
+            apiError.info?.code === API_CONFLICT_CODE ||
+            apiError.response?.data?.code === API_CONFLICT_CODE;
+          antdMessage.error(
+            isConflict
+              ? '该消息已评价，无法重复评价'
+              : getAPIErrorMessage(error, '诊断反馈提交失败'),
+          );
         }
         return false;
       }
@@ -1314,6 +1355,7 @@ export const useChatSessions = ({
     activeSession,
     agentMode,
     agentScope,
+    applyAgentRequest,
     cancelMessage,
     createSession,
     deleteSession,

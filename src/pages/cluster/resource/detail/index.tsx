@@ -18,6 +18,7 @@ import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parse, stringify } from 'yaml';
 import {
+  AgentDiagnoseButton,
   ClusterEventTable,
   ClusterMetadata,
   ReplicaSummary,
@@ -303,6 +304,14 @@ const ClusterResourceDetail = () => {
   const [detailType, setDetailType] = useState<
     API.ClusterResourceCreateType | undefined
   >(type);
+  const agentScope = useMemo<API.AgentScope>(
+    () => ({
+      namespace,
+      resource_kind: detailType || type,
+      resource_name: name,
+    }),
+    [detailType, name, namespace, type],
+  );
   const [pods, setPods] = useState<API.ClusterNodePodItem[]>([]);
   const [serviceEndpoints, setServiceEndpoints] = useState<
     API.ClusterServiceEndpointItem[]
@@ -1558,6 +1567,11 @@ const ClusterResourceDetail = () => {
     <PageContainer
       title={title}
       extra={[
+        <AgentDiagnoseButton
+          disabled={!detailParams}
+          key="agent-diagnose"
+          scope={agentScope}
+        />,
         <Dropdown
           disabled={!detailParams}
           key="resource-actions"

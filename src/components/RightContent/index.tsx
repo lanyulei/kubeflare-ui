@@ -11,6 +11,10 @@ import { createStyles } from 'antd-style';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getAiConnectionStatus } from '@/services/kubeflare/ai/chat';
 import { getClusterList } from '@/services/kubeflare/cluster/info';
+import {
+  AGENT_DIAGNOSE_EVENT,
+  type AgentDiagnoseRequest,
+} from '../AgentDiagnoseButton';
 import ChatWindow from '../ChatWindow';
 import { HeaderActionButton, HeaderActionDrawer } from '../HeaderAction';
 import HeaderDropdown from '../HeaderDropdown';
@@ -289,6 +293,8 @@ export const ChatDrawerAction: React.FC = () => {
   const { styles, cx } = useStyles();
   const [connectionStatus, setConnectionStatus] =
     useState<API.AiConnectionStatus>('connecting');
+  const [agentRequest, setAgentRequest] = useState<AgentDiagnoseRequest>();
+  const [open, setOpen] = useState(false);
   const title = intl.formatMessage({
     id: 'component.globalHeader.chat',
     defaultMessage: 'AI 智能助手',
@@ -331,6 +337,20 @@ export const ChatDrawerAction: React.FC = () => {
 
     return () => {
       mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleAgentDiagnose = (event: Event) => {
+      const detail = (event as CustomEvent<AgentDiagnoseRequest>).detail;
+
+      setAgentRequest(detail || {});
+      setOpen(true);
+    };
+
+    window.addEventListener(AGENT_DIAGNOSE_EVENT, handleAgentDiagnose);
+    return () => {
+      window.removeEventListener(AGENT_DIAGNOSE_EVENT, handleAgentDiagnose);
     };
   }, []);
 
@@ -378,10 +398,14 @@ export const ChatDrawerAction: React.FC = () => {
       }}
       icon={<MessageOutlined />}
       label={title}
+      open={open}
       title={drawerTitle}
+      onOpenChange={setOpen}
     >
       <ChatWindow
+        agentRequest={agentRequest}
         connectionStatus={connectionStatus}
+        onAgentRequestConsumed={() => setAgentRequest(undefined)}
         onConnectionStatusChange={setConnectionStatus}
       />
     </HeaderActionDrawer>

@@ -130,7 +130,9 @@ export type HeaderActionDrawerProps = {
   drawerProps?: Omit<DrawerProps, 'onClose' | 'open' | 'title'>;
   icon: ReactNode;
   label?: string;
+  open?: boolean;
   title: ReactNode;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export const HeaderActionDrawer = ({
@@ -138,23 +140,35 @@ export const HeaderActionDrawer = ({
   drawerProps,
   icon,
   label,
+  open,
   title,
+  onOpenChange,
 }: HeaderActionDrawerProps) => {
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
   const actionLabel = label || (typeof title === 'string' ? title : '');
+  const mergedOpen = open ?? innerOpen;
+  const setDrawerOpen = (nextOpen: boolean) => {
+    if (open === undefined) {
+      setInnerOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
 
   return (
     <>
-      <HeaderActionButton label={actionLabel} onClick={() => setOpen(true)}>
+      <HeaderActionButton
+        label={actionLabel}
+        onClick={() => setDrawerOpen(true)}
+      >
         {icon}
       </HeaderActionButton>
       <Drawer
         destroyOnHidden
         placement="right"
         {...drawerProps}
-        open={open}
+        open={mergedOpen}
         title={title}
-        onClose={() => setOpen(false)}
+        onClose={() => setDrawerOpen(false)}
       >
         {children}
       </Drawer>

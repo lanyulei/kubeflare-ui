@@ -2,11 +2,14 @@ import {
   BranchesOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  ClusterOutlined,
   DeleteOutlined,
+  DislikeFilled,
   DislikeOutlined,
   DownOutlined,
   EditOutlined,
   FileSearchOutlined,
+  LikeFilled,
   LikeOutlined,
   LoadingOutlined,
   PlusOutlined,
@@ -23,12 +26,20 @@ import {
   Input,
   Modal,
   Popconfirm,
+  Popover,
   Select,
   Tag,
   Tooltip,
 } from 'antd';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import {
+  getAgentRouteSourceLabel,
+  getAgentScopeSummary,
+  getAgentTypeLabel,
+  hasAgentScope,
+  normalizeAgentScope,
+} from '@/utils/agent';
 import MarkdownContent from '../MarkdownContent';
 import { useStyles } from './styles';
 import type {
@@ -37,6 +48,7 @@ import type {
   ChatMessageItem,
   ChatSession,
 } from './types';
+import type { AgentModeOption } from './useAgentModeOptions';
 import type { AgentToolNameMap } from './useAgentToolNames';
 import { getAgentToolDisplayName } from './useAgentToolNames';
 
@@ -52,6 +64,7 @@ type SubmitAgentFeedback = (
 ) => Promise<boolean>;
 
 type ChatMessageProps = {
+  agentModeOptions: AgentModeOption[];
   agentToolNameMap: AgentToolNameMap;
   message: ChatMessageItem;
   onEditMessage: (content: string) => void;
@@ -67,6 +80,7 @@ type ChatSidebarProps = {
 };
 
 type ConversationPanelProps = {
+  agentModeOptions: AgentModeOption[];
   agentToolNameMap: AgentToolNameMap;
   session?: ChatSession;
   onEditMessage: (content: string) => void;
@@ -75,26 +89,25 @@ type ConversationPanelProps = {
 
 type PromptComposerProps = {
   agentMode: ChatAgentMode;
+  agentModeOptions: AgentModeOption[];
+  agentScope: API.AgentScope;
   disabled?: boolean;
   sendDisabled?: boolean;
   submitting?: boolean;
   value: string;
   onAgentModeChange: (mode: ChatAgentMode) => void;
+  onAgentScopeChange: (scope: API.AgentScope) => void;
   onChange: (value: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
 };
 
-const agentModeOptions: { label: string; value: ChatAgentMode }[] = [
-  { label: '自动选择', value: 'auto' },
-  { label: '普通助手', value: 'assistant' },
-  { label: '诊断 Agent', value: 'diagnostic' },
-];
-
-const getAgentModeLabel = (agentType?: string) =>
+const getAgentModeLabel = (
+  agentType?: string,
+  agentModeOptions: AgentModeOption[] = [],
+) =>
   agentModeOptions.find((option) => option.value === agentType)?.label ||
-  agentType ||
-  '诊断 Agent';
+  getAgentTypeLabel(agentType);
 
 const agentRunStatusText: Record<API.AgentRunStatus, string> = {
   cancelled: '已取消',
@@ -110,6 +123,32 @@ const getAgentRunStatusText = (status: API.AgentRunStatus) =>
 const formatSessionTime = (timestamp: number) =>
   sessionTimeFormatter.format(timestamp);
 
+const formatDateTime = (value?: string) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp)
+    ? sessionTimeFormatter.format(timestamp)
+    : undefined;
+};
+
+const getLeaseOwnerDisplayText = (leaseOwner?: string) => {
+  const trimmedOwner = leaseOwner?.trim();
+  if (!trimmedOwner) {
+    return undefined;
+  }
+
+  if (trimmedOwner.toLowerCase().startsWith('agent-instance-')) {
+    return '当前实例';
+  }
+
+  return trimmedOwner.length > 18
+    ? `运行实例 ${trimmedOwner.slice(0, 8)}...${trimmedOwner.slice(-4)}`
+    : trimmedOwner;
+};
+
 const getSessionPreview = (session: ChatSession) => {
   const lastMessage = session.messages[session.messages.length - 1];
   const preview =
@@ -120,6 +159,7 @@ const getSessionPreview = (session: ChatSession) => {
 };
 
 const ChatMessage = ({
+  agentModeOptions,
   agentToolNameMap,
   message,
   onEditMessage,
@@ -174,6 +214,7 @@ const ChatMessage = ({
             data-chat-window="response-card"
           >
             <AgentRunPanel
+              agentModeOptions={agentModeOptions}
               agentRun={message.agentRun}
               toolNameMap={agentToolNameMap}
               onSubmitAgentFeedback={onSubmitAgentFeedback}
@@ -187,10 +228,12 @@ const ChatMessage = ({
 };
 
 const AgentRunPanel = ({
+  agentModeOptions,
   agentRun,
   toolNameMap,
   onSubmitAgentFeedback,
 }: {
+  agentModeOptions: AgentModeOption[];
   agentRun?: ChatAgentRun;
   onSubmitAgentFeedback: SubmitAgentFeedback;
   toolNameMap: AgentToolNameMap;
@@ -231,11 +274,22 @@ const AgentRunPanel = ({
 
   const status = agentRun.status || agentRun.run?.status || 'running';
   const evidenceListFoldable = status === 'completed' || status === 'failed';
+  const feedbackUseful = agentRun.feedback?.useful;
+  const hasSubmittedFeedback = typeof feedbackUseful === 'boolean';
+  const feedbackCommentText = agentRun.feedback?.comment?.trim();
   const canSubmitFeedback = Boolean(
-    runID && (status === 'completed' || status === 'failed'),
+    runID &&
+      !hasSubmittedFeedback &&
+      (status === 'completed' || status === 'failed'),
   );
   const confidence =
     agentRun.route?.confidence ?? agentRun.run?.confidence ?? undefined;
+  const routeSource = agentRun.route?.source || agentRun.run?.route_source;
+  const skillID = agentRun.route?.skill_id;
+  const heartbeatText = formatDateTime(agentRun.run?.heartbeat_at);
+  const leaseOwner = agentRun.run?.lease_owner?.trim();
+  const leaseOwnerText = getLeaseOwnerDisplayText(leaseOwner);
+  const leaseExpiresText = formatDateTime(agentRun.run?.lease_expires);
   const statusIcon =
     status === 'completed' ? (
       <CheckCircleOutlined />
@@ -246,7 +300,7 @@ const AgentRunPanel = ({
     );
 
   const submitFeedback = async (useful: boolean, comment?: string) => {
-    if (!runID || feedbackSubmittingRef.current) {
+    if (!runID || !canSubmitFeedback || feedbackSubmittingRef.current) {
       return;
     }
 
@@ -273,14 +327,47 @@ const AgentRunPanel = ({
   };
 
   return (
-    <div className={styles.agentRunPanel} data-chat-window="agent-run">
+    <div
+      className={cx(
+        styles.agentRunPanel,
+        agentRun.feedback && styles.agentRunPanelWithFeedback,
+      )}
+      data-chat-window="agent-run"
+    >
+      {agentRun.feedback ? (
+        <div className={styles.agentFeedbackReadonly}>
+          {agentRun.feedback.useful ? (
+            <span
+              aria-label="已评价：有用"
+              className={styles.agentFeedbackReadonlyIcon}
+              role="img"
+            >
+              <LikeFilled />
+            </span>
+          ) : (
+            <Tooltip title={feedbackCommentText || undefined}>
+              <span
+                aria-label="已评价：需改进"
+                className={styles.agentFeedbackReadonlyIcon}
+                role="img"
+              >
+                <DislikeFilled />
+              </span>
+            </Tooltip>
+          )}
+        </div>
+      ) : null}
       <div className={styles.agentRunHeader}>
         <Tag icon={<BranchesOutlined />} color="processing">
-          {getAgentModeLabel(route?.agent_type)}
+          {getAgentModeLabel(route?.agent_type, agentModeOptions)}
         </Tag>
         <Tag icon={statusIcon} color={status === 'failed' ? 'error' : 'blue'}>
           {getAgentRunStatusText(status)}
         </Tag>
+        {routeSource ? (
+          <Tag color="geekblue">{getAgentRouteSourceLabel(routeSource)}</Tag>
+        ) : null}
+        {skillID ? <Tag color="purple">技能 {skillID}</Tag> : null}
         {typeof confidence === 'number' ? (
           <span className={styles.agentConfidence}>
             {Math.round(confidence * 100)}%
@@ -289,6 +376,25 @@ const AgentRunPanel = ({
       </div>
       {agentRun.route?.reason ? (
         <div className={styles.agentReason}>{agentRun.route.reason}</div>
+      ) : null}
+      {heartbeatText || leaseOwnerText ? (
+        <div className={styles.agentRouteMeta}>
+          {heartbeatText ? <Tag>心跳 {heartbeatText}</Tag> : null}
+          {leaseOwnerText ? (
+            <Tooltip
+              title={
+                <>
+                  {leaseOwner ? <div>租约持有者：{leaseOwner}</div> : null}
+                  {leaseExpiresText ? (
+                    <div>租约到期：{leaseExpiresText}</div>
+                  ) : null}
+                </>
+              }
+            >
+              <Tag>执行器 {leaseOwnerText}</Tag>
+            </Tooltip>
+          ) : null}
+        </div>
       ) : null}
       {agentRun.toolCalls.length > 0 ? (
         <div className={styles.agentToolSummary}>
@@ -374,17 +480,10 @@ const AgentRunPanel = ({
       {agentRun.errorMessage ? (
         <div className={styles.agentError}>{agentRun.errorMessage}</div>
       ) : null}
-      {canSubmitFeedback || agentRun.feedback ? (
+      {canSubmitFeedback ? (
         <div className={styles.agentFeedback}>
           <div className={styles.agentFeedbackText}>
-            <span>
-              {agentRun.feedback ? '已记录诊断反馈' : '这次诊断是否有帮助？'}
-            </span>
-            {agentRun.feedback ? (
-              <Tag color={agentRun.feedback.useful ? 'green' : 'orange'}>
-                {agentRun.feedback.useful ? '有用' : '需改进'}
-              </Tag>
-            ) : null}
+            <span>这次诊断是否有帮助？</span>
           </div>
           <div className={styles.agentFeedbackActions}>
             <Button
@@ -394,7 +493,6 @@ const AgentRunPanel = ({
               icon={<LikeOutlined />}
               loading={feedbackSubmitting && !feedbackOpen}
               size="small"
-              type={agentRun.feedback?.useful ? 'primary' : 'default'}
               onClick={() => submitFeedback(true)}
             >
               有用
@@ -402,12 +500,13 @@ const AgentRunPanel = ({
             <Button
               aria-label="标记这次诊断需要改进"
               className={styles.agentFeedbackButton}
-              danger={agentRun.feedback?.useful === false}
               disabled={!canSubmitFeedback || feedbackSubmitting}
               icon={<DislikeOutlined />}
               size="small"
-              type={agentRun.feedback?.useful === false ? 'primary' : 'default'}
               onClick={() => {
+                if (!canSubmitFeedback) {
+                  return;
+                }
                 setFeedbackComment(agentRun.feedback?.comment || '');
                 setFeedbackOpen(true);
               }}
@@ -429,14 +528,16 @@ const AgentRunPanel = ({
             onOk={() => submitFeedback(false, feedbackComment)}
           >
             <div className={styles.agentFeedbackModalBody}>
-              <TextArea
-                autoSize={{ minRows: 3, maxRows: 6 }}
-                maxLength={1024}
-                placeholder="例如：证据不足、判断不准确、修复建议不可执行"
-                showCount
-                value={feedbackComment}
-                onChange={(event) => setFeedbackComment(event.target.value)}
-              />
+              <div className={styles.agentFeedbackInput}>
+                <TextArea
+                  autoSize={{ minRows: 3, maxRows: 6 }}
+                  maxLength={1024}
+                  placeholder="例如：证据不足、判断不准确、修复建议不可执行"
+                  showCount
+                  value={feedbackComment}
+                  onChange={(event) => setFeedbackComment(event.target.value)}
+                />
+              </div>
             </div>
           </Modal>
         </div>
@@ -534,6 +635,7 @@ export const ChatSidebar = ({
 };
 
 export const ConversationPanel = ({
+  agentModeOptions,
   agentToolNameMap,
   session,
   onEditMessage,
@@ -573,6 +675,7 @@ export const ConversationPanel = ({
       <div className={styles.messageStack}>
         {session.messages.map((message) => (
           <ChatMessage
+            agentModeOptions={agentModeOptions}
             agentToolNameMap={agentToolNameMap}
             key={message.id}
             message={message}
@@ -588,11 +691,14 @@ export const ConversationPanel = ({
 
 export const PromptComposer = ({
   agentMode,
+  agentModeOptions,
+  agentScope,
   disabled,
   sendDisabled,
   submitting,
   value,
   onAgentModeChange,
+  onAgentScopeChange,
   onChange,
   onCancel,
   onSubmit,
@@ -635,10 +741,18 @@ export const PromptComposer = ({
         handleSubmit();
       }}
     >
+      {agentMode !== 'assistant' ? (
+        <AgentScopeControl
+          disabled={disabled || submitting}
+          scope={agentScope}
+          onChange={onAgentScopeChange}
+        />
+      ) : null}
       <div className={styles.composerRow}>
         <div className={styles.promptInputShell}>
           <AgentModePrefix
             agentMode={agentMode}
+            agentModeOptions={agentModeOptions}
             disabled={disabled || submitting}
             onAgentModeChange={onAgentModeChange}
           />
@@ -674,10 +788,12 @@ export const PromptComposer = ({
 
 const AgentModePrefix = ({
   agentMode,
+  agentModeOptions,
   disabled,
   onAgentModeChange,
 }: {
   agentMode: ChatAgentMode;
+  agentModeOptions: AgentModeOption[];
   disabled?: boolean;
   onAgentModeChange: (mode: ChatAgentMode) => void;
 }) => {
@@ -695,5 +811,121 @@ const AgentModePrefix = ({
         onChange={onAgentModeChange}
       />
     </div>
+  );
+};
+
+const AgentScopeControl = ({
+  disabled,
+  scope,
+  onChange,
+}: {
+  disabled?: boolean;
+  scope: API.AgentScope;
+  onChange: (scope: API.AgentScope) => void;
+}) => {
+  const { styles } = useStyles();
+  const [draftScope, setDraftScope] = useState<API.AgentScope>(
+    normalizeAgentScope(scope),
+  );
+  const active = hasAgentScope(scope);
+
+  useEffect(() => {
+    setDraftScope(normalizeAgentScope(scope));
+  }, [scope]);
+
+  const updateDraftScope = (field: keyof API.AgentScope, value: string) => {
+    setDraftScope((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const content = (
+    <div className={styles.agentScopePopover}>
+      <div className={styles.agentScopeField}>
+        <span>命名空间</span>
+        <Input
+          allowClear
+          aria-label="Agent 诊断命名空间"
+          size="small"
+          value={draftScope.namespace}
+          onChange={(event) =>
+            updateDraftScope('namespace', event.target.value)
+          }
+        />
+      </div>
+      <div className={styles.agentScopeField}>
+        <span>资源类型</span>
+        <Input
+          allowClear
+          aria-label="Agent 诊断资源类型"
+          size="small"
+          value={draftScope.resource_kind}
+          onChange={(event) =>
+            updateDraftScope('resource_kind', event.target.value)
+          }
+        />
+      </div>
+      <div className={styles.agentScopeField}>
+        <span>资源名称</span>
+        <Input
+          allowClear
+          aria-label="Agent 诊断资源名称"
+          size="small"
+          value={draftScope.resource_name}
+          onChange={(event) =>
+            updateDraftScope('resource_name', event.target.value)
+          }
+        />
+      </div>
+      <div className={styles.agentScopeField}>
+        <span>容器</span>
+        <Input
+          allowClear
+          aria-label="Agent 诊断容器"
+          size="small"
+          value={draftScope.container}
+          onChange={(event) =>
+            updateDraftScope('container', event.target.value)
+          }
+        />
+      </div>
+      <div className={styles.agentScopeActions}>
+        <Button
+          size="small"
+          onClick={() => {
+            setDraftScope({});
+            onChange({});
+          }}
+        >
+          清空
+        </Button>
+        <Button
+          size="small"
+          type="primary"
+          onClick={() => onChange(normalizeAgentScope(draftScope))}
+        >
+          应用
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Popover
+      content={content}
+      placement="topLeft"
+      trigger="click"
+      overlayClassName={styles.agentScopeOverlay}
+    >
+      <Button
+        className={styles.agentScopeButton}
+        disabled={disabled}
+        icon={<ClusterOutlined />}
+        type={active ? 'primary' : 'default'}
+      >
+        {getAgentScopeSummary(scope)}
+      </Button>
+    </Popover>
   );
 };

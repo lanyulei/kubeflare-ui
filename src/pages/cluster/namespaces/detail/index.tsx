@@ -9,7 +9,12 @@ import { PageContainer, ProDescriptions } from '@ant-design/pro-components';
 import { history, useIntl, useParams } from '@umijs/max';
 import { App, Button, Card, Dropdown, Empty, Form, Spin, Tabs } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ClusterMetadata, ClusterPodList, SectionTitle } from '@/components';
+import {
+  AgentDiagnoseButton,
+  ClusterMetadata,
+  ClusterPodList,
+  SectionTitle,
+} from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 import type { SelectValueEditorItem } from '@/components/SelectValueEditor';
 import {
@@ -565,6 +570,15 @@ const NamespaceDetail = () => {
       title={title}
       onBack={() => history.back()}
       extra={[
+        <AgentDiagnoseButton
+          disabled={!namespace}
+          key="agent-diagnose"
+          scope={{
+            namespace: namespaceName,
+            resource_kind: 'Namespace',
+            resource_name: namespaceName,
+          }}
+        />,
         <Dropdown
           disabled={!namespace}
           key="namespace-actions"

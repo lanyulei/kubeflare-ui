@@ -1,9 +1,6 @@
 export type ChatMessageRole = 'assistant' | 'system' | 'user';
 
-export type ChatAgentMode = Extract<
-  API.AgentType,
-  'assistant' | 'auto' | 'diagnostic'
->;
+export type ChatAgentMode = API.AgentType;
 
 export type ChatAgentRun = {
   evidences: API.AgentEvidence[];

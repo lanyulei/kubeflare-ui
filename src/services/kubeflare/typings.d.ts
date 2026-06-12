@@ -172,6 +172,7 @@ declare namespace API {
     | 'diagnostic'
     | 'remediation'
     | 'security'
+    | (string & {})
 
   type AgentRunStatus =
     | 'cancelled'
@@ -222,6 +223,8 @@ declare namespace API {
     agent_type: AgentType
     confidence: number
     reason: string
+    source?: string
+    skill_id?: string
     need_confirm: boolean
     candidates: AgentCandidate[]
     alternatives?: AgentType[]
@@ -236,6 +239,7 @@ declare namespace API {
     agent_types?: AgentType[] | null
     timeout_ms: number
     max_bytes: number
+    observe_max_chars?: number
     source?: AgentToolSource
     origin?: AgentToolOrigin
     enabled: boolean
@@ -260,8 +264,12 @@ declare namespace API {
     status: AgentRunStatus
     confidence: number
     route_reason: string
+    route_source?: string
     summary: string
     error_message?: string
+    heartbeat_at?: string
+    lease_owner?: string
+    lease_expires?: string
     created_at: string
     completed_at?: string
     deleted_at?: string
@@ -367,6 +375,7 @@ declare namespace API {
     enabled?: boolean
     description?: string
     timeout_ms?: number
+    observe_max_chars?: number
     read_only?: boolean
   }
 

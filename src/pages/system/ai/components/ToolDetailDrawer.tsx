@@ -62,6 +62,14 @@ const ToolDetailDrawer = ({ open, tool, onClose }: ToolDetailDrawerProps) => {
                 dataIndex: 'timeout_ms',
                 renderText: (_, record) => `${record.timeout_ms} ms`,
               },
+              {
+                title: '观察文本上限',
+                dataIndex: 'observe_max_chars',
+                renderText: (_, record) =>
+                  record.observe_max_chars
+                    ? `${record.observe_max_chars} 字符`
+                    : '全局默认',
+              },
               { title: '最大字节', dataIndex: 'max_bytes' },
               {
                 title: 'Agent 类型',

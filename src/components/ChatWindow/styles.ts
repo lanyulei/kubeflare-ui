@@ -274,6 +274,7 @@ export const useStyles = createStyles(({ token }) => ({
     lineHeight: 1.7,
   },
   agentRunPanel: {
+    position: 'relative',
     display: 'grid',
     gap: 8,
     marginBottom: 12,
@@ -283,11 +284,20 @@ export const useStyles = createStyles(({ token }) => ({
     fontSize: 12,
     lineHeight: 1.5,
   },
+  agentRunPanelWithFeedback: {
+    paddingRight: 32,
+  },
   agentRunHeader: {
     display: 'flex',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 6,
+  },
+  agentRouteMeta: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    minWidth: 0,
   },
   agentConfidence: {
     color: '#7b89a4',
@@ -414,9 +424,28 @@ export const useStyles = createStyles(({ token }) => ({
     minWidth: 70,
     borderRadius: 8,
   },
+  agentFeedbackReadonly: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    display: 'inline-flex',
+  },
+  agentFeedbackReadonlyIcon: {
+    display: 'inline-flex',
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    fontSize: 15,
+    lineHeight: 1,
+  },
   agentFeedbackModalBody: {
     display: 'grid',
     gap: 10,
+  },
+  agentFeedbackInput: {
+    marginBottom: 16,
   },
   userInputCard: {
     display: 'flex',
@@ -448,7 +477,7 @@ export const useStyles = createStyles(({ token }) => ({
   composer: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr)',
-    gap: 10,
+    gap: 8,
     width: '100%',
     maxWidth: 860,
     boxSizing: 'border-box',
@@ -471,7 +500,7 @@ export const useStyles = createStyles(({ token }) => ({
     borderRight: `1px solid ${token.colorBorderSecondary}`,
   },
   agentModeSelect: {
-    width: 116,
+    width: 140,
     minWidth: 0,
 
     '.ant-select-selector': {
@@ -517,7 +546,7 @@ export const useStyles = createStyles(({ token }) => ({
   },
   promptInput: {
     minHeight: 42,
-    padding: '10px 16px 10px 144px',
+    padding: '10px 16px 10px 168px',
     resize: 'none',
     border: 0,
     borderRadius: 22,
@@ -534,8 +563,51 @@ export const useStyles = createStyles(({ token }) => ({
     },
 
     '@media (max-width: 768px)': {
-      paddingLeft: 140,
+      paddingLeft: 164,
     },
+  },
+  agentScopeButton: {
+    justifySelf: 'start',
+    maxWidth: '100%',
+    height: 28,
+    minWidth: 0,
+    paddingInline: 10,
+    borderRadius: 999,
+    fontSize: 12,
+
+    '.ant-btn-icon': {
+      display: 'inline-flex',
+      fontSize: 13,
+    },
+
+    '> span:not(.ant-btn-icon)': {
+      minWidth: 0,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+  },
+  agentScopeOverlay: {
+    '.ant-popover-inner': {
+      padding: 12,
+    },
+  },
+  agentScopePopover: {
+    display: 'grid',
+    width: 280,
+    gap: 10,
+  },
+  agentScopeField: {
+    display: 'grid',
+    gap: 4,
+    color: token.colorTextSecondary,
+    fontSize: 12,
+    lineHeight: 1.4,
+  },
+  agentScopeActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
   submitButton: {
     width: 96,

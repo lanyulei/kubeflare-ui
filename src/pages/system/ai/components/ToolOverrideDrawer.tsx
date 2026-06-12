@@ -8,6 +8,7 @@ import {
 export type ToolOverrideFormValues = {
   description: string;
   enabled: boolean;
+  observe_max_chars?: number;
   read_only: boolean;
   timeout_ms: number;
 };
@@ -25,6 +26,7 @@ const getInitialValues = (
 ): Partial<ToolOverrideFormValues> => ({
   description: tool?.description || '',
   enabled: Boolean(tool?.enabled),
+  observe_max_chars: tool?.observe_max_chars || 0,
   read_only: Boolean(tool?.read_only),
   timeout_ms: tool?.timeout_ms || 8000,
 });
@@ -62,6 +64,15 @@ const ToolOverrideDrawer = ({
       min={1000}
       max={120000}
       rules={[{ required: true, message: '请输入执行超时时间' }]}
+    />
+    <ProFormDigit
+      name="observe_max_chars"
+      label="观察文本上限"
+      extra="0 表示沿用 Agent 全局默认值；日志、事件类工具可适当放宽。"
+      fieldProps={{ precision: 0, addonAfter: '字符' }}
+      min={0}
+      max={200000}
+      rules={[{ required: true, message: '请输入观察文本上限' }]}
     />
     <ProFormTextArea
       name="description"

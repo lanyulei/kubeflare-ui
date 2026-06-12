@@ -5,18 +5,15 @@ import {
 } from '@ant-design/icons';
 import { Space, Tag } from 'antd';
 import {
-  AGENT_TYPE_LABELS,
+  getAgentTypeLabel,
   TOOL_ORIGIN_LABELS,
   TOOL_SOURCE_LABELS,
-} from '../constants';
+} from '@/utils/agent';
 import { ensureStringList } from '../utils';
 
 type AgentTypeTagsProps = {
   values?: string[] | null;
 };
-
-export const getAgentTypeLabel = (agentType?: string) =>
-  (agentType && AGENT_TYPE_LABELS[agentType]) || agentType || '-';
 
 export const AgentTypeTag = ({ value }: { value?: string }) => (
   <Tag color="blue">{getAgentTypeLabel(value)}</Tag>
