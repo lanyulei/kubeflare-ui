@@ -8,24 +8,12 @@ import {
   GlobalOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
-  QuestionCircleOutlined,
   ReloadOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
 import { history, useParams } from '@umijs/max';
-import {
-  App,
-  Button,
-  Card,
-  Drawer,
-  Dropdown,
-  Empty,
-  Spin,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { App, Button, Card, Dropdown, Empty, Spin, Tabs } from 'antd';
 import { createStyles } from 'antd-style';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parse, stringify } from 'yaml';
@@ -34,7 +22,6 @@ import {
   ClusterMetadata,
   ReplicaSummary,
   SectionTitle,
-  YamlEditor,
 } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
 import { getClusterNodePodList } from '@/services/kubeflare/cluster/node';
@@ -56,6 +43,19 @@ import {
 import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
 import { createKeyValueItem } from '../../workloads/ingresses/components/CreateIngressDrawer/helpers';
 import type { IngressServiceOption } from '../../workloads/ingresses/components/CreateIngressDrawer/types';
+import {
+  configMapBasicInfoColumns,
+  cronJobBasicInfoColumns,
+  customResourceDefinitionBasicInfoColumns,
+  ingressBasicInfoColumns,
+  jobBasicInfoColumns,
+  persistentVolumeClaimBasicInfoColumns,
+  podBasicInfoColumns,
+  secretBasicInfoColumns,
+  serviceAccountBasicInfoColumns,
+  serviceBasicInfoColumns,
+  storageClassBasicInfoColumns,
+} from './components/basicInfoColumns';
 import { ConfigMapSettingsEditDrawer } from './components/ConfigMapEditDrawers';
 import CustomResourceTable from './components/CustomResourceTable';
 import {
@@ -68,13 +68,7 @@ import {
   buildCustomResourceDefinitionVersions,
   type CustomResourceDefinitionBasicInfo,
 } from './components/customResourceDefinitionHelpers';
-import {
-  formatValue,
-  getArrayValue,
-  getNumberValue,
-  getRecordValue,
-  getStringValue,
-} from './components/helpers';
+import { getRecordValue, getStringValue } from './components/helpers';
 import {
   IngressAnnotationsEditDrawer,
   IngressRouteRulesEditDrawer,
@@ -89,6 +83,16 @@ import JobEnvironmentVariables from './components/JobEnvironmentVariables';
 import JobResourceStatus from './components/JobResourceStatus';
 import JobRunRecords from './components/JobRunRecords';
 import {
+  buildCronJobBasicInfo,
+  buildJobBasicInfo,
+  buildJobReplicaSummary,
+  buildServiceAccountBasicInfo,
+  type CronJobBasicInfo,
+  getJobPodSelectors,
+  type JobBasicInfo,
+  type ServiceAccountBasicInfo,
+} from './components/jobCronJobHelpers';
+import {
   getPersistentVolumeClaimSizeGi,
   PersistentVolumeClaimCloneDrawer,
   PersistentVolumeClaimExpandDrawer,
@@ -100,7 +104,6 @@ import PodResourceStatus from './components/PodResourceStatus';
 import PodSchedulingInfo from './components/PodSchedulingInfo';
 import {
   buildPersistentVolumeClaimBasicInfo,
-  formatPersistentVolumeClaimValue,
   getPersistentVolumeClaimStorageClassName,
   hasPersistentVolumeClaim,
   type PersistentVolumeClaimBasicInfo,
@@ -120,6 +123,16 @@ import {
 } from './components/podResizeHelpers';
 import ResourceBasicInfo from './components/ResourceBasicInfo';
 import ResourceDataFields from './components/ResourceDataFields';
+import ResourceYamlDrawer from './components/ResourceYamlDrawer';
+import {
+  CURRENT_CLUSTER_CHANGE_EVENT,
+  isResourceType,
+  namespacedResourceTypes,
+  type ResourceActionKey,
+  resourceListPaths,
+  resourceTypeLabels,
+  sleep,
+} from './components/resourceDetailConfig';
 import { SecretSettingsEditDrawer } from './components/SecretEditDrawers';
 import SecretResourceData from './components/SecretResourceData';
 import {
@@ -127,7 +140,6 @@ import {
   ServiceSettingsEditDrawer,
 } from './components/ServiceEditDrawers';
 import ServiceResourceStatus from './components/ServiceResourceStatus';
-import StatusText from './components/StatusText';
 import {
   type StorageClassVolumeOperationFormValues,
   StorageClassVolumeOperationModal,
@@ -150,13 +162,9 @@ import {
   applyStorageClassVolumeOperations,
   buildStorageClassBasicInfo,
   buildStorageClassVolumeOperations,
-  formatStorageClassBoolean,
-  getReclaimPolicyLabel,
   isDefaultStorageClass,
   type StorageClassBasicInfo,
 } from './components/storageClassHelpers';
-
-const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 
 type IngressServicePortOption = NonNullable<
   IngressServiceOption['ports']
@@ -183,80 +191,6 @@ const buildIngressServicePortOptions = (
 
     return options;
   });
-
-const resourceTypeLabels: Record<API.ClusterResourceCreateType, string> = {
-  Job: '任务',
-  CronJob: '定时任务',
-  Pod: '容器组',
-  Service: '服务',
-  Ingress: '应用路由',
-  Secret: '保密字典',
-  ConfigMap: '配置字典',
-  ServiceAccount: '服务账户',
-  Role: '角色',
-  ClusterRole: '集群角色',
-  RoleBinding: '角色绑定',
-  ClusterRoleBinding: '集群角色绑定',
-  CustomResourceDefinition: '定制资源定义',
-  PersistentVolumeClaim: '持久卷声明',
-  StorageClass: '存储类',
-};
-
-const resourceListPaths: Record<API.ClusterResourceCreateType, string> = {
-  Job: '/cluster/workloads/jobs',
-  CronJob: '/cluster/workloads/cron-jobs',
-  Pod: '/cluster/workloads/pods',
-  Service: '/cluster/workloads/services',
-  Ingress: '/cluster/workloads/ingresses',
-  Secret: '/cluster/config/secrets',
-  ConfigMap: '/cluster/config/config-maps',
-  ServiceAccount: '/cluster/config/service-accounts',
-  Role: '/cluster/access-control/roles',
-  ClusterRole: '/cluster/access-control/roles',
-  RoleBinding: '/cluster/access-control/bindings',
-  ClusterRoleBinding: '/cluster/access-control/bindings',
-  CustomResourceDefinition: '/cluster/custom-resource-definitions',
-  PersistentVolumeClaim: '/cluster/storage/persistent-volume-claims',
-  StorageClass: '/cluster/storage/storage-classes',
-};
-
-const namespacedResourceTypes = new Set<API.ClusterResourceCreateType>([
-  'Job',
-  'CronJob',
-  'Pod',
-  'Service',
-  'Ingress',
-  'Secret',
-  'ConfigMap',
-  'ServiceAccount',
-  'PersistentVolumeClaim',
-]);
-
-const resourceTypes = Object.keys(
-  resourceTypeLabels,
-) as API.ClusterResourceCreateType[];
-
-const sleep = (duration: number) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, duration);
-  });
-
-type ResourceActionKey =
-  | 'yaml'
-  | 'rerun'
-  | 'cronJobSuspend'
-  | 'serviceSettings'
-  | 'serviceExternalAccess'
-  | 'ingressRules'
-  | 'ingressAnnotations'
-  | 'configMapSettings'
-  | 'secretSettings'
-  | 'podResize'
-  | 'pvcClone'
-  | 'pvcExpand'
-  | 'storageClassDefault'
-  | 'storageClassVolumeOperations'
-  | 'delete';
 
 const useStyles = createStyles(({ token }) => ({
   content: {
@@ -309,592 +243,7 @@ const useStyles = createStyles(({ token }) => ({
       paddingTop: '0 !important',
     },
   },
-  yamlDrawerBody: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-  },
-  yamlDrawerEditor: {
-    flex: 1,
-    minHeight: 0,
-  },
-  yamlDrawerFooter: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: token.marginSM,
-  },
-  qosTitle: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: token.marginXXS,
-  },
-  qosHelpIcon: {
-    color: token.colorTextTertiary,
-    cursor: 'help',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  qosTooltip: {
-    display: 'grid',
-    gap: token.marginXXS,
-    maxWidth: 360,
-    lineHeight: token.lineHeight,
-  },
 }));
-
-const QosClassTitle = () => {
-  const { styles } = useStyles();
-
-  return (
-    <span className={styles.qosTitle}>
-      QoS 类别
-      <Tooltip
-        placement="top"
-        title={
-          <div className={styles.qosTooltip}>
-            <div>
-              <strong>Guaranteed：</strong>
-              CPU/内存 request 与 limit
-              都设置且相等，资源保障最高，节点资源紧张时最后被驱逐。
-            </div>
-            <div>
-              <strong>Burstable：</strong>
-              至少设置了一个 request 或 limit，但不满足 Guaranteed
-              条件，可在空闲资源上突发使用。
-            </div>
-            <div>
-              <strong>BestEffort：</strong>
-              未设置 CPU/内存 request 和
-              limit，无资源保障，节点资源紧张时最先被驱逐。
-            </div>
-          </div>
-        }
-      >
-        <QuestionCircleOutlined
-          aria-label="QoS 类别说明"
-          className={styles.qosHelpIcon}
-          tabIndex={0}
-        />
-      </Tooltip>
-    </span>
-  );
-};
-
-const isResourceType = (type?: string): type is API.ClusterResourceCreateType =>
-  resourceTypes.includes(type as API.ClusterResourceCreateType);
-
-const getJobStatus = (manifest?: Record<string, unknown>) => {
-  if (!manifest) {
-    return undefined;
-  }
-
-  const metadata = getRecordValue(manifest.metadata);
-  const status = getRecordValue(manifest.status);
-  const conditions = getArrayValue(status?.conditions)
-    .map((item) => getRecordValue(item))
-    .filter(Boolean);
-
-  if (metadata?.deletionTimestamp) {
-    return 'terminating';
-  }
-
-  const completedCondition = conditions.find(
-    (condition) =>
-      getStringValue(condition?.type) === 'Complete' &&
-      getStringValue(condition?.status) === 'True',
-  );
-  if (completedCondition || getNumberValue(status?.succeeded)) {
-    return 'completed';
-  }
-
-  const failedCondition = conditions.find(
-    (condition) =>
-      getStringValue(condition?.type) === 'Failed' &&
-      getStringValue(condition?.status) === 'True',
-  );
-  if (failedCondition || getNumberValue(status?.failed)) {
-    return 'failed';
-  }
-
-  if (getNumberValue(status?.active)) {
-    return 'running';
-  }
-
-  return undefined;
-};
-
-const getCronJobStatus = (manifest?: Record<string, unknown>) => {
-  if (!manifest) {
-    return undefined;
-  }
-
-  const metadata = getRecordValue(manifest.metadata);
-  const spec = getRecordValue(manifest.spec);
-  const status = getRecordValue(manifest.status);
-
-  if (metadata?.deletionTimestamp) {
-    return 'terminating';
-  }
-  if (spec?.suspend === true) {
-    return 'suspended';
-  }
-  if (getArrayValue(status?.active).length > 0) {
-    return 'running';
-  }
-  return 'active';
-};
-
-const getConcurrencyPolicyLabel = (policy?: unknown) => {
-  if (policy === 'Allow') {
-    return '允许并发运行';
-  }
-  if (policy === 'Forbid') {
-    return '跳过新任务';
-  }
-  if (policy === 'Replace') {
-    return '替换旧任务';
-  }
-  return formatValue(policy);
-};
-
-const buildJobBasicInfo = (
-  manifest?: Record<string, unknown>,
-  fallbackNamespace?: string,
-) => {
-  const metadata = getRecordValue(manifest?.metadata);
-  const spec = getRecordValue(manifest?.spec);
-
-  return {
-    namespace: metadata?.namespace || fallbackNamespace || '-',
-    status: getJobStatus(manifest),
-    backoff_limit: spec?.backoffLimit,
-    completions: spec?.completions,
-    parallelism: spec?.parallelism,
-    active_deadline_seconds: spec?.activeDeadlineSeconds,
-  };
-};
-
-const buildCronJobBasicInfo = (
-  manifest?: Record<string, unknown>,
-  fallbackNamespace?: string,
-) => {
-  const metadata = getRecordValue(manifest?.metadata);
-  const spec = getRecordValue(manifest?.spec);
-
-  return {
-    namespace: metadata?.namespace || fallbackNamespace || '-',
-    status: getCronJobStatus(manifest),
-    schedule: spec?.schedule,
-    starting_deadline_seconds: spec?.startingDeadlineSeconds,
-    successful_jobs_history_limit: spec?.successfulJobsHistoryLimit,
-    failed_jobs_history_limit: spec?.failedJobsHistoryLimit,
-    concurrency_policy: spec?.concurrencyPolicy,
-    create_time: metadata?.creationTimestamp,
-  };
-};
-
-const buildServiceAccountBasicInfo = (
-  manifest?: Record<string, unknown>,
-  fallbackNamespace?: string,
-) => {
-  const metadata = getRecordValue(manifest?.metadata);
-
-  return {
-    namespace: getStringValue(metadata?.namespace) || fallbackNamespace || '-',
-    create_time: getStringValue(metadata?.creationTimestamp),
-  };
-};
-
-const buildJobReplicaSummary = (manifest?: Record<string, unknown>) => {
-  const spec = getRecordValue(manifest?.spec);
-  const status = getRecordValue(manifest?.status);
-  const conditions = getArrayValue(status?.conditions)
-    .map((item) => getRecordValue(item))
-    .filter(Boolean);
-  const completions = getNumberValue(spec?.completions);
-  const parallelism = getNumberValue(spec?.parallelism);
-  const activePods = getNumberValue(status?.active) ?? 0;
-  const succeededPods = getNumberValue(status?.succeeded) ?? 0;
-  const isSuspended = spec?.suspend === true;
-  const isTerminal = conditions.some((condition) => {
-    const type = getStringValue(condition?.type);
-    const conditionStatus = getStringValue(condition?.status);
-
-    return (
-      conditionStatus === 'True' && (type === 'Complete' || type === 'Failed')
-    );
-  });
-  const desiredActivePods =
-    isSuspended || isTerminal
-      ? 0
-      : completions === undefined
-        ? succeededPods > 0
-          ? activePods
-          : (parallelism ?? 1)
-        : Math.max(0, Math.min(completions - succeededPods, parallelism ?? 1));
-
-  return {
-    desiredReplicas: desiredActivePods,
-    currentReplicas: activePods,
-    scalable: Boolean(manifest && !isSuspended && !isTerminal),
-  };
-};
-
-const getJobPodSelectors = (name?: string) =>
-  name ? [`batch.kubernetes.io/job-name=${name}`, `job-name=${name}`] : [];
-
-type JobBasicInfo = ReturnType<typeof buildJobBasicInfo>;
-type CronJobBasicInfo = ReturnType<typeof buildCronJobBasicInfo>;
-type ServiceAccountBasicInfo = ReturnType<typeof buildServiceAccountBasicInfo>;
-
-const customResourceDefinitionBasicInfoColumns: ProDescriptionsItemProps<CustomResourceDefinitionBasicInfo>[] =
-  [
-    {
-      title: '作用域',
-      dataIndex: 'scope',
-      renderText: (value) => formatValue(value),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      valueType: 'dateTime',
-    },
-  ];
-
-const storageClassBasicInfoColumns: ProDescriptionsItemProps<StorageClassBasicInfo>[] =
-  [
-    {
-      title: '默认存储卷',
-      dataIndex: 'default_volume',
-      renderText: (value) => formatStorageClassBoolean(value),
-    },
-    {
-      title: '供应者',
-      dataIndex: 'provisioner',
-      renderText: (value) => formatValue(value),
-    },
-    {
-      title: '允许卷克隆',
-      dataIndex: 'allow_volume_clone',
-      renderText: (value) => formatStorageClassBoolean(value),
-    },
-    {
-      title: '允许卷拓展',
-      dataIndex: 'allow_volume_expansion',
-      renderText: (value) => formatStorageClassBoolean(value),
-    },
-    {
-      title: '回收机制',
-      dataIndex: 'reclaim_policy',
-      renderText: (value) => getReclaimPolicyLabel(value),
-    },
-    {
-      title: '允许卷快照',
-      dataIndex: 'allow_volume_snapshot',
-      renderText: (value) => formatStorageClassBoolean(value),
-    },
-  ];
-
-const persistentVolumeClaimBasicInfoColumns: ProDescriptionsItemProps<PersistentVolumeClaimBasicInfo>[] =
-  [
-    {
-      title: '命名空间',
-      dataIndex: 'namespace',
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      render: (_, record) => <StatusText status={record.status} />,
-    },
-    {
-      title: '容量',
-      dataIndex: 'capacity',
-      renderText: (value) => formatPersistentVolumeClaimValue(value),
-    },
-    {
-      title: '访问模式',
-      dataIndex: 'access_modes',
-      renderText: (value) => formatPersistentVolumeClaimValue(value),
-    },
-    {
-      title: '供应者',
-      dataIndex: 'provisioner',
-      renderText: (value) => formatPersistentVolumeClaimValue(value),
-    },
-    {
-      title: '存储类',
-      dataIndex: 'storage_class',
-      renderText: (value) => formatPersistentVolumeClaimValue(value),
-    },
-    {
-      title: '持久卷',
-      dataIndex: 'volume_name',
-      renderText: (value) => formatPersistentVolumeClaimValue(value),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      valueType: 'dateTime',
-    },
-  ];
-
-const secretBasicInfoColumns: ProDescriptionsItemProps<SecretBasicInfo>[] = [
-  {
-    title: '命名空间',
-    dataIndex: 'namespace',
-  },
-  {
-    title: '类型',
-    dataIndex: 'type',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '创建时间',
-    dataIndex: 'create_time',
-    valueType: 'dateTime',
-  },
-];
-
-const configMapBasicInfoColumns: ProDescriptionsItemProps<ConfigMapBasicInfo>[] =
-  [
-    {
-      title: '命名空间',
-      dataIndex: 'namespace',
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      valueType: 'dateTime',
-    },
-  ];
-
-const ingressBasicInfoColumns: ProDescriptionsItemProps<IngressBasicInfo>[] = [
-  {
-    title: '命名空间',
-    dataIndex: 'namespace',
-  },
-  {
-    title: '网关地址',
-    dataIndex: 'gateway_address',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: 'Ingress Class',
-    dataIndex: 'ingress_class',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '创建时间',
-    dataIndex: 'create_time',
-    valueType: 'dateTime',
-  },
-];
-
-const serviceBasicInfoColumns: ProDescriptionsItemProps<ServiceBasicInfo>[] = [
-  {
-    title: '命名空间',
-    dataIndex: 'namespace',
-  },
-  {
-    title: '类型',
-    dataIndex: 'type',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '虚拟 IP 地址',
-    dataIndex: 'cluster_ip',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '外部 IP 地址',
-    dataIndex: 'external_ip',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: 'IP Family 策略',
-    dataIndex: 'ip_family_policy',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: 'IP Families',
-    dataIndex: 'ip_families',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '内部流量策略',
-    dataIndex: 'internal_traffic_policy',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '外部流量策略',
-    dataIndex: 'external_traffic_policy',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '流量分布',
-    dataIndex: 'traffic_distribution',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: 'LoadBalancer Class',
-    dataIndex: 'load_balancer_class',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '会话亲和性',
-    dataIndex: 'session_affinity',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '选择器',
-    dataIndex: 'selector',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: 'DNS',
-    dataIndex: 'dns',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '端点',
-    dataIndex: 'endpoints',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '创建时间',
-    dataIndex: 'create_time',
-    valueType: 'dateTime',
-  },
-];
-
-const serviceAccountBasicInfoColumns: ProDescriptionsItemProps<ServiceAccountBasicInfo>[] =
-  [
-    {
-      title: '命名空间',
-      dataIndex: 'namespace',
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      valueType: 'dateTime',
-    },
-  ];
-
-const jobBasicInfoColumns: ProDescriptionsItemProps<JobBasicInfo>[] = [
-  {
-    title: '命名空间',
-    dataIndex: 'namespace',
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    render: (_, record) => <StatusText status={record.status} />,
-  },
-  {
-    title: '最大重试次数',
-    dataIndex: 'backoff_limit',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '容器组完成数量',
-    dataIndex: 'completions',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '并行容器组数量',
-    dataIndex: 'parallelism',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '最大运行时间（s）',
-    dataIndex: 'active_deadline_seconds',
-    renderText: (value) => formatValue(value),
-  },
-];
-
-const cronJobBasicInfoColumns: ProDescriptionsItemProps<CronJobBasicInfo>[] = [
-  {
-    title: '命名空间',
-    dataIndex: 'namespace',
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    render: (_, record) => <StatusText status={record.status} />,
-  },
-  {
-    title: '定时计划',
-    dataIndex: 'schedule',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '最大启动延后时间（s）',
-    dataIndex: 'starting_deadline_seconds',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '成功任务保留数量',
-    dataIndex: 'successful_jobs_history_limit',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '失败任务保留数量',
-    dataIndex: 'failed_jobs_history_limit',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '并发策略',
-    dataIndex: 'concurrency_policy',
-    renderText: (value) => getConcurrencyPolicyLabel(value),
-  },
-  {
-    title: '创建时间',
-    dataIndex: 'create_time',
-    valueType: 'dateTime',
-  },
-];
-
-const podBasicInfoColumns: ProDescriptionsItemProps<PodBasicInfo>[] = [
-  {
-    title: '命名空间',
-    dataIndex: 'namespace',
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    render: (_, record) => <StatusText status={record.status} />,
-  },
-  {
-    title: '容器组 IP 地址',
-    dataIndex: 'pod_ip',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '节点名称',
-    dataIndex: 'node_name',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '节点 IP 地址',
-    dataIndex: 'node_ip',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '重启次数',
-    dataIndex: 'restart_count',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: <QosClassTitle />,
-    dataIndex: 'qos_class',
-    renderText: (value) => formatValue(value),
-  },
-  {
-    title: '创建时间',
-    dataIndex: 'create_time',
-    valueType: 'dateTime',
-  },
-];
 
 const ClusterResourceDetail = () => {
   const { message, modal } = App.useApp();
@@ -2376,41 +1725,14 @@ const ClusterResourceDetail = () => {
           </Card>
         </div>
       )}
-      <Drawer
-        title={
-          <>
-            <FileTextOutlined /> 编辑当前资源 YAML
-          </>
-        }
-        destroyOnHidden
-        footer={
-          <div className={styles.yamlDrawerFooter}>
-            <Button onClick={() => setYamlDrawerOpen(false)}>取消</Button>
-            <Button
-              loading={actionLoading === 'yaml'}
-              type="primary"
-              onClick={handleSaveYaml}
-            >
-              确定
-            </Button>
-          </div>
-        }
+      <ResourceYamlDrawer
+        loading={actionLoading === 'yaml'}
         open={yamlDrawerOpen}
-        width="65vw"
-        onClose={() => setYamlDrawerOpen(false)}
-      >
-        <Spin spinning={actionLoading === 'yaml' && !yamlValue}>
-          <div className={styles.yamlDrawerBody}>
-            <div className={styles.yamlDrawerEditor}>
-              <YamlEditor
-                height="calc(100vh - 154px)"
-                value={yamlValue}
-                onChange={setYamlValue}
-              />
-            </div>
-          </div>
-        </Spin>
-      </Drawer>
+        value={yamlValue}
+        onCancel={() => setYamlDrawerOpen(false)}
+        onChange={setYamlValue}
+        onSubmit={handleSaveYaml}
+      />
       <ServiceSettingsEditDrawer
         loading={actionLoading === 'serviceSettings'}
         manifest={manifest}

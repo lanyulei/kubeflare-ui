@@ -25,6 +25,7 @@ import KeyValueList from './KeyValueList';
 import KubernetesCompatibilityNotice from './KubernetesCompatibilityNotice';
 import MarkdownContent from './MarkdownContent';
 import ReplicaSummary from './ReplicaSummary';
+import ResourceCreateWizardDrawer from './ResourceCreateWizardDrawer';
 import {
   ChatDrawerAction,
   ClusterSwitch,
@@ -45,6 +46,7 @@ export type {
   HeaderActionButtonProps,
   HeaderActionDrawerProps,
 } from './HeaderAction';
+export type { ResourceCreateWizardStep } from './ResourceCreateWizardDrawer';
 export type { SettingsNavDrawerSection } from './SettingsNavDrawer';
 export {
   AvatarDropdown,
@@ -69,6 +71,7 @@ export {
   MarkdownContent,
   Question,
   ReplicaSummary,
+  ResourceCreateWizardDrawer,
   SectionTitle,
   SegmentedTabs,
   SelectLang,

@@ -1,25 +1,9 @@
-import {
-  AppstoreOutlined,
-  CloseOutlined,
-  DatabaseOutlined,
-} from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Drawer,
-  Form,
-  Input,
-  message,
-  Row,
-  Select,
-  Space,
-  Steps,
-  Switch,
-} from 'antd';
+import { AppstoreOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { Col, Form, Input, message, Row, Select } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
 import { parse } from 'yaml';
-import { YamlEditor } from '@/components';
+import { ResourceCreateWizardDrawer } from '@/components';
 import {
   buildCreateStorageClassManifest,
   buildCreateStorageClassYaml,
@@ -34,79 +18,7 @@ import {
 import StorageClassSettings from './StorageClassSettings';
 import type { CreateStorageClassFormValues } from './types';
 
-const useStyles = createStyles(({ token }) => ({
-  drawer: {
-    '.ant-drawer-header': {
-      padding: `${token.paddingMD}px ${token.paddingLG}px`,
-    },
-    '.ant-drawer-body': {
-      padding: 0,
-      background: token.colorBgLayout,
-    },
-    '.ant-drawer-footer': {
-      padding: `${token.paddingSM}px ${token.paddingLG}px`,
-      background: token.colorBgContainer,
-    },
-  },
-  headerExtra: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: token.marginMD,
-  },
-  yamlSwitch: {
-    padding: `${token.paddingXXS}px ${token.paddingSM}px`,
-    borderRadius: 999,
-    background: token.colorFillSecondary,
-  },
-  steps: {
-    padding: '15px 20px',
-    borderBottom: `1px solid ${token.colorBorderSecondary}`,
-    background: token.colorBgContainer,
-
-    '.ant-steps-item-icon': {
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    '.ant-steps-item-title': {
-      fontSize: token.fontSize,
-      lineHeight: token.lineHeightSM,
-    },
-
-    '.ant-steps-item-description': {
-      fontSize: token.fontSizeSM,
-      lineHeight: token.lineHeightSM,
-    },
-  },
-  body: {
-    height: 'calc(100vh - 205px)',
-    overflow: 'auto',
-    padding: `${token.paddingLG}px`,
-    background: token.colorBgContainer,
-
-    '.ant-form-item-extra': {
-      color: token.colorTextTertiary,
-      fontSize: token.fontSizeSM,
-      lineHeight: token.lineHeightSM,
-    },
-  },
-  yamlBody: {
-    height: 'calc(100vh - 131px)',
-    padding: token.paddingLG,
-    background: token.colorBgContainer,
-  },
-  footer: {
-    display: 'flex',
-    justifyContent: 'space-between',
-  },
-  footerActions: {
-    display: 'flex',
-    gap: token.marginSM,
-  },
-  section: {
-    marginBottom: token.marginLG,
-  },
+const useStyles = createStyles(() => ({
   basicFields: {
     width: '100%',
   },
@@ -353,99 +265,53 @@ const CreateStorageClassDrawer = ({
   };
 
   return (
-    <Drawer
-      className={styles.drawer}
-      closeIcon={<CloseOutlined />}
-      destroyOnHidden
-      extra={
-        <div className={styles.headerExtra}>
-          <Space className={styles.yamlSwitch}>
-            <span>编辑 YAML</span>
-            <Switch checked={yamlMode} onChange={handleYamlModeChange} />
-          </Space>
-        </div>
+    <ResourceCreateWizardDrawer
+      current={current}
+      getStepDescription={(_, index) =>
+        getStepStatusText(current, index, values)
       }
-      footer={
-        <div className={styles.footer}>
-          <span />
-          <div className={styles.footerActions}>
-            <Button onClick={onCancel}>取消</Button>
-            {!yamlMode && current > 0 && (
-              <Button onClick={() => setCurrent((step) => step - 1)}>
-                上一步
-              </Button>
-            )}
-            {!yamlMode && current < steps.length - 1 ? (
-              <Button type="primary" onClick={handleNext}>
-                下一步
-              </Button>
-            ) : (
-              <Button loading={loading} type="primary" onClick={handleSubmit}>
-                创建
-              </Button>
-            )}
-          </div>
-        </div>
-      }
-      keyboard={false}
-      maskClosable={false}
+      loading={loading}
       open={open}
+      steps={steps}
       title="创建存储类"
-      width="78vw"
-      onClose={onCancel}
-    >
-      {yamlMode ? (
-        <div className={styles.yamlBody}>
-          <YamlEditor
-            height="calc(100vh - 179px)"
-            value={yamlValue}
-            onChange={setYamlValue}
-          />
-        </div>
-      ) : (
-        <>
-          <Steps
-            className={styles.steps}
-            current={current}
-            items={steps.map((step, index) => ({
-              ...step,
-              disabled: index > current + 1,
-              description: getStepStatusText(current, index, values),
-            }))}
-            onChange={async (nextStep) => {
-              if (nextStep <= current) {
-                setCurrent(nextStep);
-                return;
-              }
-              if (nextStep > current + 1) {
-                return;
-              }
+      yamlMode={yamlMode}
+      yamlValue={yamlValue}
+      onCancel={onCancel}
+      onNext={handleNext}
+      onPrev={() => setCurrent((step) => step - 1)}
+      onStepChange={async (nextStep) => {
+        if (nextStep <= current) {
+          setCurrent(nextStep);
+          return;
+        }
+        if (nextStep > current + 1) {
+          return;
+        }
 
-              const valid = await validateCurrentStep();
-              if (valid) {
-                setCurrent(nextStep);
-              }
-            }}
-          />
-          <div className={styles.body}>
-            <Form
-              form={form}
-              layout="vertical"
-              requiredMark
-              onValuesChange={() => {
-                if (!yamlMode) {
-                  setYamlValue(
-                    buildCreateStorageClassYaml(form.getFieldsValue(true)),
-                  );
-                }
-              }}
-            >
-              <div className={styles.section}>{renderStepContent()}</div>
-            </Form>
-          </div>
-        </>
-      )}
-    </Drawer>
+        const valid = await validateCurrentStep();
+        if (valid) {
+          setCurrent(nextStep);
+        }
+      }}
+      onSubmit={handleSubmit}
+      onYamlChange={setYamlValue}
+      onYamlModeChange={handleYamlModeChange}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        requiredMark
+        onValuesChange={() => {
+          if (!yamlMode) {
+            setYamlValue(
+              buildCreateStorageClassYaml(form.getFieldsValue(true)),
+            );
+          }
+        }}
+      >
+        {renderStepContent()}
+      </Form>
+    </ResourceCreateWizardDrawer>
   );
 };
 

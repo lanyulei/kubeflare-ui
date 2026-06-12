@@ -4,7 +4,6 @@ import {
   EditOutlined,
   FolderOpenOutlined,
   HddOutlined,
-  KeyOutlined,
   PlusOutlined,
   SettingOutlined,
   ToolOutlined,
@@ -59,22 +58,24 @@ import {
   STORAGE_QUANTITY_PATTERN,
   volumeTypeOptions,
 } from './helpers';
-
+import {
+  getConfigResourceLabel,
+  getPvcMetrics,
+  getResourceIcon,
+  ResourceOptionContent,
+  ResourcePlaceholder,
+} from './resourceOptions';
+import {
+  accessModeOptions,
+  createStorageConfigId,
+  getInitialStorageDraftValues,
+  storageFieldNames,
+} from './storageDraft';
 import useStyles from './styles';
 
 type StorageSettingsProps = {
   form: FormInstance<CreateWorkloadFormValues>;
   type: API.ClusterWorkloadType;
-};
-
-type ResourcePlaceholderProps = {
-  description: string;
-  icon: ReactNode;
-  title: string;
-};
-
-type ResourceOptionContentProps = ResourcePlaceholderProps & {
-  metrics?: { label: string; value?: string }[];
 };
 
 type SubPathEditorState = {
@@ -92,116 +93,6 @@ type StorageActionItem = {
   onSelect: () => void;
   title: string;
   wide?: boolean;
-};
-
-const getConfigResourceLabel = (type?: WorkloadConfigResourceType) =>
-  type === 'secret' ? '保密字典' : '配置字典';
-
-const getResourceIcon = (type?: WorkloadConfigResourceType) =>
-  type === 'secret' ? <KeyOutlined /> : <ToolOutlined />;
-
-const getPvcMetrics = (item: API.ClusterPersistentVolumeClaimItem) => [
-  { label: '容量', value: item.capacity || '-' },
-  { label: '访问模式', value: item.accessModes?.join(', ') || '-' },
-];
-
-const accessModeOptions = [
-  { label: 'ReadWriteOnce', value: 'ReadWriteOnce' },
-  { label: 'ReadOnlyMany', value: 'ReadOnlyMany' },
-  { label: 'ReadWriteMany', value: 'ReadWriteMany' },
-];
-
-const storageFieldNames: (keyof CreateWorkloadFormValues)[] = [
-  'storageCategory',
-  'storageType',
-  'volumeType',
-  'configResourceType',
-  'volumeName',
-  'emptyDirSizeLimit',
-  'hostPath',
-  'claimName',
-  'claimStorageClassName',
-  'claimCapacity',
-  'claimAccessModes',
-  'pvcNamePrefix',
-  'pvcStorageClassName',
-  'pvcAccessModes',
-  'pvcSizeGi',
-  'configResourceName',
-  'containerMounts',
-  'selectSpecificKeys',
-  'specificKeyPaths',
-];
-
-const createStorageConfigId = () =>
-  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-const getInitialStorageDraftValues = (): Pick<
-  CreateWorkloadFormValues,
-  (typeof storageFieldNames)[number]
-> => ({
-  storageCategory: 'none',
-  storageType: 'none',
-  volumeType: 'persistentVolumeClaim',
-  configResourceType: 'configMap',
-  volumeName: 'data',
-  emptyDirSizeLimit: '200Mi',
-  hostPath: undefined,
-  claimName: undefined,
-  claimStorageClassName: undefined,
-  claimCapacity: undefined,
-  claimAccessModes: undefined,
-  pvcNamePrefix: '',
-  pvcStorageClassName: undefined,
-  pvcAccessModes: ['ReadWriteOnce'],
-  pvcSizeGi: 10,
-  configResourceName: undefined,
-  containerMounts: [],
-  selectSpecificKeys: false,
-  specificKeyPaths: [],
-});
-
-const ResourceOptionContent = ({
-  description,
-  icon,
-  metrics = [],
-  title,
-}: ResourceOptionContentProps) => {
-  const { styles } = useStyles();
-
-  return (
-    <div className={styles.resourceOption}>
-      <span className={styles.resourceIcon}>{icon}</span>
-      <div className={styles.resourceText}>
-        <div className={styles.resourceTitle}>{title}</div>
-        <div className={styles.resourceDescription}>{description}</div>
-      </div>
-      {metrics.slice(0, 2).map((metric) => (
-        <div className={styles.resourceMetric} key={metric.label}>
-          {metric.value || '-'}
-          <span className={styles.metricLabel}>{metric.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const ResourcePlaceholder = ({
-  description,
-  icon,
-  title,
-}: ResourcePlaceholderProps) => {
-  const { styles } = useStyles();
-
-  return (
-    <div className={styles.resourcePlaceholder}>
-      <span className={styles.resourceIcon}>{icon}</span>
-      <div className={styles.resourceText}>
-        <div className={styles.resourceTitle}>{title}</div>
-        <div className={styles.resourceDescription}>{description}</div>
-      </div>
-    </div>
-  );
 };
 
 const StorageSettings = ({ form, type }: StorageSettingsProps) => {
