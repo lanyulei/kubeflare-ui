@@ -21,11 +21,11 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   nodeNameLink: {
-    color: token.colorText,
+    color: token.colorLink,
     lineHeight: token.lineHeight,
 
     '&:hover': {
-      color: token.colorPrimary,
+      color: token.colorLinkHover,
     },
   },
   nodeIp: {

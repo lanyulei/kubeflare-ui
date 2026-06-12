@@ -32,12 +32,12 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
   },
   namespaceNameLink: {
-    color: token.colorText,
+    color: token.colorLink,
     // fontWeight: token.fontWeightStrong,
     lineHeight: token.lineHeight,
 
     '&:hover': {
-      color: token.colorPrimary,
+      color: token.colorLinkHover,
     },
   },
   status: {

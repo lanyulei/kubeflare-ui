@@ -60,9 +60,16 @@ const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeight,
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  workloadNameLink: {
+    overflow: 'hidden',
+    color: token.colorLink,
+    lineHeight: token.lineHeight,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
 
     '&:hover': {
-      color: token.colorPrimary,
+      color: token.colorLinkHover,
     },
   },
   workloadNamespace: {
@@ -228,7 +235,7 @@ const Workloads = () => {
         <div className={styles.workloadName}>
           {record.name && record.namespace ? (
             <Link
-              className={styles.workloadNameText}
+              className={styles.workloadNameLink}
               to={`/cluster/workloads/detail/${encodeURIComponent(
                 record.type,
               )}/${encodeURIComponent(record.namespace)}/${encodeURIComponent(
