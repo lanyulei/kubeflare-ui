@@ -1,6 +1,10 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import { getRecordValue, getStringValue } from './helpers';
 import StatusText from './StatusText';
 
@@ -102,6 +106,7 @@ const columns: ProColumns<JobRunRecord>[] = [
     renderText: (_, record) => formatDateTime(record.completion_time),
   },
 ];
+const comfortableColumns = withComfortableTableColumns(columns);
 
 const JobRunRecords = ({ revisions }: JobRunRecordsProps) => (
   <ProTable<JobRunRecord>
@@ -113,7 +118,10 @@ const JobRunRecords = ({ revisions }: JobRunRecordsProps) => (
       reload: false,
       setting: false,
     }}
-    columns={columns}
+    columns={comfortableColumns}
+    scroll={getComfortableTableScroll(comfortableColumns, undefined, {
+      minScrollX: 820,
+    })}
     dataSource={parseRevisions(revisions)}
     pagination={{
       pageSize: 10,

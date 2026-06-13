@@ -1,3 +1,10 @@
+export type {
+  EndpointSliceBasicInfo,
+  HorizontalPodAutoscalerBasicInfo,
+  IngressClassBasicInfo,
+  NetworkPolicyBasicInfo,
+  PersistentVolumeBasicInfo,
+} from './advancedResourceHelpers';
 export type { ConfigMapBasicInfo } from './configMapHelpers';
 export type { CustomResourceDefinitionBasicInfo } from './customResourceDefinitionHelpers';
 export { formatValue } from './helpers';

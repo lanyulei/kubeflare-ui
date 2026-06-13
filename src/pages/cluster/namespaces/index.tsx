@@ -16,6 +16,10 @@ import {
   deleteClusterNamespace,
   getClusterNamespaceList,
 } from '@/services/kubeflare/cluster/namespace';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 const DEFAULT_PAGE_SIZE = 10;
@@ -239,6 +243,7 @@ const Namespaces = () => {
       ],
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <PageContainer
@@ -251,7 +256,8 @@ const Namespaces = () => {
         rowKey="name"
         actionRef={actionRef}
         search={false}
-        columns={columns}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns)}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,

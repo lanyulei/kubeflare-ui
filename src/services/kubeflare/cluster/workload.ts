@@ -45,6 +45,10 @@ type KubernetesWorkload = {
 }
 
 type KubernetesWorkloadList = {
+  metadata?: {
+    continue?: string
+    remainingItemCount?: number
+  }
   items?: KubernetesWorkload[]
 }
 
@@ -103,6 +107,16 @@ const getCurrentClusterId = () => {
     return undefined
   }
   return window.localStorage.getItem(CURRENT_CLUSTER_STORAGE_KEY) || undefined
+}
+
+const getWorkloadRequestParams = (params?: API.ClusterWorkloadListParams) => {
+  const {
+    keyword: _keyword,
+    namespace: _namespace,
+    type: _type,
+    ...restParams
+  } = params || {}
+  return restParams
 }
 
 const getWorkloadDetailUrl = (params: API.ClusterWorkloadDetailParams) =>
@@ -291,6 +305,7 @@ const getWorkloadListByType = async (
   type: API.ClusterWorkloadType,
   clusterId: string,
   namespace?: string,
+  params?: API.ClusterWorkloadListParams,
   options?: { [key: string]: any },
 ) => {
   const url = namespace
@@ -303,6 +318,7 @@ const getWorkloadListByType = async (
     url,
     {
       method: 'GET',
+      params: getWorkloadRequestParams(params),
       ...(options || {}),
       headers: {
         'X-Cluster-ID': clusterId,
@@ -311,7 +327,13 @@ const getWorkloadListByType = async (
     },
   )
 
-  return (res.data?.items || []).map((item) => toClusterWorkloadItem(item, type))
+  return {
+    continue: res.data?.metadata?.continue || '',
+    items: (res.data?.items || []).map((item) =>
+      toClusterWorkloadItem(item, type),
+    ),
+    remainingItemCount: res.data?.metadata?.remainingItemCount,
+  }
 }
 
 /** 获取工作负载列表 GET /kapis/apps/v1/{deployments,statefulsets,daemonsets} */
@@ -326,6 +348,8 @@ export async function getClusterWorkloadList(
       message: '',
       data: {
         items: [],
+        continue: '',
+        remainingItemCount: 0,
       },
     } as API.ApiResponse<API.ClusterWorkloadListData>
   }
@@ -334,14 +358,22 @@ export async function getClusterWorkloadList(
     ? [params.type]
     : (Object.keys(workloadResourcePaths) as API.ClusterWorkloadType[])
   const namespace = params?.namespace?.trim() || undefined
+  const listParams = params?.type
+    ? params
+    : {
+        ...params,
+        continue: undefined,
+        limit: undefined,
+      }
   const workloadItems = (
     await Promise.all(
       workloadTypes.map((type) =>
-        getWorkloadListByType(type, clusterId, namespace, options),
+        getWorkloadListByType(type, clusterId, namespace, listParams, options),
       ),
     )
   )
-    .flat()
+  const items = workloadItems
+    .flatMap((item) => item.items)
     .filter((item) => matchWorkloadKeyword(item, params?.keyword))
     .sort((first, second) =>
       `${first.namespace}/${first.name}`.localeCompare(
@@ -353,7 +385,11 @@ export async function getClusterWorkloadList(
     code: 20000,
     message: '',
     data: {
-      items: workloadItems,
+      items,
+      continue: params?.type ? workloadItems[0]?.continue || '' : '',
+      remainingItemCount: params?.type
+        ? workloadItems[0]?.remainingItemCount
+        : undefined,
     },
   } as API.ApiResponse<API.ClusterWorkloadListData>
 }

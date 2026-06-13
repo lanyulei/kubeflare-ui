@@ -31,6 +31,10 @@ import {
 } from 'react';
 import { openContainerTerminalWindow } from '@/components/ClusterPodList/terminal';
 import { getClusterNodePodContainerLogs } from '@/services/kubeflare/cluster/node';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 
 const LOG_TAIL_LINES = 500;
 const LOG_FOLLOW_INTERVAL = 5000;
@@ -547,6 +551,7 @@ const ContainerReplicas = ({
       ),
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <>
@@ -554,7 +559,10 @@ const ContainerReplicas = ({
         rowKey="id"
         search={false}
         loading={loading}
-        columns={columns}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns, undefined, {
+          minScrollX: 1120,
+        })}
         dataSource={filteredPods}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,

@@ -21,6 +21,9 @@ type ToolOverrideDrawerProps = {
   onSubmit: (values: ToolOverrideFormValues) => Promise<boolean>;
 };
 
+const MIN_OBSERVE_MAX_CHARS = 256;
+const MAX_OBSERVE_MAX_CHARS = 16000;
+
 const getInitialValues = (
   tool?: API.AgentToolDefinition,
 ): Partial<ToolOverrideFormValues> => ({
@@ -68,11 +71,28 @@ const ToolOverrideDrawer = ({
     <ProFormDigit
       name="observe_max_chars"
       label="观察文本上限"
-      extra="0 表示沿用 Agent 全局默认值；日志、事件类工具可适当放宽。"
+      extra={`0 表示沿用 Agent 全局默认值；自定义值需在 ${MIN_OBSERVE_MAX_CHARS}-${MAX_OBSERVE_MAX_CHARS} 字符之间。`}
       fieldProps={{ precision: 0, addonAfter: '字符' }}
       min={0}
-      max={200000}
-      rules={[{ required: true, message: '请输入观察文本上限' }]}
+      max={MAX_OBSERVE_MAX_CHARS}
+      rules={[
+        { required: true, message: '请输入观察文本上限' },
+        {
+          validator: async (_: unknown, value?: number) => {
+            const nextValue = Number(value || 0);
+            if (
+              nextValue === 0 ||
+              (nextValue >= MIN_OBSERVE_MAX_CHARS &&
+                nextValue <= MAX_OBSERVE_MAX_CHARS)
+            ) {
+              return;
+            }
+            throw new Error(
+              `观察文本上限需为 0 或 ${MIN_OBSERVE_MAX_CHARS}-${MAX_OBSERVE_MAX_CHARS} 字符`,
+            );
+          },
+        },
+      ]}
     />
     <ProFormTextArea
       name="description"

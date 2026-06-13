@@ -19,6 +19,23 @@ const useStyles = createStyles(() => {
       WebkitFontSmoothing: 'antialiased',
       MozOsxFontSmoothing: 'grayscale',
     },
+    'ant-table-wrapper': {
+      '& .ant-table-content, & .ant-table-body': {
+        scrollbarWidth: 'thin',
+      },
+      '& .ant-table-thead > tr > th, & .ant-table-tbody > tr > td, & .ant-table-summary > tr > td':
+        {
+          verticalAlign: 'top',
+          overflowWrap: 'anywhere',
+        },
+      '& .ant-table-thead > tr > th:not(.ant-table-selection-column):not(.ant-table-row-expand-icon-cell), & .ant-table-tbody > tr > td:not(.ant-table-selection-column):not(.ant-table-row-expand-icon-cell), & .ant-table-summary > tr > td:not(.ant-table-selection-column):not(.ant-table-row-expand-icon-cell)':
+        {
+          minWidth: 96,
+        },
+      '& .ant-table-thead > tr > th': {
+        whiteSpace: 'nowrap',
+      },
+    },
     'ul,ol': {
       listStyle: 'none',
     },
@@ -28,7 +45,7 @@ const useStyles = createStyles(() => {
         overflowX: 'auto',
         '&-thead > tr,    &-tbody > tr': {
           '> th,      > td': {
-            whiteSpace: 'pre',
+            whiteSpace: 'normal',
             '> span': {
               display: 'block',
             },

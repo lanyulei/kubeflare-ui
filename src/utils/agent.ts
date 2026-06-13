@@ -9,6 +9,23 @@ export const AGENT_TYPE_LABELS: Record<string, string> = {
   security: '安全分析助手',
 };
 
+export const MANAGED_AGENT_TYPES: API.AgentType[] = [
+  'diagnostic',
+  'security',
+  'capacity',
+  'change_review',
+  'cost',
+  'remediation',
+];
+
+export const MANAGED_AGENT_TYPE_OPTIONS: {
+  label: string;
+  value: API.AgentType;
+}[] = MANAGED_AGENT_TYPES.map((value) => ({
+  label: AGENT_TYPE_LABELS[value] || value,
+  value,
+}));
+
 export const AGENT_ROUTE_SOURCE_LABELS: Record<string, string> = {
   keyword: '关键词路由',
   llm: '智能路由',

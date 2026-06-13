@@ -35,12 +35,17 @@ import {
   deleteClusterResource,
   getClusterResourceManifest,
 } from '@/services/kubeflare/cluster/resource';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import CreateResourceYamlDrawer, {
   type CreateResourceConfig,
 } from './CreateResourceYamlDrawer';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 const DEFAULT_PAGE_SIZE = 10;
+const KEYWORD_SEARCH_PAGE_SIZE = 500;
 const ALL_NAMESPACES_VALUE = '__all__';
 
 const useStyles = createStyles(({ token }) => ({
@@ -146,6 +151,19 @@ const normalizeOptionalText = (value?: string) => {
   const nextValue = value?.trim();
   return nextValue || undefined;
 };
+
+const getResourceRecordKey = <
+  T extends { id?: string; name: string; namespace?: string },
+>(
+  record: T,
+) => record.id || `${record.namespace || '-'}/${record.name}`;
+
+const getPagedTotal = (
+  current: number,
+  pageSize: number,
+  itemCount: number,
+  hasNextPage: boolean,
+) => (current - 1) * pageSize + itemCount + (hasNextPage ? pageSize : 0);
 
 const getCreateErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) {
@@ -336,7 +354,7 @@ const ClusterResourceListPage = <
   titleId,
   defaultTitle,
   columns,
-  rowKey = (record) => record.id || record.name,
+  rowKey,
   tableScroll,
   createButtonText = '新建',
   createConfig,
@@ -351,11 +369,14 @@ const ClusterResourceListPage = <
   request,
 }: ClusterResourceListPageProps<T>) => {
   const intl = useIntl();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const { styles } = useStyles();
   const actionRef = useRef<ActionType | null>(null);
   const keywordRef = useRef('');
   const namespaceRef = useRef<string | undefined>(undefined);
+  const continueTokenRef = useRef<Record<number, string>>({ 1: '' });
+  const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
+  const requestSignatureRef = useRef('');
   const [namespaceValue, setNamespaceValue] = useState(ALL_NAMESPACES_VALUE);
   const [namespaceOptions, setNamespaceOptions] = useState<
     { label: string; value: string }[]
@@ -371,6 +392,15 @@ const ClusterResourceListPage = <
     id: titleId,
     defaultMessage: defaultTitle,
   });
+
+  const resetContinuePagination = useCallback(() => {
+    continueTokenRef.current = { 1: '' };
+  }, []);
+
+  const reloadTableFromFirstPage = useCallback(() => {
+    resetContinuePagination();
+    actionRef.current?.reloadAndRest?.();
+  }, [resetContinuePagination]);
 
   const loadNamespaceOptions = useCallback(async () => {
     if (!showNamespaceFilter) {
@@ -398,6 +428,7 @@ const ClusterResourceListPage = <
       keywordRef.current = '';
       namespaceRef.current = undefined;
       setNamespaceValue(ALL_NAMESPACES_VALUE);
+      resetContinuePagination();
       loadNamespaceOptions();
       actionRef.current?.reloadAndRest?.();
     };
@@ -407,15 +438,15 @@ const ClusterResourceListPage = <
     return () => {
       window.removeEventListener(CURRENT_CLUSTER_CHANGE_EVENT, reloadResources);
     };
-  }, [loadNamespaceOptions]);
+  }, [loadNamespaceOptions, resetContinuePagination]);
 
   useEffect(() => {
     if (reloadKey === undefined) {
       return;
     }
 
-    actionRef.current?.reloadAndRest?.();
-  }, [reloadKey]);
+    reloadTableFromFirstPage();
+  }, [reloadKey, reloadTableFromFirstPage]);
 
   const handleCreateResource = async (values: {
     type: API.ClusterResourceCreateType;
@@ -429,13 +460,30 @@ const ClusterResourceListPage = <
       });
       message.success(`${createConfig?.title || title}已创建`);
       setCreateOpen(false);
-      actionRef.current?.reloadAndRest?.();
+      reloadTableFromFirstPage();
     } catch (error) {
       message.error(getCreateErrorMessage(error));
     } finally {
       setCreateLoading(false);
     }
   };
+
+  const openCreateDrawer = useCallback(() => {
+    const createWarning = createConfig?.createWarning;
+    if (!createWarning) {
+      setCreateOpen(true);
+      return;
+    }
+
+    modal.confirm({
+      title: createWarning.title,
+      content: createWarning.description,
+      okText: createWarning.okText || '继续创建',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => setCreateOpen(true),
+    });
+  }, [createConfig?.createWarning, modal]);
 
   const getResourceParams = useCallback(
     (record: T): API.ClusterResourceDetailParams | undefined => {
@@ -485,63 +533,63 @@ const ClusterResourceListPage = <
         return;
       }
 
-      setDeleteLoadingKey(record.id || record.name);
+      setDeleteLoadingKey(getResourceRecordKey(record));
       try {
         await deleteClusterResource(params, {
           skipErrorHandler: true,
         });
         message.success(`${resourceTypeName}已删除`);
-        actionRef.current?.reloadAndRest?.();
+        reloadTableFromFirstPage();
       } catch (error) {
         message.error(getCreateErrorMessage(error));
       } finally {
         setDeleteLoadingKey(undefined);
       }
     },
-    [getResourceParams, message, resourceTypeName],
+    [getResourceParams, message, reloadTableFromFirstPage, resourceTypeName],
   );
 
   const tableColumns = useMemo<ProColumns<T>[]>(() => {
-    if (!resourceType) {
-      return columns;
-    }
+    const nextColumns: ProColumns<T>[] = resourceType
+      ? [
+          ...columns,
+          {
+            title: '操作',
+            valueType: 'option',
+            key: 'option',
+            width: 150,
+            fixed: 'right',
+            render: (_, record) => [
+              <a
+                key="yaml"
+                onClick={() => {
+                  handleViewYaml(record);
+                }}
+              >
+                <FileTextOutlined /> YAML
+              </a>,
+              <Popconfirm
+                key="delete"
+                title={`确认删除该${resourceTypeName}吗？`}
+                description="删除后资源将从当前集群移除，请谨慎操作。"
+                okText="删除"
+                okButtonProps={{
+                  danger: true,
+                  loading: deleteLoadingKey === getResourceRecordKey(record),
+                }}
+                cancelText="取消"
+                onConfirm={() => handleDeleteResource(record)}
+              >
+                <a>
+                  <DeleteOutlined /> 删除
+                </a>
+              </Popconfirm>,
+            ],
+          },
+        ]
+      : columns;
 
-    return [
-      ...columns,
-      {
-        title: '操作',
-        valueType: 'option',
-        key: 'option',
-        width: 150,
-        fixed: 'right',
-        render: (_, record) => [
-          <a
-            key="yaml"
-            onClick={() => {
-              handleViewYaml(record);
-            }}
-          >
-            <FileTextOutlined /> YAML
-          </a>,
-          <Popconfirm
-            key="delete"
-            title={`确认删除该${resourceTypeName}吗？`}
-            description="删除后资源将从当前集群移除，请谨慎操作。"
-            okText="删除"
-            okButtonProps={{
-              danger: true,
-              loading: deleteLoadingKey === (record.id || record.name),
-            }}
-            cancelText="取消"
-            onConfirm={() => handleDeleteResource(record)}
-          >
-            <a>
-              <DeleteOutlined /> 删除
-            </a>
-          </Popconfirm>,
-        ],
-      },
-    ];
+    return withComfortableTableColumns(nextColumns);
   }, [
     columns,
     deleteLoadingKey,
@@ -550,16 +598,24 @@ const ClusterResourceListPage = <
     resourceType,
     resourceTypeName,
   ]);
+  const scroll = useMemo(
+    () => getComfortableTableScroll(tableColumns, tableScroll),
+    [tableColumns, tableScroll],
+  );
+  const tableRowKey = useMemo(
+    () => rowKey || ((record: T) => getResourceRecordKey(record)),
+    [rowKey],
+  );
 
   return (
     <PageContainer title={title}>
       {extraContent}
       <ProTable<T>
-        rowKey={rowKey}
+        rowKey={tableRowKey}
         actionRef={actionRef}
         search={false}
         columns={tableColumns}
-        scroll={tableScroll}
+        scroll={scroll}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,
@@ -567,16 +623,70 @@ const ClusterResourceListPage = <
         request={async (params) => {
           const current = params.current || 1;
           const pageSize = params.pageSize || DEFAULT_PAGE_SIZE;
+          const keyword = normalizeOptionalText(keywordRef.current);
+          const requestSignature = [
+            keyword || '',
+            namespaceRef.current || '',
+          ].join('\n');
+
+          if (
+            pageSizeRef.current !== pageSize ||
+            requestSignatureRef.current !== requestSignature
+          ) {
+            pageSizeRef.current = pageSize;
+            requestSignatureRef.current = requestSignature;
+            resetContinuePagination();
+          }
+
+          if (keyword) {
+            const allItems: T[] = [];
+            let searchContinueToken: string | undefined;
+
+            do {
+              const res = await request({
+                keyword,
+                namespace: namespaceRef.current,
+                limit: KEYWORD_SEARCH_PAGE_SIZE,
+                continue: searchContinueToken,
+              });
+              allItems.push(...(res.data.items || []));
+              searchContinueToken = res.data.continue || undefined;
+            } while (searchContinueToken);
+
+            return {
+              data: allItems.slice(
+                (current - 1) * pageSize,
+                current * pageSize,
+              ),
+              success: true,
+              total: allItems.length,
+            };
+          }
+
+          const continueToken = continueTokenRef.current[current] || '';
           const res = await request({
-            keyword: normalizeOptionalText(keywordRef.current),
             namespace: namespaceRef.current,
+            limit: pageSize,
+            continue: continueToken || undefined,
           });
-          const allItems = res.data.items || [];
+          const items = res.data.items || [];
+          const nextContinueToken = res.data.continue || '';
+
+          if (nextContinueToken) {
+            continueTokenRef.current[current + 1] = nextContinueToken;
+          } else {
+            delete continueTokenRef.current[current + 1];
+          }
 
           return {
-            data: allItems.slice((current - 1) * pageSize, current * pageSize),
+            data: items,
             success: true,
-            total: allItems.length,
+            total: getPagedTotal(
+              current,
+              pageSize,
+              items.length,
+              Boolean(nextContinueToken),
+            ),
           };
         }}
         headerTitle={
@@ -590,7 +700,7 @@ const ClusterResourceListPage = <
                     onCreate(namespaceRef.current);
                     return;
                   }
-                  setCreateOpen(true);
+                  openCreateDrawer();
                 }}
               >
                 {createButtonText}
@@ -612,7 +722,7 @@ const ClusterResourceListPage = <
                   namespaceRef.current =
                     value === ALL_NAMESPACES_VALUE ? undefined : value;
                   setNamespaceValue(value);
-                  actionRef.current?.reloadAndRest?.();
+                  reloadTableFromFirstPage();
                 }}
               />
             )}
@@ -622,7 +732,7 @@ const ClusterResourceListPage = <
               placeholder={searchPlaceholder || `搜索${title}名称`}
               onSearch={(value) => {
                 keywordRef.current = value;
-                actionRef.current?.reloadAndRest?.();
+                reloadTableFromFirstPage();
               }}
             />
           </Space>

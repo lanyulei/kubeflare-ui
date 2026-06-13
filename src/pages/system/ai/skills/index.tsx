@@ -17,6 +17,10 @@ import {
   reloadAgentRuntime,
   rollbackAgentRuntimeConfigVersion,
 } from '@/services/kubeflare/agent';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import { AgentTypeTags, EnabledTag } from '../components/AgentTags';
 import RuntimeChangeReasonModal from '../components/RuntimeChangeReasonModal';
 import RuntimeHistoryDrawer from '../components/RuntimeHistoryDrawer';
@@ -330,6 +334,7 @@ const Skills = () => {
       ],
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <PageContainer title="技能管理">
@@ -337,8 +342,8 @@ const Skills = () => {
         rowKey="id"
         actionRef={actionRef}
         search={false}
-        columns={columns}
-        scroll={{ x: 1360 }}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns, { x: 1360 })}
         pagination={{ defaultPageSize: TABLE_DEFAULT_PAGE_SIZE }}
         request={async (params) => {
           const [skillRes, toolRes] = await Promise.all([

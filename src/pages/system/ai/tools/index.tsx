@@ -16,6 +16,10 @@ import {
   rollbackAgentRuntimeConfigVersion,
 } from '@/services/kubeflare/agent';
 import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
+import {
   AgentTypeTags,
   EnabledTag,
   ReadOnlyTag,
@@ -39,6 +43,11 @@ import {
 const TABLE_DEFAULT_PAGE_SIZE = 10;
 
 type PendingRuntimeChange =
+  | {
+      type: 'edit';
+      tool: API.AgentToolDefinition;
+      values: ToolOverrideFormValues;
+    }
   | { type: 'restore'; tool: API.AgentToolDefinition }
   | { type: 'reset' }
   | { type: 'rollback'; version: API.AgentRuntimeConfigVersion };
@@ -61,43 +70,8 @@ const Tools = () => {
       return false;
     }
 
-    setSaving(true);
-    try {
-      const nextTool = {
-        ...editingTool,
-        description: values.description.trim(),
-        enabled: values.enabled,
-        observe_max_chars: values.observe_max_chars,
-        read_only: values.read_only,
-        timeout_ms: values.timeout_ms,
-      };
-      const res = await reloadAgentRuntime(
-        {
-          overrides: buildToolOverridePatch(
-            editingTool.id,
-            toReloadToolOverride(nextTool),
-          ),
-        },
-        { skipErrorHandler: true },
-      );
-      const versionText = res.data.version ? `，版本 #${res.data.version}` : '';
-      if (res.data.changed) {
-        message.success(`工具配置已更新${versionText}`);
-      } else {
-        message.info('工具配置无变化');
-      }
-      setEditingTool(undefined);
-      if (res.data.changed) {
-        setHistoryRefreshKey((value) => value + 1);
-      }
-      actionRef.current?.reload();
-      return true;
-    } catch (error) {
-      message.error(getErrorMessage(error, '工具配置更新失败'));
-      return false;
-    } finally {
-      setSaving(false);
-    }
+    setPendingChange({ type: 'edit', tool: editingTool, values });
+    return false;
   };
 
   const handleReset = () => {
@@ -118,6 +92,37 @@ const Tools = () => {
     }
 
     try {
+      if (pendingChange.type === 'edit') {
+        setSaving(true);
+        const nextTool = {
+          ...pendingChange.tool,
+          description: pendingChange.values.description.trim(),
+          enabled: pendingChange.values.enabled,
+          observe_max_chars: pendingChange.values.observe_max_chars,
+          read_only: pendingChange.values.read_only,
+          timeout_ms: pendingChange.values.timeout_ms,
+        };
+        const res = await reloadAgentRuntime(
+          {
+            reason,
+            overrides: buildToolOverridePatch(
+              pendingChange.tool.id,
+              toReloadToolOverride(nextTool),
+            ),
+          },
+          { skipErrorHandler: true },
+        );
+        const versionText = res.data.version
+          ? `，版本 #${res.data.version}`
+          : '';
+        if (res.data.changed) {
+          message.success(`工具配置已更新${versionText}`);
+        } else {
+          message.info('工具配置无变化');
+        }
+        setEditingTool(undefined);
+      }
+
       if (pendingChange.type === 'reset') {
         setResetting(true);
         const res = await reloadAgentRuntime(
@@ -173,13 +178,19 @@ const Tools = () => {
   };
 
   const reasonModalTitle =
-    pendingChange?.type === 'restore'
-      ? `恢复工具默认 / ${pendingChange.tool.name}`
-      : pendingChange?.type === 'rollback'
-        ? `回滚到版本 #${pendingChange.version.version}`
-        : '回滚启动配置';
+    pendingChange?.type === 'edit'
+      ? `保存工具配置 / ${pendingChange.tool.name}`
+      : pendingChange?.type === 'restore'
+        ? `恢复工具默认 / ${pendingChange.tool.name}`
+        : pendingChange?.type === 'rollback'
+          ? `回滚到版本 #${pendingChange.version.version}`
+          : '回滚启动配置';
   const reasonModalConfirm =
-    pendingChange?.type === 'restore' ? '恢复' : '确认回滚';
+    pendingChange?.type === 'edit'
+      ? '保存'
+      : pendingChange?.type === 'restore'
+        ? '恢复'
+        : '确认回滚';
   const reasonModalLoading = saving || resetting || rollingBack;
 
   const columns: ProColumns<API.AgentToolDefinition>[] = [
@@ -279,6 +290,7 @@ const Tools = () => {
         ].filter(Boolean),
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <PageContainer title="工具治理">
@@ -286,8 +298,8 @@ const Tools = () => {
         rowKey="id"
         actionRef={actionRef}
         search={false}
-        columns={columns}
-        scroll={{ x: 1500 }}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns, { x: 1500 })}
         pagination={{ defaultPageSize: TABLE_DEFAULT_PAGE_SIZE }}
         request={async (params) => {
           const res = await getAgentToolList();
@@ -354,7 +366,7 @@ const Tools = () => {
         onRollback={handleRollback}
       />
       <RuntimeChangeReasonModal
-        danger
+        danger={pendingChange?.type !== 'edit'}
         open={Boolean(pendingChange)}
         title={reasonModalTitle}
         confirmText={reasonModalConfirm}

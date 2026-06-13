@@ -266,3 +266,173 @@ export const createStorageClassConfig: CreateResourceConfig = {
     volumeBindingMode: 'WaitForFirstConsumer',
   }),
 };
+
+export const createPersistentVolumeConfig: CreateResourceConfig = {
+  type: 'PersistentVolume',
+  title: '创建持久卷',
+  createWarning: {
+    title: '确认创建持久卷吗？',
+    description:
+      'PersistentVolume 是集群级存储资源，错误的容量、回收策略或本地路径可能影响数据安全，请确认 YAML 与目标集群匹配。',
+    okText: '继续创建',
+  },
+  getDefaultManifest: () => ({
+    apiVersion: 'v1',
+    kind: 'PersistentVolume',
+    metadata: {
+      name: 'example-pv',
+    },
+    spec: {
+      capacity: {
+        storage: '1Gi',
+      },
+      accessModes: ['ReadWriteOnce'],
+      persistentVolumeReclaimPolicy: 'Retain',
+      hostPath: {
+        path: '/tmp/example-pv',
+      },
+    },
+  }),
+};
+
+export const createHorizontalPodAutoscalerConfig: CreateResourceConfig = {
+  type: 'HorizontalPodAutoscaler',
+  title: '创建水平伸缩',
+  createWarning: {
+    title: '确认创建水平伸缩吗？',
+    description:
+      'HPA 会自动调整目标工作负载副本数，请确认伸缩目标、指标来源和最小/最大副本数符合预期。',
+    okText: '继续创建',
+  },
+  namespaced: true,
+  getDefaultManifest: (namespace) => ({
+    apiVersion: 'autoscaling/v2',
+    kind: 'HorizontalPodAutoscaler',
+    metadata: {
+      name: 'example-hpa',
+      namespace: getNamespace(namespace),
+    },
+    spec: {
+      scaleTargetRef: {
+        apiVersion: 'apps/v1',
+        kind: 'Deployment',
+        name: 'example-deployment',
+      },
+      minReplicas: 1,
+      maxReplicas: 5,
+      metrics: [
+        {
+          type: 'Resource',
+          resource: {
+            name: 'cpu',
+            target: {
+              type: 'Utilization',
+              averageUtilization: 70,
+            },
+          },
+        },
+      ],
+    },
+  }),
+};
+
+export const createNetworkPolicyConfig: CreateResourceConfig = {
+  type: 'NetworkPolicy',
+  title: '创建网络策略',
+  createWarning: {
+    title: '确认创建网络策略吗？',
+    description:
+      'NetworkPolicy 可能立即改变命名空间内 Pod 的入口或出口流量，请确认选择器和规则范围不会误拦截业务流量。',
+    okText: '继续创建',
+  },
+  namespaced: true,
+  getDefaultManifest: (namespace) => ({
+    apiVersion: 'networking.k8s.io/v1',
+    kind: 'NetworkPolicy',
+    metadata: {
+      name: 'example-network-policy',
+      namespace: getNamespace(namespace),
+    },
+    spec: {
+      podSelector: {
+        matchLabels: {
+          app: 'example',
+        },
+      },
+      policyTypes: ['Ingress'],
+      ingress: [
+        {
+          from: [
+            {
+              podSelector: {
+                matchLabels: {
+                  app: 'frontend',
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
+  }),
+};
+
+export const createIngressClassConfig: CreateResourceConfig = {
+  type: 'IngressClass',
+  title: '创建 IngressClass',
+  createWarning: {
+    title: '确认创建 IngressClass 吗？',
+    description:
+      'IngressClass 是集群级入口控制器声明，请确认 controller 与集群内实际控制器一致，避免 Ingress 路由被错误接管。',
+    okText: '继续创建',
+  },
+  getDefaultManifest: () => ({
+    apiVersion: 'networking.k8s.io/v1',
+    kind: 'IngressClass',
+    metadata: {
+      name: 'example-ingress-class',
+    },
+    spec: {
+      controller: 'example.com/ingress-controller',
+    },
+  }),
+};
+
+export const createEndpointSliceConfig: CreateResourceConfig = {
+  type: 'EndpointSlice',
+  title: '创建 EndpointSlice',
+  createWarning: {
+    title: '确认创建 EndpointSlice 吗？',
+    description:
+      'EndpointSlice 会参与 Service 端点发现，错误地址或端口可能影响服务流量，请确认关联 Service、地址类型和端口配置。',
+    okText: '继续创建',
+  },
+  namespaced: true,
+  getDefaultManifest: (namespace) => ({
+    apiVersion: 'discovery.k8s.io/v1',
+    kind: 'EndpointSlice',
+    metadata: {
+      name: 'example-endpoint-slice',
+      namespace: getNamespace(namespace),
+      labels: {
+        'kubernetes.io/service-name': 'example-service',
+      },
+    },
+    addressType: 'IPv4',
+    ports: [
+      {
+        name: 'http',
+        protocol: 'TCP',
+        port: 80,
+      },
+    ],
+    endpoints: [
+      {
+        addresses: ['10.0.0.10'],
+        conditions: {
+          ready: true,
+        },
+      },
+    ],
+  }),
+};

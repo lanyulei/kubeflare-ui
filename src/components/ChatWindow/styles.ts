@@ -304,6 +304,21 @@ export const useStyles = createStyles(({ token }) => ({
     fontSize: 12,
     fontWeight: 600,
   },
+  agentRunOpenLink: {
+    display: 'inline-flex',
+    minHeight: 22,
+    alignItems: 'center',
+    gap: 4,
+    color: token.colorPrimary,
+    fontSize: 12,
+    lineHeight: '20px',
+    textDecoration: 'none',
+
+    '&:hover, &:focus-visible': {
+      color: token.colorPrimaryHover,
+      textDecoration: 'none',
+    },
+  },
   agentReason: {
     overflowWrap: 'anywhere',
   },

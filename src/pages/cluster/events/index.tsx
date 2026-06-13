@@ -25,6 +25,10 @@ import {
   matchClusterEvent,
 } from '@/services/kubeflare/cluster/event';
 import { getClusterNamespaceList } from '@/services/kubeflare/cluster/namespace';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 const DEFAULT_LIMIT = 300;
@@ -245,6 +249,7 @@ const GlobalEvents = () => {
       },
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   const loadNamespaceOptions = useCallback(async () => {
     const res = await getClusterNamespaceList();
@@ -360,10 +365,10 @@ const GlobalEvents = () => {
       <div className={styles.content}>
         <ProTable<API.ClusterEventItem>
           rowKey={(record) => getEventItemKey(record)}
-          columns={columns}
+          columns={tableColumns}
           dataSource={filteredItems}
           loading={loading}
-          scroll={{ x: 1510 }}
+          scroll={getComfortableTableScroll(tableColumns, { x: 1510 })}
           search={{
             defaultCollapsed: false,
             labelWidth: 'auto',

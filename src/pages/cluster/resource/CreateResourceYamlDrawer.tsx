@@ -29,6 +29,11 @@ const useStyles = createStyles(({ token }) => ({
 export type CreateResourceConfig = {
   type: API.ClusterResourceCreateType;
   title: string;
+  createWarning?: {
+    title: string;
+    description: string;
+    okText?: string;
+  };
   namespaced?: boolean;
   getDefaultManifest: (namespace?: string) => Record<string, unknown>;
 };

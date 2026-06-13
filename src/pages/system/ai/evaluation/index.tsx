@@ -1,12 +1,15 @@
-import { ReloadOutlined } from '@ant-design/icons';
-import { PageContainer } from '@ant-design/pro-components';
+import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import type { ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import type { TableColumnsType } from 'antd';
 import {
   App,
   Button,
   Card,
+  Drawer,
   Empty,
   Radio,
+  Select,
   Space,
   Spin,
   Table,
@@ -14,7 +17,20 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getAgentRunMetricsEvaluation } from '@/services/kubeflare/agent';
+import { useAgentOptions } from '@/hooks/useAgentOptions';
+import { useClusterOptions } from '@/hooks/useClusterOptions';
+import {
+  getAgentRunDetail,
+  getAgentRunMetricsEvaluation,
+  getAgentRunMetricsSamples,
+} from '@/services/kubeflare/agent';
+import { getAgentTypeLabel } from '@/utils/agent';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
+import AgentRunDetailDrawer from '../components/AgentRunDetailDrawer';
+import { AgentRunStatusTag } from '../components/RunTags';
 import { getErrorMessage } from '../utils';
 import {
   type AgentEvaluationFeatureItem,
@@ -37,6 +53,11 @@ import { useStyles } from './styles';
 
 type FeatureMetricRow = AgentEvaluationFeatureItem & {
   comparison: API.AgentFeatureComparison;
+};
+
+type SampleDrawerState = {
+  enabled?: boolean;
+  feature: AgentEvaluationFeatureItem;
 };
 
 type SummaryMetricProps = {
@@ -192,9 +213,19 @@ const AgentEvaluation = () => {
   const { styles } = useStyles();
   const mountedRef = useRef(true);
   const requestRef = useRef(0);
+  const { loading: agentOptionsLoading, options: agentOptions } =
+    useAgentOptions();
+  const { loading: clusterLoading, options: clusterOptions } =
+    useClusterOptions();
   const [days, setDays] = useState(30);
+  const [agentType, setAgentType] = useState<API.AgentType>();
+  const [clusterID, setClusterID] = useState('');
   const [evaluation, setEvaluation] = useState<API.AgentRunMetricsEvaluation>();
   const [loading, setLoading] = useState(false);
+  const [sampleDrawer, setSampleDrawer] = useState<SampleDrawerState>();
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detail, setDetail] = useState<API.AgentRunDetail>();
 
   useEffect(() => {
     mountedRef.current = true;
@@ -206,13 +237,21 @@ const AgentEvaluation = () => {
   }, []);
 
   const loadEvaluation = useCallback(
-    async (nextDays = days) => {
+    async (
+      nextDays: number,
+      nextAgentType?: API.AgentType,
+      nextClusterID = '',
+    ) => {
       const requestId = ++requestRef.current;
       setLoading(true);
 
       try {
         const res = await getAgentRunMetricsEvaluation(
-          { days: nextDays },
+          {
+            agent_type: nextAgentType,
+            cluster_id: nextClusterID.trim() || undefined,
+            days: nextDays,
+          },
           { skipErrorHandler: true },
         );
         if (!mountedRef.current || requestId !== requestRef.current) {
@@ -229,12 +268,12 @@ const AgentEvaluation = () => {
         }
       }
     },
-    [days, message],
+    [message],
   );
 
   useEffect(() => {
-    void loadEvaluation(days);
-  }, [days, loadEvaluation]);
+    void loadEvaluation(days, agentType, clusterID);
+  }, [agentType, clusterID, days, loadEvaluation]);
 
   const overall = getBucket(evaluation?.overall);
   const featureRows = useMemo<FeatureMetricRow[]>(
@@ -246,6 +285,31 @@ const AgentEvaluation = () => {
     [evaluation],
   );
   const windowDays = evaluation?.window_days || days;
+
+  const openRunDetail = async (runID: string) => {
+    setDetailOpen(true);
+    setDetailLoading(true);
+    setDetail(undefined);
+    try {
+      const res = await getAgentRunDetail(runID, { skipErrorHandler: true });
+      setDetail(res.data);
+    } catch (error) {
+      message.error(getErrorMessage(error, 'Run 详情加载失败'));
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleFeedbackSubmitted = (feedback: API.AgentRunFeedback) => {
+    setDetail((current) =>
+      current?.run.id === feedback.run_id
+        ? {
+            ...current,
+            feedback,
+          }
+        : current,
+    );
+  };
 
   const columns: TableColumnsType<FeatureMetricRow> = [
     {
@@ -285,13 +349,163 @@ const AgentEvaluation = () => {
       width: 260,
       render: (_, record) => <CostCompareCell comparison={record.comparison} />,
     },
+    {
+      title: '样本',
+      dataIndex: 'sample',
+      width: 150,
+      render: (_, record) => (
+        <Space size={4}>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => setSampleDrawer({ enabled: true, feature: record })}
+          >
+            开启
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => setSampleDrawer({ enabled: false, feature: record })}
+          >
+            关闭
+          </Button>
+        </Space>
+      ),
+    },
   ];
+
+  const sampleColumns: ProColumns<API.AgentRunMetricsSample>[] = [
+    {
+      title: 'Run',
+      dataIndex: ['run', 'id'],
+      width: 230,
+      ellipsis: true,
+      search: false,
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+          <a onClick={() => openRunDetail(record.run.id)}>{record.run.id}</a>
+          <Typography.Text type="secondary" ellipsis>
+            {record.run.input || '-'}
+          </Typography.Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Agent',
+      dataIndex: ['run', 'agent_type'],
+      width: 130,
+      search: false,
+      render: (_, record) => getAgentTypeLabel(record.run.agent_type),
+    },
+    {
+      title: '状态',
+      dataIndex: ['run', 'status'],
+      width: 110,
+      search: false,
+      render: (_, record) => <AgentRunStatusTag status={record.run.status} />,
+    },
+    {
+      title: '反馈',
+      dataIndex: ['feedback', 'useful'],
+      width: 100,
+      search: false,
+      render: (_, record) =>
+        record.feedback ? (
+          <Tag color={record.feedback.useful ? 'success' : 'error'}>
+            {record.feedback.useful ? '有用' : '没用'}
+          </Tag>
+        ) : (
+          <Typography.Text type="secondary">无反馈</Typography.Text>
+        ),
+    },
+    {
+      title: '成本',
+      dataIndex: 'metrics',
+      width: 320,
+      search: false,
+      render: (_, record) => {
+        const metrics = record.metrics;
+
+        return (
+          <Space size={[0, 6]} wrap>
+            <Tag>步骤 {metrics?.step_count ?? '-'}</Tag>
+            <Tag>工具 {metrics?.tool_call_count ?? '-'}</Tag>
+            <Tag>
+              Token{' '}
+              {(metrics?.token_used || 0) + (metrics?.extra_token_used || 0)}
+            </Tag>
+            <Tag>耗时 {formatDuration(metrics?.duration_ms)}</Tag>
+            {metrics?.token_estimated ? (
+              <Tag color="warning">估算 Token</Tag>
+            ) : null}
+            {metrics?.plan_generated ? <Tag color="blue">计划</Tag> : null}
+            {metrics?.playbook_matched ? (
+              <Tag color="purple">Playbook</Tag>
+            ) : null}
+            {metrics?.hypothesis_total ? (
+              <Tag>
+                假设 {metrics.hypothesis_resolved}/{metrics.hypothesis_total}
+              </Tag>
+            ) : null}
+            {metrics?.case_retrieval_mode ? (
+              <Tag>检索 {metrics.case_retrieval_mode}</Tag>
+            ) : null}
+          </Space>
+        );
+      },
+    },
+    {
+      title: '创建时间',
+      dataIndex: ['run', 'created_at'],
+      width: 180,
+      search: false,
+      render: (_, record) => formatSince(record.run.created_at),
+    },
+    {
+      title: '操作',
+      dataIndex: 'option',
+      width: 90,
+      search: false,
+      render: (_, record) => (
+        <Button
+          type="link"
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => openRunDetail(record.run.id)}
+        >
+          详情
+        </Button>
+      ),
+    },
+  ];
+  const comfortableColumns = withComfortableTableColumns(columns);
+  const comfortableSampleColumns = withComfortableTableColumns(sampleColumns);
 
   return (
     <PageContainer
       title="Agent 评估看板"
       extra={
         <Space wrap>
+          <Select<API.AgentType>
+            allowClear
+            loading={agentOptionsLoading}
+            options={agentOptions}
+            placeholder="Agent"
+            style={{ width: 180 }}
+            value={agentType}
+            onChange={setAgentType}
+          />
+          <Select<string>
+            allowClear
+            showSearch
+            loading={clusterLoading}
+            optionFilterProp="label"
+            options={clusterOptions}
+            placeholder="集群"
+            style={{ width: 220 }}
+            value={clusterID || undefined}
+            onChange={(value) => setClusterID(value || '')}
+          />
           <Radio.Group
             buttonStyle="solid"
             optionType="button"
@@ -302,7 +516,7 @@ const AgentEvaluation = () => {
           <Button
             icon={<ReloadOutlined />}
             loading={loading}
-            onClick={() => loadEvaluation(days)}
+            onClick={() => loadEvaluation(days, agentType, clusterID)}
           >
             刷新
           </Button>
@@ -368,11 +582,13 @@ const AgentEvaluation = () => {
             >
               <Table<FeatureMetricRow>
                 rowKey="key"
-                columns={columns}
+                columns={comfortableColumns}
                 dataSource={featureRows}
                 loading={loading}
                 pagination={false}
-                scroll={{ x: 1150 }}
+                scroll={getComfortableTableScroll(comfortableColumns, {
+                  x: 1150,
+                })}
               />
             </Card>
           </div>
@@ -385,7 +601,99 @@ const AgentEvaluation = () => {
           </div>
         )}
       </Spin>
+      {sampleDrawer ? (
+        <SampleDrawer
+          columns={comfortableSampleColumns}
+          agentType={agentType}
+          clusterID={clusterID}
+          days={days}
+          enabled={sampleDrawer.enabled}
+          feature={sampleDrawer.feature.key}
+          title={`${sampleDrawer.feature.title} / ${
+            sampleDrawer.enabled ? '开启' : '关闭'
+          }样本`}
+          open={Boolean(sampleDrawer)}
+          onClose={() => setSampleDrawer(undefined)}
+        />
+      ) : null}
+      <AgentRunDetailDrawer
+        detail={detail}
+        loading={detailLoading}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        onFeedbackSubmitted={handleFeedbackSubmitted}
+      />
     </PageContainer>
+  );
+};
+
+const SampleDrawer = ({
+  columns,
+  agentType,
+  clusterID,
+  days,
+  enabled,
+  feature,
+  onClose,
+  open,
+  title,
+}: {
+  columns: ProColumns<API.AgentRunMetricsSample>[];
+  agentType?: API.AgentType;
+  clusterID?: string;
+  days: number;
+  enabled?: boolean;
+  feature: string;
+  onClose: () => void;
+  open: boolean;
+  title: string;
+}) => {
+  const { message } = App.useApp();
+
+  return (
+    <Drawer
+      destroyOnHidden
+      open={open}
+      title={title}
+      width="76vw"
+      onClose={onClose}
+    >
+      <ProTable<API.AgentRunMetricsSample, API.AgentRunMetricsSampleParams>
+        rowKey={(record) => record.run.id}
+        columns={columns}
+        options={false}
+        pagination={{ defaultPageSize: 10, showSizeChanger: true }}
+        search={false}
+        scroll={getComfortableTableScroll(columns, { x: 1180 })}
+        request={async (params) => {
+          try {
+            const res = await getAgentRunMetricsSamples(
+              {
+                ...params,
+                agent_type: agentType,
+                cluster_id: clusterID?.trim() || undefined,
+                days,
+                enabled,
+                feature,
+              },
+              { skipErrorHandler: true },
+            );
+            return {
+              data: res.data.items || [],
+              success: true,
+              total: res.data.total || 0,
+            };
+          } catch (error) {
+            message.error(getErrorMessage(error, '评估样本加载失败'));
+            return {
+              data: [],
+              success: false,
+              total: 0,
+            };
+          }
+        }}
+      />
+    </Drawer>
   );
 };
 

@@ -122,6 +122,36 @@ export default [
             name: 'clusterWorkloadsIngresses',
             component: './cluster/workloads/ingresses',
           },
+          {
+            path: '/cluster/workloads/horizontal-pod-autoscalers',
+            name: 'clusterWorkloadsHorizontalPodAutoscalers',
+            component: './cluster/workloads/horizontal-pod-autoscalers',
+          },
+        ],
+      },
+      {
+        path: '/cluster/network',
+        name: 'clusterNetwork',
+        routes: [
+          {
+            path: '/cluster/network',
+            redirect: '/cluster/network/network-policies',
+          },
+          {
+            path: '/cluster/network/network-policies',
+            name: 'clusterNetworkPolicies',
+            component: './cluster/network/network-policies',
+          },
+          {
+            path: '/cluster/network/ingress-classes',
+            name: 'clusterIngressClasses',
+            component: './cluster/network/ingress-classes',
+          },
+          {
+            path: '/cluster/network/endpoint-slices',
+            name: 'clusterEndpointSlices',
+            component: './cluster/network/endpoint-slices',
+          },
         ],
       },
       {
@@ -161,6 +191,11 @@ export default [
             path: '/cluster/storage/persistent-volume-claims',
             name: 'clusterStoragePersistentVolumeClaims',
             component: './cluster/storage/persistent-volume-claims',
+          },
+          {
+            path: '/cluster/storage/persistent-volumes',
+            name: 'clusterStoragePersistentVolumes',
+            component: './cluster/storage/persistent-volumes',
           },
           {
             path: '/cluster/storage/storage-classes',
@@ -212,9 +247,24 @@ export default [
         component: './system/ai/agents',
       },
       {
+        path: '/ai/runs',
+        name: 'systemAIRuns',
+        component: './system/ai/runs',
+      },
+      {
+        path: '/ai/runtime',
+        name: 'systemAIRuntime',
+        component: './system/ai/runtime',
+      },
+      {
         path: '/ai/evaluation',
         name: 'systemAIEvaluation',
         component: './system/ai/evaluation',
+      },
+      {
+        path: '/ai/learning',
+        name: 'systemAILearning',
+        component: './system/ai/learning',
       },
       {
         path: '/ai/tool',

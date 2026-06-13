@@ -1,9 +1,5 @@
-import {
-  DeleteOutlined,
-  EditOutlined,
-  PlusOutlined,
-} from '@ant-design/icons'
-import type { ActionType, ProColumns } from '@ant-design/pro-components'
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import {
   ModalForm,
   PageContainer,
@@ -12,20 +8,24 @@ import {
   ProFormText,
   ProFormTextArea,
   ProTable,
-} from '@ant-design/pro-components'
-import { useIntl } from '@umijs/max'
-import type { UploadFile, UploadProps } from 'antd'
-import { App, Button, Col, Popconfirm, Row, Tag, Upload } from 'antd'
-import React, { useRef, useState } from 'react'
+} from '@ant-design/pro-components';
+import { useIntl } from '@umijs/max';
+import type { UploadFile, UploadProps } from 'antd';
+import { App, Button, Col, Popconfirm, Row, Tag, Upload } from 'antd';
+import React, { useRef, useState } from 'react';
 import {
   createUser,
   deleteUser,
   getUserList,
   updateUser,
-} from '@/services/kubeflare/system/users'
-import { uploadFile } from '@/services/kubeflare/upload'
+} from '@/services/kubeflare/system/users';
+import { uploadFile } from '@/services/kubeflare/upload';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 
-const DEFAULT_PAGE_SIZE = 10
+const DEFAULT_PAGE_SIZE = 10;
 
 const usernameRules = [
   {
@@ -41,31 +41,30 @@ const usernameRules = [
     pattern: /^[A-Za-z0-9._-]+$/,
     message: '用户名仅支持字母、数字、点、下划线和中划线',
   },
-]
+];
 
 type UserFormValues = API.CreateUserParams &
   API.UpdateUserParams & {
-    confirm_password?: string
-    avatar_upload?: UploadFile<API.UploadFileData>[]
-  }
+    confirm_password?: string;
+    avatar_upload?: UploadFile<API.UploadFileData>[];
+  };
 
 const passwordRules = [
   { required: true, message: '请输入密码' },
   { min: 6, max: 72, message: '密码长度需在 6 到 72 位之间' },
-]
-
+];
 
 const nicknameRules = [
   { required: true, message: '请输入昵称' },
   { min: 1, max: 64, message: '昵称长度需在 1 到 64 位之间' },
-]
+];
 
 const emailRules = [
   {
     type: 'email' as const,
     message: '请输入合法的邮箱地址',
   },
-]
+];
 
 const avatarUploadProps: UploadProps = {
   accept: 'image/*',
@@ -78,21 +77,21 @@ const avatarUploadProps: UploadProps = {
       'image/jpeg',
       'image/png',
       'image/webp',
-    ].includes(file.type)
+    ].includes(file.type);
 
-    return isSupportedImage || Upload.LIST_IGNORE
+    return isSupportedImage || Upload.LIST_IGNORE;
   },
   customRequest: async ({ file, onError, onSuccess }) => {
     try {
-      const formData = new FormData()
-      formData.append('file', file as File)
-      const res = await uploadFile('avatar', formData)
-      onSuccess?.(res.data)
+      const formData = new FormData();
+      formData.append('file', file as File);
+      const res = await uploadFile('avatar', formData);
+      onSuccess?.(res.data);
     } catch (error) {
-      onError?.(error as Error)
+      onError?.(error as Error);
     }
   },
-}
+};
 
 const getInitialAvatarUpload = (avatar?: string) =>
   avatar
@@ -104,21 +103,21 @@ const getInitialAvatarUpload = (avatar?: string) =>
           url: avatar,
         },
       ]
-    : []
+    : [];
 
 const normalizeOptionalText = (value?: string) => {
-  const nextValue = value?.trim()
-  return nextValue || undefined
-}
+  const nextValue = value?.trim();
+  return nextValue || undefined;
+};
 
 const getAvatarValue = (values: UserFormValues) => {
-  const avatarFile = values.avatar_upload?.[0]
+  const avatarFile = values.avatar_upload?.[0];
   if (avatarFile?.status !== 'done') {
-    return undefined
+    return undefined;
   }
 
-  return normalizeOptionalText(avatarFile.response?.url || avatarFile.url)
-}
+  return normalizeOptionalText(avatarFile.response?.url || avatarFile.url);
+};
 
 const buildBaseUserPayload = (values: UserFormValues) => {
   return {
@@ -129,20 +128,27 @@ const buildBaseUserPayload = (values: UserFormValues) => {
     avatar: getAvatarValue(values),
     remarks: normalizeOptionalText(values.remarks),
     status: Number(values.status ?? 1),
-  }
-}
+  };
+};
 
-const buildCreateUserPayload = (values: UserFormValues): API.CreateUserParams => ({
+const buildCreateUserPayload = (
+  values: UserFormValues,
+): API.CreateUserParams => ({
   ...buildBaseUserPayload(values),
   password: values.password.trim(),
-})
+});
 
-const buildUpdateUserPayload = (values: UserFormValues): API.UpdateUserParams => ({
+const buildUpdateUserPayload = (
+  values: UserFormValues,
+): API.UpdateUserParams => ({
   ...buildBaseUserPayload(values),
   password: normalizeOptionalText(values.password),
-})
+});
 
-const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) => (
+const renderUserFormFields = (
+  intl: ReturnType<typeof useIntl>,
+  isEdit = false,
+) => (
   <>
     <Row gutter={16}>
       <Col xs={24} md={12}>
@@ -167,44 +173,44 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
       </Col>
     </Row>
     {!isEdit && (
-    <Row gutter={16}>
-      <Col xs={24} md={12}>
-        <ProFormText.Password
-          name="password"
-          label={intl.formatMessage({
-            id: 'pages.system.users.password',
-            defaultMessage: '密码',
-          })}
-          rules={passwordRules}
-        />
-      </Col>
-      <Col xs={24} md={12}>
-        <ProFormText.Password
-          name="confirm_password"
-          dependencies={['password']}
-          label={intl.formatMessage({
-            id: 'pages.system.users.password.confirm',
-            defaultMessage: '确认密码',
-          })}
-          rules={[
-            ({ getFieldValue }) => ({
-              validator: async (_, value) => {
-                const password = getFieldValue('password')
-                if (!password && !value) {
-                  return
-                }
-                if (!value) {
-                  throw new Error('请再次输入密码')
-                }
-                if (password !== value) {
-                  throw new Error('两次输入的密码不一致')
-                }
-              },
-            }),
-          ]}
-        />
-      </Col>
-    </Row>
+      <Row gutter={16}>
+        <Col xs={24} md={12}>
+          <ProFormText.Password
+            name="password"
+            label={intl.formatMessage({
+              id: 'pages.system.users.password',
+              defaultMessage: '密码',
+            })}
+            rules={passwordRules}
+          />
+        </Col>
+        <Col xs={24} md={12}>
+          <ProFormText.Password
+            name="confirm_password"
+            dependencies={['password']}
+            label={intl.formatMessage({
+              id: 'pages.system.users.password.confirm',
+              defaultMessage: '确认密码',
+            })}
+            rules={[
+              ({ getFieldValue }) => ({
+                validator: async (_, value) => {
+                  const password = getFieldValue('password');
+                  if (!password && !value) {
+                    return;
+                  }
+                  if (!value) {
+                    throw new Error('请再次输入密码');
+                  }
+                  if (password !== value) {
+                    throw new Error('两次输入的密码不一致');
+                  }
+                },
+              }),
+            ]}
+          />
+        </Col>
+      </Row>
     )}
     <Row gutter={16}>
       <Col xs={24} md={12}>
@@ -263,7 +269,7 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
       })}
       valuePropName="fileList"
       getValueFromEvent={(event: {
-        fileList?: UploadFile<API.UploadFileData>[]
+        fileList?: UploadFile<API.UploadFileData>[];
       }) => event?.fileList}
       rules={[
         {
@@ -271,21 +277,21 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
             _rule: unknown,
             fileList?: UploadFile<API.UploadFileData>[],
           ) => {
-            const avatarFile = fileList?.[0]
+            const avatarFile = fileList?.[0];
             if (!avatarFile) {
-              return
+              return;
             }
             if (avatarFile.status === 'uploading') {
-              throw new Error('头像上传中，请稍后再提交')
+              throw new Error('头像上传中，请稍后再提交');
             }
             if (avatarFile.status === 'error') {
-              throw new Error('头像上传失败，请重新上传')
+              throw new Error('头像上传失败，请重新上传');
             }
             if (
               avatarFile.status === 'done' &&
               !normalizeOptionalText(avatarFile.response?.url || avatarFile.url)
             ) {
-              throw new Error('头像上传结果无效，请重新上传')
+              throw new Error('头像上传结果无效，请重新上传');
             }
           },
         },
@@ -316,17 +322,17 @@ const renderUserFormFields = (intl: ReturnType<typeof useIntl>, isEdit = false) 
       }}
     />
   </>
-)
+);
 
 const UserManagementPage: React.FC = () => {
-  const intl = useIntl()
-  const { message } = App.useApp()
-  const actionRef = useRef<ActionType | null>(null)
+  const intl = useIntl();
+  const { message } = App.useApp();
+  const actionRef = useRef<ActionType | null>(null);
   const [editingUser, setEditingUser] = useState<API.UserItem | undefined>(
     undefined,
-  )
-  const [createVisible, setCreateVisible] = useState(false)
-  const [editVisible, setEditVisible] = useState(false)
+  );
+  const [createVisible, setCreateVisible] = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
 
   const columns: ProColumns<API.UserItem>[] = [
     {
@@ -403,8 +409,8 @@ const UserManagementPage: React.FC = () => {
         <a
           key="edit"
           onClick={() => {
-            setEditingUser(record)
-            setEditVisible(true)
+            setEditingUser(record);
+            setEditVisible(true);
           }}
         >
           <EditOutlined />{' '}
@@ -420,14 +426,14 @@ const UserManagementPage: React.FC = () => {
             defaultMessage: '确认删除该用户吗？',
           })}
           onConfirm={async () => {
-            await deleteUser(record.id)
+            await deleteUser(record.id);
             message.success(
               intl.formatMessage({
                 id: 'pages.system.users.delete.success',
                 defaultMessage: '用户已删除',
               }),
-            )
-            actionRef.current?.reload()
+            );
+            actionRef.current?.reload();
           }}
         >
           <a>
@@ -440,7 +446,8 @@ const UserManagementPage: React.FC = () => {
         </Popconfirm>,
       ],
     },
-  ]
+  ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <PageContainer
@@ -453,16 +460,17 @@ const UserManagementPage: React.FC = () => {
         rowKey="id"
         actionRef={actionRef}
         search={false}
-        columns={columns}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns)}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
         }}
         request={async () => {
-          const res = await getUserList()
+          const res = await getUserList();
           return {
             data: res.data.items || [],
             success: true,
-          }
+          };
         }}
         headerTitle={
           <Button
@@ -493,16 +501,16 @@ const UserManagementPage: React.FC = () => {
           status: 1,
         }}
         onFinish={async (values) => {
-          await createUser(buildCreateUserPayload(values))
+          await createUser(buildCreateUserPayload(values));
           message.success(
             intl.formatMessage({
               id: 'pages.system.users.create.success',
               defaultMessage: '用户创建成功',
             }),
-          )
-          setCreateVisible(false)
-          actionRef.current?.reload()
-          return true
+          );
+          setCreateVisible(false);
+          actionRef.current?.reload();
+          return true;
         }}
       >
         {renderUserFormFields(intl)}
@@ -524,13 +532,13 @@ const UserManagementPage: React.FC = () => {
         modalProps={{
           destroyOnHidden: true,
           onCancel: () => {
-            setEditVisible(false)
-            setEditingUser(undefined)
+            setEditVisible(false);
+            setEditingUser(undefined);
           },
         }}
         onFinish={async (values) => {
           if (!editingUser) {
-            return false
+            return false;
           }
           await updateUser(editingUser.id, {
             ...buildUpdateUserPayload(values),
@@ -538,23 +546,23 @@ const UserManagementPage: React.FC = () => {
               typeof values.status === 'undefined'
                 ? editingUser.status
                 : Number(values.status),
-          })
+          });
           message.success(
             intl.formatMessage({
               id: 'pages.system.users.edit.success',
               defaultMessage: '用户更新成功',
             }),
-          )
-          setEditVisible(false)
-          setEditingUser(undefined)
-          actionRef.current?.reload()
-          return true
+          );
+          setEditVisible(false);
+          setEditingUser(undefined);
+          actionRef.current?.reload();
+          return true;
         }}
       >
         {renderUserFormFields(intl, true)}
       </ModalForm>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default UserManagementPage
+export default UserManagementPage;

@@ -19,6 +19,12 @@ export default {
   'menu.cluster.clusterWorkloads.clusterWorkloadsPods': 'Pods',
   'menu.cluster.clusterWorkloads.clusterWorkloadsServices': 'Services',
   'menu.cluster.clusterWorkloads.clusterWorkloadsIngresses': 'Ingresses',
+  'menu.cluster.clusterWorkloads.clusterWorkloadsHorizontalPodAutoscalers':
+    'Horizontal Pod Autoscalers',
+  'menu.cluster.clusterNetwork': 'Network',
+  'menu.cluster.clusterNetwork.clusterNetworkPolicies': 'Network Policies',
+  'menu.cluster.clusterNetwork.clusterIngressClasses': 'IngressClasses',
+  'menu.cluster.clusterNetwork.clusterEndpointSlices': 'EndpointSlices',
   'menu.cluster.clusterConfig': 'Configuration',
   'menu.cluster.clusterConfig.clusterConfigSecrets': 'Secrets',
   'menu.cluster.clusterConfig.clusterConfigConfigMaps': 'ConfigMaps',
@@ -28,6 +34,8 @@ export default {
   'menu.cluster.clusterStorage': 'Storage',
   'menu.cluster.clusterStorage.clusterStoragePersistentVolumeClaims':
     'Persistent Volume Claims',
+  'menu.cluster.clusterStorage.clusterStoragePersistentVolumes':
+    'Persistent Volumes',
   'menu.cluster.clusterStorage.clusterStorageStorageClasses': 'Storage Classes',
   'menu.cluster.clusterAccessControl': 'Access Control',
   'menu.cluster.clusterAccessControl.clusterAccessControlRoles': 'Roles',
@@ -37,7 +45,10 @@ export default {
   'menu.system.systemUser': 'Pengguna',
   'menu.systemAI': 'AI Management',
   'menu.systemAI.systemAIAgent': 'Agents',
+  'menu.systemAI.systemAIRuns': 'Runs',
+  'menu.systemAI.systemAIRuntime': 'Runtime Status',
   'menu.systemAI.systemAIEvaluation': 'Evaluation',
+  'menu.systemAI.systemAILearning': 'Learning Data',
   'menu.systemAI.systemAITool': 'Tool Governance',
   'menu.systemAI.systemAISkill': 'Skills',
   'menu.login': 'Masuk',

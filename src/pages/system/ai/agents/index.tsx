@@ -5,6 +5,10 @@ import { Space, Tag, Typography } from 'antd';
 import { useRef, useState } from 'react';
 import { ClusterTableSearch } from '@/components';
 import { getAgentList } from '@/services/kubeflare/agent';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import AgentDetailDrawer from '../components/AgentDetailDrawer';
 import { AgentTypeTag, EnabledTag } from '../components/AgentTags';
 import { ensureStringList, matchKeyword } from '../utils';
@@ -87,6 +91,7 @@ const Agents = () => {
       ],
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <PageContainer title="Agent 总览">
@@ -94,8 +99,8 @@ const Agents = () => {
         rowKey="type"
         actionRef={actionRef}
         search={false}
-        columns={columns}
-        scroll={{ x: 1180 }}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns, { x: 1180 })}
         pagination={{ defaultPageSize: TABLE_DEFAULT_PAGE_SIZE }}
         request={async (params) => {
           const res = await getAgentList();

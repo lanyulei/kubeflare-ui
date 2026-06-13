@@ -32,6 +32,8 @@ const withClusterHeaders = (options?: RequestOptions): RequestOptions => {
   }
 }
 
+const pathParam = (value: string) => encodeURIComponent(value)
+
 export type AgentStreamEventName =
   | 'agent.answer.delta'
   | 'agent.evidence.created'
@@ -124,6 +126,16 @@ export async function getAgentRuntimeConfigAuditList(
   )
 }
 
+export async function getAgentRuntimeStatus(options?: { [key: string]: any }) {
+  return request<API.ApiResponse<API.AgentRuntimeStatus>>(
+    '/api/v1/agent/runtime/status',
+    {
+      method: 'GET',
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
 export async function rollbackAgentRuntimeConfigVersion(
   versionID: string,
   body: API.RollbackAgentRuntimeParams,
@@ -155,9 +167,59 @@ export async function getAgentRunEvidence(
   options?: { [key: string]: any },
 ) {
   return request<API.ApiResponse<API.AgentEvidenceListData>>(
-    `/api/v1/agent/run/${runID}/evidence`,
+    `/api/v1/agent/run/${pathParam(runID)}/evidence`,
     {
       method: 'GET',
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function getAgentRunList(
+  params?: API.AgentRunListParams,
+  options?: { [key: string]: any },
+) {
+  const { current, pageSize, ...restParams } = params || {}
+  return request<API.ApiResponse<API.AgentRunListData>>('/api/v1/agent/run', {
+    method: 'GET',
+    params: {
+      ...restParams,
+      limit: pageSize,
+      offset:
+        current && pageSize && current > 1 ? (current - 1) * pageSize : 0,
+    },
+    ...withClusterHeaders(options || {}),
+  })
+}
+
+export async function getAgentRunDetail(
+  runID: string,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.AgentRunDetail>>(
+    `/api/v1/agent/run/${pathParam(runID)}`,
+    {
+      method: 'GET',
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function getAgentRunMetricsSamples(
+  params?: API.AgentRunMetricsSampleParams,
+  options?: { [key: string]: any },
+) {
+  const { current, pageSize, ...restParams } = params || {}
+  return request<API.ApiResponse<API.AgentRunMetricsSampleData>>(
+    '/api/v1/agent/metrics/run',
+    {
+      method: 'GET',
+      params: {
+        ...restParams,
+        limit: pageSize,
+        offset:
+          current && pageSize && current > 1 ? (current - 1) * pageSize : 0,
+      },
       ...withClusterHeaders(options || {}),
     },
   )
@@ -182,13 +244,16 @@ export async function createAgentRunStream(
     headers['X-Cluster-ID'] = clusterId
   }
 
-  const response = await fetch(`/api/v1/agent/${agentType}/run/stream`, {
-    body: JSON.stringify(body),
-    credentials: 'include',
-    headers,
-    method: 'POST',
-    signal: options?.signal,
-  })
+  const response = await fetch(
+    `/api/v1/agent/${pathParam(agentType)}/run/stream`,
+    {
+      body: JSON.stringify(body),
+      credentials: 'include',
+      headers,
+      method: 'POST',
+      signal: options?.signal,
+    },
+  )
 
   if (!response.ok) {
     let errorMessage = `Agent 执行失败(${response.status})`
@@ -211,7 +276,7 @@ export async function cancelAgentRun(
   options?: { [key: string]: any },
 ) {
   return request<API.ApiResponse<API.AgentRun>>(
-    `/api/v1/agent/run/${runID}/cancel`,
+    `/api/v1/agent/run/${pathParam(runID)}/cancel`,
     {
       method: 'POST',
       ...withClusterHeaders(options || {}),
@@ -225,7 +290,7 @@ export async function submitAgentRunFeedback(
   options?: { [key: string]: any },
 ) {
   return request<API.ApiResponse<API.AgentRunFeedback>>(
-    `/api/v1/agent/run/${runID}/feedback`,
+    `/api/v1/agent/run/${pathParam(runID)}/feedback`,
     {
       data: body,
       method: 'POST',
@@ -243,6 +308,72 @@ export async function getAgentRunMetricsEvaluation(
     {
       method: 'GET',
       params,
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function getAgentDiagnosisCaseList(
+  params?: API.AgentDiagnosisCaseListParams,
+  options?: { [key: string]: any },
+) {
+  const { current, pageSize, ...restParams } = params || {}
+  return request<API.ApiResponse<API.AgentDiagnosisCaseListData>>(
+    '/api/v1/agent/case',
+    {
+      method: 'GET',
+      params: {
+        ...restParams,
+        limit: pageSize,
+        offset:
+          current && pageSize && current > 1 ? (current - 1) * pageSize : 0,
+      },
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function deleteAgentDiagnosisCaseByRunID(
+  runID: string,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<{ deleted: number }>>(
+    `/api/v1/agent/case/run/${pathParam(runID)}`,
+    {
+      method: 'DELETE',
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function getAgentRouteFeedbackList(
+  params?: API.AgentRouteFeedbackListParams,
+  options?: { [key: string]: any },
+) {
+  const { current, pageSize, ...restParams } = params || {}
+  return request<API.ApiResponse<API.AgentRouteFeedbackListData>>(
+    '/api/v1/agent/route-feedback',
+    {
+      method: 'GET',
+      params: {
+        ...restParams,
+        limit: pageSize,
+        offset:
+          current && pageSize && current > 1 ? (current - 1) * pageSize : 0,
+      },
+      ...withClusterHeaders(options || {}),
+    },
+  )
+}
+
+export async function deleteAgentRouteFeedback(
+  feedbackID: string,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<{ deleted: number }>>(
+    `/api/v1/agent/route-feedback/${pathParam(feedbackID)}`,
+    {
+      method: 'DELETE',
       ...withClusterHeaders(options || {}),
     },
   )

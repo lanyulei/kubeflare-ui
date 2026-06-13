@@ -6,7 +6,7 @@ import {
   ProFormTextArea,
 } from '@ant-design/pro-components';
 import { App } from 'antd';
-import { MANAGED_AGENT_TYPE_OPTIONS } from '../constants';
+import { useAgentOptions } from '@/hooks/useAgentOptions';
 import { normalizeOptionalText, normalizeTextList } from '../utils';
 
 export type SkillFormValues = {
@@ -68,6 +68,10 @@ const SkillFormDrawer = ({
   onSubmit,
 }: SkillFormDrawerProps) => {
   const { message } = App.useApp();
+  const { loading: agentOptionsLoading, options: agentOptions } =
+    useAgentOptions({
+      disableUnavailable: true,
+    });
 
   return (
     <DrawerForm<SkillFormValues>
@@ -122,8 +126,11 @@ const SkillFormDrawer = ({
       <ProFormSelect
         name="agent_types"
         label="适用 Agent"
-        fieldProps={{ mode: 'multiple' }}
-        options={MANAGED_AGENT_TYPE_OPTIONS}
+        fieldProps={{
+          loading: agentOptionsLoading,
+          mode: 'multiple',
+        }}
+        options={agentOptions}
         placeholder="留空表示适用于任意 Agent"
       />
       <ProFormSelect

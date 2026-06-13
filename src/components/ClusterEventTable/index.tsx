@@ -5,6 +5,10 @@ import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import { useRef } from 'react';
 import { getClusterNodeEventList } from '@/services/kubeflare/cluster/node';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import ClusterTableSearch from '../ClusterTableSearch';
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -190,6 +194,7 @@ const ClusterEventTable = ({
       },
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <ProTable<API.ClusterNodeEventItem>
@@ -206,7 +211,8 @@ const ClusterEventTable = ({
           actionRef.current?.reloadAndRest?.();
         },
       }}
-      columns={columns}
+      columns={tableColumns}
+      scroll={getComfortableTableScroll(tableColumns)}
       pagination={{
         pageSize: DEFAULT_PAGE_SIZE,
         showSizeChanger: false,

@@ -1,3 +1,4 @@
+import { Link } from '@umijs/max';
 import { Empty, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 
@@ -38,6 +39,7 @@ const useStyles = createStyles(({ token }) => ({
 
 type ResourceDataItem = {
   key: string;
+  path?: string;
   value?: string;
 };
 
@@ -63,7 +65,13 @@ const ResourceDataFields = ({
           <Tooltip title={item.key} placement="topLeft">
             <div className={styles.label}>{item.key}</div>
           </Tooltip>
-          <div className={styles.value}>{item.value || ''}</div>
+          <div className={styles.value}>
+            {item.path ? (
+              <Link to={item.path}>{item.value || item.path}</Link>
+            ) : (
+              item.value || ''
+            )}
+          </div>
         </div>
       ))}
     </div>

@@ -320,6 +320,224 @@ declare namespace API {
     updated_at: string
   }
 
+  type AgentRunMetrics = {
+    id: string
+    run_id: string
+    agent_type: AgentType
+    cluster_id: string
+    step_count: number
+    tool_call_count: number
+    token_used: number
+    extra_token_used: number
+    token_estimated: boolean
+    reflection_count: number
+    replan_count: number
+    plan_generated: boolean
+    reflection_jurors: number
+    playbook_matched: boolean
+    hypothesis_total: number
+    hypothesis_resolved: number
+    case_retrieval_mode?: string
+    case_hit_count: number
+    duration_ms: number
+    status: AgentRunStatus
+    created_at: string
+  }
+
+  type AgentRunListParams = {
+    keyword?: string
+    agent_type?: AgentType
+    cluster_id?: string
+    status?: AgentRunStatus
+    user_id?: string
+    days?: number
+    current?: number
+    pageSize?: number
+  }
+
+  type AgentRunListData = {
+    items: AgentRun[]
+    total: number
+  }
+
+  type AgentRunDetail = {
+    run: AgentRun
+    tool_calls: AgentToolCall[]
+    evidences: AgentEvidence[]
+    feedback?: AgentRunFeedback
+    metrics?: AgentRunMetrics
+  }
+
+  type AgentRunMetricsSampleParams = {
+    days?: number
+    feature?: string
+    enabled?: boolean
+    agent_type?: AgentType
+    cluster_id?: string
+    current?: number
+    pageSize?: number
+  }
+
+  type AgentRunMetricsSample = {
+    run: AgentRun
+    metrics?: AgentRunMetrics
+    feedback?: AgentRunFeedback
+  }
+
+  type AgentRunMetricsSampleData = {
+    items: AgentRunMetricsSample[]
+    total: number
+  }
+
+  type AgentRuntimeFeatureStatus = {
+    llm_routing: boolean
+    stream_think: boolean
+    planning: boolean
+    reflection: boolean
+    hypothesis_ledger: boolean
+    playbook: boolean
+    observe_compression: boolean
+    case_library: boolean
+    semantic_retrieval: boolean
+    replanning: boolean
+    route_learning: boolean
+  }
+
+  type AgentRuntimeLoopStatus = {
+    max_steps: number
+    max_token_budget: number
+    max_tool_errors_per_step: number
+    step_timeout_ms: number
+    tool_choice: string
+    max_reflection_steps: number
+    max_reflections: number
+    reflection_jurors: number
+    case_few_shot_limit: number
+    case_cache_size: number
+    route_few_shot_limit: number
+    route_cache_size: number
+    replan_interval: number
+    max_replans: number
+  }
+
+  type AgentRuntimeConcurrencyStatus = {
+    max_concurrent_runs_per_user: number
+    max_concurrent_runs: number
+    distributed_semaphore: boolean
+    instance_id?: string
+  }
+
+  type AgentRuntimeRepositoryStatus = {
+    runtime_config: boolean
+    route_feedback: boolean
+    diagnosis_case: boolean
+    run_metrics: boolean
+    run_feedback: boolean
+    embedding: boolean
+  }
+
+  type AgentRuntimeToolStatus = {
+    total: number
+    enabled: number
+    disabled: number
+    mcp: number
+    prometheus: number
+  }
+
+  type AgentRuntimeSkillStatus = {
+    total: number
+    enabled: number
+    disabled: number
+  }
+
+  type AgentRuntimeMCPServerStatus = {
+    name: string
+    transport: string
+    state: 'disconnected' | 'connecting' | 'ready' | 'failed' | string
+    ready: boolean
+    tool_count: number
+    trusted_tool_count: number
+    max_concurrency: number
+    health_interval_ms: number
+    call_timeout_ms: number
+  }
+
+  type AgentRuntimePrometheusStatus = {
+    enabled: boolean
+    healthy?: boolean
+    namespace?: string
+    service?: string
+    port?: string
+    scheme?: string
+    query_timeout_ms?: number
+    tool_count: number
+    latency_ms?: number
+    last_error?: string
+    last_checked_at?: string
+  }
+
+  type AgentRuntimeStatus = {
+    features: AgentRuntimeFeatureStatus
+    loop: AgentRuntimeLoopStatus
+    concurrency: AgentRuntimeConcurrencyStatus
+    repositories: AgentRuntimeRepositoryStatus
+    tools: AgentRuntimeToolStatus
+    skills: AgentRuntimeSkillStatus
+    mcp_servers: AgentRuntimeMCPServerStatus[]
+    prometheus: AgentRuntimePrometheusStatus
+    runtime_version?: number
+  }
+
+  type AgentDiagnosisCase = {
+    id: string
+    run_id: string
+    agent_type: AgentType
+    cluster_id: string
+    question: string
+    symptom: string
+    root_cause: string
+    tags?: string[]
+    tool_trace?: string[]
+    created_at: string
+  }
+
+  type AgentDiagnosisCaseListParams = {
+    keyword?: string
+    agent_type?: AgentType
+    cluster_id?: string
+    current?: number
+    pageSize?: number
+  }
+
+  type AgentDiagnosisCaseListData = {
+    items: AgentDiagnosisCase[]
+    total: number
+  }
+
+  type AgentRouteFeedback = {
+    id: string
+    user_id: string
+    message: string
+    routed_agent_type: AgentType
+    routed_confidence: number
+    selected_agent_type: AgentType
+    matched: boolean
+    created_at: string
+  }
+
+  type AgentRouteFeedbackListParams = {
+    keyword?: string
+    selected_agent_type?: AgentType
+    matched?: boolean
+    current?: number
+    pageSize?: number
+  }
+
+  type AgentRouteFeedbackListData = {
+    items: AgentRouteFeedback[]
+    total: number
+  }
+
   type SubmitAgentRunFeedbackParams = {
     useful: boolean
     comment?: string
@@ -327,6 +545,8 @@ declare namespace API {
 
   type AgentRunMetricsEvaluationParams = {
     days?: number
+    agent_type?: AgentType
+    cluster_id?: string
   }
 
   type AgentFeatureBucket = {
@@ -369,6 +589,10 @@ declare namespace API {
 
   type AgentEvidenceListData = {
     items: AgentEvidence[]
+  }
+
+  type AgentToolCallListData = {
+    items: AgentToolCall[]
   }
 
   type ReloadAgentToolOverride = {
@@ -995,12 +1219,16 @@ declare namespace API {
 
   type ClusterWorkloadListData = {
     items: ClusterWorkloadItem[]
+    continue?: string
+    remainingItemCount?: number
   }
 
   type ClusterWorkloadListParams = {
     keyword?: string
     type?: ClusterWorkloadType
     namespace?: string
+    limit?: number
+    continue?: string
   }
 
   type ClusterWorkloadDetailParams = {
@@ -1044,6 +1272,64 @@ declare namespace API {
     persistent_volume_claim_count?: number
     allow_volume_clone?: boolean
     allow_volume_expansion?: boolean
+  }
+
+  type ClusterPersistentVolumeItem = {
+    id?: string
+    name: string
+    storageClassName?: string
+    capacity?: string
+    accessModes?: string[]
+    reclaim_policy?: string
+    claim_ref?: string
+    status?: string
+    create_time?: string
+  }
+
+  type ClusterHorizontalPodAutoscalerItem = {
+    id?: string
+    name: string
+    namespace?: string
+    scale_target?: string
+    min_replicas?: number
+    max_replicas?: number
+    current_replicas?: number
+    desired_replicas?: number
+    metrics?: string[]
+    status?: string
+    create_time?: string
+  }
+
+  type ClusterNetworkPolicyItem = {
+    id?: string
+    name: string
+    namespace?: string
+    pod_selector?: string
+    policy_types?: string[]
+    ingress_rules?: number
+    egress_rules?: number
+    create_time?: string
+  }
+
+  type ClusterIngressClassItem = {
+    id?: string
+    name: string
+    controller?: string
+    default_class?: boolean
+    parameters?: string
+    create_time?: string
+  }
+
+  type ClusterEndpointSliceItem = {
+    id?: string
+    name: string
+    namespace?: string
+    service_name?: string
+    address_type?: string
+    endpoint_count?: number
+    ready_count?: number
+    ports?: ClusterServiceEndpointPort[]
+    create_time?: string
   }
 
   type ClusterStorageClassListData = {
@@ -1161,7 +1447,12 @@ declare namespace API {
     | 'ClusterRoleBinding'
     | 'CustomResourceDefinition'
     | 'PersistentVolumeClaim'
+    | 'PersistentVolume'
     | 'StorageClass'
+    | 'HorizontalPodAutoscaler'
+    | 'NetworkPolicy'
+    | 'IngressClass'
+    | 'EndpointSlice'
 
   type CreateClusterResourceParams = {
     type: ClusterResourceCreateType

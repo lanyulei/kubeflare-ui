@@ -16,6 +16,10 @@ import {
   createClusterResource,
   deleteClusterResource,
 } from '@/services/kubeflare/cluster/resource';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import RbacDetailDrawer from '../components/RbacDetailDrawer';
 import RbacYamlDrawer from '../components/RbacYamlDrawer';
 import RiskLevelTag from '../components/RiskLevelTag';
@@ -206,6 +210,7 @@ const Roles = () => {
       ],
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <PageContainer title="角色">
@@ -213,8 +218,8 @@ const Roles = () => {
         rowKey="id"
         actionRef={actionRef}
         search={false}
-        columns={columns}
-        scroll={{ x: 1340 }}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns, { x: 1340 })}
         pagination={{
           defaultPageSize: TABLE_DEFAULT_PAGE_SIZE,
         }}

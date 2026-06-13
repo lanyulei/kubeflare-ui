@@ -8,6 +8,7 @@ type KubernetesMetadata = {
   uid?: string
   name?: string
   namespace?: string
+  labels?: Record<string, string>
   annotations?: Record<string, string>
   creationTimestamp?: string
   deletionTimestamp?: string
@@ -118,6 +119,7 @@ type KubernetesEndpoints = {
 }
 
 type KubernetesEndpointSlice = {
+  metadata?: KubernetesMetadata
   addressType?: string
   endpoints?: {
     addresses?: string[]
@@ -245,6 +247,91 @@ type KubernetesStorageClass = {
   parameters?: Record<string, string>
 }
 
+type KubernetesPersistentVolume = {
+  metadata?: KubernetesMetadata
+  spec?: {
+    capacity?: Record<string, string>
+    accessModes?: string[]
+    persistentVolumeReclaimPolicy?: string
+    storageClassName?: string
+    claimRef?: {
+      namespace?: string
+      name?: string
+    }
+  }
+  status?: {
+    phase?: string
+  }
+}
+
+type KubernetesHorizontalPodAutoscaler = {
+  metadata?: KubernetesMetadata
+  spec?: {
+    minReplicas?: number
+    maxReplicas?: number
+    scaleTargetRef?: {
+      apiVersion?: string
+      kind?: string
+      name?: string
+    }
+    metrics?: {
+      type?: string
+      resource?: {
+        name?: string
+      }
+      pods?: {
+        metric?: {
+          name?: string
+        }
+      }
+      object?: {
+        metric?: {
+          name?: string
+        }
+      }
+      external?: {
+        metric?: {
+          name?: string
+        }
+      }
+    }[]
+  }
+  status?: {
+    currentReplicas?: number
+    desiredReplicas?: number
+    conditions?: {
+      type?: string
+      status?: string
+      reason?: string
+    }[]
+  }
+}
+
+type KubernetesNetworkPolicy = {
+  metadata?: KubernetesMetadata
+  spec?: {
+    podSelector?: {
+      matchLabels?: Record<string, string>
+    }
+    policyTypes?: string[]
+    ingress?: unknown[]
+    egress?: unknown[]
+  }
+}
+
+type KubernetesIngressClass = {
+  metadata?: KubernetesMetadata
+  spec?: {
+    controller?: string
+    parameters?: {
+      apiGroup?: string
+      kind?: string
+      name?: string
+      namespace?: string
+    }
+  }
+}
+
 const getCurrentClusterId = () => {
   if (typeof window === 'undefined') {
     return undefined
@@ -355,6 +442,21 @@ const namespacedResourceListPaths: Partial<
     namespaced:
       '/kapi/v1/namespaces/:namespace/persistentvolumeclaims',
   },
+  HorizontalPodAutoscaler: {
+    all: '/kapis/autoscaling/v2/horizontalpodautoscalers',
+    namespaced:
+      '/kapis/autoscaling/v2/namespaces/:namespace/horizontalpodautoscalers',
+  },
+  NetworkPolicy: {
+    all: '/kapis/networking.k8s.io/v1/networkpolicies',
+    namespaced:
+      '/kapis/networking.k8s.io/v1/namespaces/:namespace/networkpolicies',
+  },
+  EndpointSlice: {
+    all: '/kapis/discovery.k8s.io/v1/endpointslices',
+    namespaced:
+      '/kapis/discovery.k8s.io/v1/namespaces/:namespace/endpointslices',
+  },
 }
 
 const clusterResourceCreatePaths: Record<API.ClusterResourceCreateType, string> =
@@ -378,7 +480,15 @@ const clusterResourceCreatePaths: Record<API.ClusterResourceCreateType, string> 
       '/kapis/apiextensions.k8s.io/v1/customresourcedefinitions',
     PersistentVolumeClaim:
       '/kapi/v1/namespaces/:namespace/persistentvolumeclaims',
+    PersistentVolume: '/kapi/v1/persistentvolumes',
     StorageClass: '/kapis/storage.k8s.io/v1/storageclasses',
+    HorizontalPodAutoscaler:
+      '/kapis/autoscaling/v2/namespaces/:namespace/horizontalpodautoscalers',
+    NetworkPolicy:
+      '/kapis/networking.k8s.io/v1/namespaces/:namespace/networkpolicies',
+    IngressClass: '/kapis/networking.k8s.io/v1/ingressclasses',
+    EndpointSlice:
+      '/kapis/discovery.k8s.io/v1/namespaces/:namespace/endpointslices',
   }
 
 const clusterResourceDetailPaths: Record<API.ClusterResourceCreateType, string> =
@@ -404,7 +514,15 @@ const clusterResourceDetailPaths: Record<API.ClusterResourceCreateType, string> 
       '/kapis/apiextensions.k8s.io/v1/customresourcedefinitions/:name',
     PersistentVolumeClaim:
       '/kapi/v1/namespaces/:namespace/persistentvolumeclaims/:name',
+    PersistentVolume: '/kapi/v1/persistentvolumes/:name',
     StorageClass: '/kapis/storage.k8s.io/v1/storageclasses/:name',
+    HorizontalPodAutoscaler:
+      '/kapis/autoscaling/v2/namespaces/:namespace/horizontalpodautoscalers/:name',
+    NetworkPolicy:
+      '/kapis/networking.k8s.io/v1/namespaces/:namespace/networkpolicies/:name',
+    IngressClass: '/kapis/networking.k8s.io/v1/ingressclasses/:name',
+    EndpointSlice:
+      '/kapis/discovery.k8s.io/v1/namespaces/:namespace/endpointslices/:name',
   }
 
 const getNamespacedListPath = (
@@ -814,6 +932,29 @@ const getPersistentVolumeClaimCounts = async (
   return counts
 }
 
+const formatSelector = (labels?: Record<string, string>) =>
+  labels && Object.keys(labels).length
+    ? Object.entries(labels)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('、')
+    : '全部'
+
+const formatObjectReference = (value?: {
+  apiGroup?: string
+  apiVersion?: string
+  kind?: string
+  name?: string
+  namespace?: string
+}) => {
+  if (!value?.kind && !value?.name) {
+    return undefined
+  }
+
+  const groupVersion = value.apiVersion || value.apiGroup
+  const namespace = value.namespace ? `${value.namespace}/` : ''
+  return `${groupVersion ? `${groupVersion} ` : ''}${value.kind || '-'}:${namespace}${value.name || '-'}`
+}
+
 const toJobItem = (job: KubernetesJob): API.ClusterJobItem => ({
   id: job.metadata?.uid || `${job.metadata?.namespace || '-'}-${job.metadata?.name}`,
   name: job.metadata?.name || '-',
@@ -1002,6 +1143,118 @@ const toStorageClassItem = (
     allow_volume_clone:
       annotations['storageclass.kubeflare.io/allow-clone'] === 'true',
     allow_volume_expansion: storageClass.allowVolumeExpansion,
+  }
+}
+
+const toPersistentVolumeItem = (
+  volume: KubernetesPersistentVolume,
+): API.ClusterPersistentVolumeItem => {
+  const claimRef = volume.spec?.claimRef
+
+  return {
+    id: volume.metadata?.uid || volume.metadata?.name,
+    name: volume.metadata?.name || '-',
+    storageClassName: volume.spec?.storageClassName,
+    capacity: volume.spec?.capacity?.storage,
+    accessModes: volume.spec?.accessModes || [],
+    reclaim_policy: volume.spec?.persistentVolumeReclaimPolicy,
+    claim_ref:
+      claimRef?.namespace && claimRef.name
+        ? `${claimRef.namespace}/${claimRef.name}`
+        : claimRef?.name,
+    status: volume.status?.phase,
+    create_time: volume.metadata?.creationTimestamp,
+  }
+}
+
+const toHorizontalPodAutoscalerItem = (
+  hpa: KubernetesHorizontalPodAutoscaler,
+): API.ClusterHorizontalPodAutoscalerItem => {
+  const condition = (hpa.status?.conditions || []).find(
+    (item) => item.status === 'False',
+  )
+  const metrics = (hpa.spec?.metrics || []).map(
+    (item) =>
+      item.resource?.name ||
+      item.pods?.metric?.name ||
+      item.object?.metric?.name ||
+      item.external?.metric?.name ||
+      item.type ||
+      '-',
+  )
+
+  return {
+    id:
+      hpa.metadata?.uid ||
+      `${hpa.metadata?.namespace || '-'}-${hpa.metadata?.name}`,
+    name: hpa.metadata?.name || '-',
+    namespace: hpa.metadata?.namespace,
+    scale_target: formatObjectReference(hpa.spec?.scaleTargetRef),
+    min_replicas: hpa.spec?.minReplicas,
+    max_replicas: hpa.spec?.maxReplicas,
+    current_replicas: hpa.status?.currentReplicas,
+    desired_replicas: hpa.status?.desiredReplicas,
+    metrics,
+    status: condition?.reason || 'Active',
+    create_time: hpa.metadata?.creationTimestamp,
+  }
+}
+
+const toNetworkPolicyItem = (
+  policy: KubernetesNetworkPolicy,
+): API.ClusterNetworkPolicyItem => ({
+  id:
+    policy.metadata?.uid ||
+    `${policy.metadata?.namespace || '-'}-${policy.metadata?.name}`,
+  name: policy.metadata?.name || '-',
+  namespace: policy.metadata?.namespace,
+  pod_selector: formatSelector(policy.spec?.podSelector?.matchLabels),
+  policy_types: policy.spec?.policyTypes || [],
+  ingress_rules: policy.spec?.ingress?.length || 0,
+  egress_rules: policy.spec?.egress?.length || 0,
+  create_time: policy.metadata?.creationTimestamp,
+})
+
+const toIngressClassItem = (
+  ingressClass: KubernetesIngressClass,
+): API.ClusterIngressClassItem => {
+  const annotations = ingressClass.metadata?.annotations || {}
+
+  return {
+    id: ingressClass.metadata?.uid || ingressClass.metadata?.name,
+    name: ingressClass.metadata?.name || '-',
+    controller: ingressClass.spec?.controller,
+    default_class:
+      annotations['ingressclass.kubernetes.io/is-default-class'] === 'true',
+    parameters: formatObjectReference(ingressClass.spec?.parameters),
+    create_time: ingressClass.metadata?.creationTimestamp,
+  }
+}
+
+const toEndpointSliceItem = (
+  slice: KubernetesEndpointSlice,
+): API.ClusterEndpointSliceItem => {
+  const endpoints = slice.endpoints || []
+  const readyCount = endpoints.filter(
+    (endpoint) => endpoint.conditions?.ready !== false,
+  ).length
+
+  return {
+    id:
+      slice.metadata?.uid ||
+      `${slice.metadata?.namespace || '-'}-${slice.metadata?.name}`,
+    name: slice.metadata?.name || '-',
+    namespace: slice.metadata?.namespace,
+    service_name: slice.metadata?.labels?.['kubernetes.io/service-name'],
+    address_type: slice.addressType,
+    endpoint_count: endpoints.length,
+    ready_count: readyCount,
+    ports: (slice.ports || []).map((port) => ({
+      name: port.name,
+      port: port.port,
+      protocol: port.protocol,
+    })),
+    create_time: slice.metadata?.creationTimestamp,
   }
 }
 
@@ -1750,6 +2003,152 @@ export async function getClusterStorageClassList(
       ]),
     )
     .sort((first, second) => first.name.localeCompare(second.name))
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterPersistentVolumeList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const res = await requestKubernetesList<KubernetesPersistentVolume>(
+    '/kapi/v1/persistentvolumes',
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterPersistentVolumeItem>()
+  }
+
+  const items = (res.data?.items || [])
+    .map(toPersistentVolumeItem)
+    .filter((item) =>
+      includeKeyword(params?.keyword, [
+        item.name,
+        item.status,
+        item.storageClassName,
+        item.claim_ref,
+        ...(item.accessModes || []),
+      ]),
+    )
+    .sort((first, second) => first.name.localeCompare(second.name))
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterHorizontalPodAutoscalerList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const res = await requestKubernetesList<KubernetesHorizontalPodAutoscaler>(
+    getNamespacedListPath('HorizontalPodAutoscaler', params?.namespace) ||
+      '/kapis/autoscaling/v2/horizontalpodautoscalers',
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterHorizontalPodAutoscalerItem>()
+  }
+
+  const items = sortByNamespaceAndName(
+    (res.data?.items || []).map(toHorizontalPodAutoscalerItem).filter((item) =>
+      includeKeyword(params?.keyword, [
+        item.name,
+        item.namespace,
+        item.status,
+        item.scale_target,
+        ...(item.metrics || []),
+      ]),
+    ),
+  )
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterNetworkPolicyList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const res = await requestKubernetesList<KubernetesNetworkPolicy>(
+    getNamespacedListPath('NetworkPolicy', params?.namespace) ||
+      '/kapis/networking.k8s.io/v1/networkpolicies',
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterNetworkPolicyItem>()
+  }
+
+  const items = sortByNamespaceAndName(
+    (res.data?.items || []).map(toNetworkPolicyItem).filter((item) =>
+      includeKeyword(params?.keyword, [
+        item.name,
+        item.namespace,
+        item.pod_selector,
+        ...(item.policy_types || []),
+      ]),
+    ),
+  )
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterIngressClassList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const res = await requestKubernetesList<KubernetesIngressClass>(
+    '/kapis/networking.k8s.io/v1/ingressclasses',
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterIngressClassItem>()
+  }
+
+  const items = (res.data?.items || [])
+    .map(toIngressClassItem)
+    .filter((item) =>
+      includeKeyword(params?.keyword, [
+        item.name,
+        item.controller,
+        item.parameters,
+      ]),
+    )
+    .sort((first, second) => first.name.localeCompare(second.name))
+
+  return buildResourceListResponse(res, items)
+}
+
+export async function getClusterEndpointSliceList(
+  params?: API.ClusterResourceListParams,
+  options?: { [key: string]: any },
+) {
+  const res = await requestKubernetesList<KubernetesEndpointSlice>(
+    getNamespacedListPath('EndpointSlice', params?.namespace) ||
+      '/kapis/discovery.k8s.io/v1/endpointslices',
+    params,
+    options,
+  )
+
+  if (!res) {
+    return emptyListResponse<API.ClusterEndpointSliceItem>()
+  }
+
+  const items = sortByNamespaceAndName(
+    (res.data?.items || []).map(toEndpointSliceItem).filter((item) =>
+      includeKeyword(params?.keyword, [
+        item.name,
+        item.namespace,
+        item.service_name,
+        item.address_type,
+      ]),
+    ),
+  )
 
   return buildResourceListResponse(res, items)
 }

@@ -18,8 +18,8 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import {
   DrawerForm,
   PageContainer,
-  ProForm,
   ProDescriptions,
+  ProForm,
   ProFormRadio,
   ProFormSelect,
   ProFormSwitch,
@@ -50,6 +50,10 @@ import {
   getClusterList,
   updateCluster,
 } from '@/services/kubeflare/cluster/info';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 
 type ClusterFormValues = API.CreateClusterParams & API.UpdateClusterParams;
 
@@ -509,6 +513,7 @@ const ClusterManagementPage: React.FC = () => {
       ],
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <PageContainer
@@ -521,8 +526,8 @@ const ClusterManagementPage: React.FC = () => {
         rowKey="id"
         actionRef={actionRef}
         search={false}
-        columns={columns}
-        scroll={{ x: 1200 }}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns, { x: 1200 })}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
         }}
@@ -541,7 +546,7 @@ const ClusterManagementPage: React.FC = () => {
         headerTitle={
           <div>
             <Button
-              style={{marginRight: '10px'}}
+              style={{ marginRight: '10px' }}
               key="create"
               type="primary"
               icon={<PlusOutlined />}
@@ -567,9 +572,7 @@ const ClusterManagementPage: React.FC = () => {
             />
           </div>
         }
-        toolBarRender={() => [
-
-        ]}
+        toolBarRender={() => []}
       />
 
       <DrawerForm<ClusterFormValues>

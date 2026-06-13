@@ -77,10 +77,33 @@ body,
     border-radius: var(--ant-border-radius-lg);
   }
 
+  .ant-table-content,
+  .ant-table-body {
+    scrollbar-width: thin;
+  }
+
   .ant-table-thead > tr > th,
   .ant-table-tbody > tr > td,
   .ant-table-summary > tr > td {
     border: 0;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .ant-table-thead > tr > th:not(.ant-table-selection-column):not(
+      .ant-table-row-expand-icon-cell
+    ),
+  .ant-table-tbody > tr > td:not(.ant-table-selection-column):not(
+      .ant-table-row-expand-icon-cell
+    ),
+  .ant-table-summary > tr > td:not(.ant-table-selection-column):not(
+      .ant-table-row-expand-icon-cell
+    ) {
+    min-width: 96px;
+  }
+
+  .ant-table-thead > tr > th {
+    white-space: nowrap;
   }
 
   .ant-table-thead > tr,
@@ -122,7 +145,7 @@ ol {
     &-tbody > tr {
       > th,
       > td {
-        white-space: pre;
+        white-space: normal;
         > span {
           display: block;
         }

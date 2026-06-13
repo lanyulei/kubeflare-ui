@@ -33,7 +33,12 @@ export const resourceTypeLabels: Record<API.ClusterResourceCreateType, string> =
     ClusterRoleBinding: '集群角色绑定',
     CustomResourceDefinition: '定制资源定义',
     PersistentVolumeClaim: '持久卷声明',
+    PersistentVolume: '持久卷',
     StorageClass: '存储类',
+    HorizontalPodAutoscaler: '水平伸缩',
+    NetworkPolicy: '网络策略',
+    IngressClass: 'IngressClass',
+    EndpointSlice: 'EndpointSlice',
   };
 
 export const resourceListPaths: Record<API.ClusterResourceCreateType, string> =
@@ -52,7 +57,12 @@ export const resourceListPaths: Record<API.ClusterResourceCreateType, string> =
     ClusterRoleBinding: '/cluster/access-control/bindings',
     CustomResourceDefinition: '/cluster/custom-resource-definitions',
     PersistentVolumeClaim: '/cluster/storage/persistent-volume-claims',
+    PersistentVolume: '/cluster/storage/persistent-volumes',
     StorageClass: '/cluster/storage/storage-classes',
+    HorizontalPodAutoscaler: '/cluster/workloads/horizontal-pod-autoscalers',
+    NetworkPolicy: '/cluster/network/network-policies',
+    IngressClass: '/cluster/network/ingress-classes',
+    EndpointSlice: '/cluster/network/endpoint-slices',
   };
 
 export const namespacedResourceTypes = new Set<API.ClusterResourceCreateType>([
@@ -65,6 +75,9 @@ export const namespacedResourceTypes = new Set<API.ClusterResourceCreateType>([
   'ConfigMap',
   'ServiceAccount',
   'PersistentVolumeClaim',
+  'HorizontalPodAutoscaler',
+  'NetworkPolicy',
+  'EndpointSlice',
 ]);
 
 export const resourceTypes = Object.keys(

@@ -1,6 +1,10 @@
 import type { TableColumnsType } from 'antd';
 import { Table } from 'antd';
 import { analyzeRbacRuleRisk } from '@/services/kubeflare/cluster/rbac';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import { formatList, getRuleResourceText } from '../utils';
 import RiskLevelTag from './RiskLevelTag';
 
@@ -56,13 +60,16 @@ const PolicyRuleTable = ({
       },
     });
   }
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <Table<API.RbacPolicyRule>
       rowKey={(record, index) => `${record.verbs.join(',')}-${index}`}
       pagination={false}
-      columns={columns}
-      scroll={{ x: showRisk ? 1070 : 960 }}
+      columns={tableColumns}
+      scroll={getComfortableTableScroll(tableColumns, {
+        x: showRisk ? 1070 : 960,
+      })}
       dataSource={rules}
       size="small"
     />

@@ -11,10 +11,15 @@ import {
   createClusterWorkload,
   getClusterWorkloadList,
 } from '@/services/kubeflare/cluster/workload';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import CreateWorkloadDrawer from './components/CreateWorkloadDrawer';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 const DEFAULT_PAGE_SIZE = 10;
+const KEYWORD_SEARCH_PAGE_SIZE = 500;
 const ALL_NAMESPACES_VALUE = '__all__';
 
 const WORKLOAD_TABS: {
@@ -118,6 +123,13 @@ const normalizeOptionalText = (value?: string) => {
   return nextValue || undefined;
 };
 
+const getPagedTotal = (
+  current: number,
+  pageSize: number,
+  itemCount: number,
+  hasNextPage: boolean,
+) => (current - 1) * pageSize + itemCount + (hasNextPage ? pageSize : 0);
+
 const getWorkloadStatusLabel = (status?: string) => {
   const normalizedStatus = status?.toLowerCase();
 
@@ -176,6 +188,9 @@ const Workloads = () => {
   const keywordRef = useRef('');
   const namespaceRef = useRef<string | undefined>(undefined);
   const activeWorkloadTypeRef = useRef<API.ClusterWorkloadType>('Deployment');
+  const continueTokenRef = useRef<Record<number, string>>({ 1: '' });
+  const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
+  const requestSignatureRef = useRef('');
   const [namespaceValue, setNamespaceValue] = useState(ALL_NAMESPACES_VALUE);
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
@@ -190,6 +205,15 @@ const Workloads = () => {
     success: styles.statusDotSuccess,
     warning: styles.statusDotWarning,
   };
+
+  const resetContinuePagination = useCallback(() => {
+    continueTokenRef.current = { 1: '' };
+  }, []);
+
+  const reloadWorkloadsFromFirstPage = useCallback(() => {
+    resetContinuePagination();
+    actionRef.current?.reloadAndRest?.();
+  }, [resetContinuePagination]);
 
   const loadNamespaceOptions = useCallback(async () => {
     const res = await getClusterNamespaceList();
@@ -212,6 +236,7 @@ const Workloads = () => {
     const reloadWorkloads = () => {
       namespaceRef.current = undefined;
       setNamespaceValue(ALL_NAMESPACES_VALUE);
+      resetContinuePagination();
       loadNamespaceOptions();
       actionRef.current?.reloadAndRest?.();
     };
@@ -221,7 +246,7 @@ const Workloads = () => {
     return () => {
       window.removeEventListener(CURRENT_CLUSTER_CHANGE_EVENT, reloadWorkloads);
     };
-  }, [loadNamespaceOptions]);
+  }, [loadNamespaceOptions, resetContinuePagination]);
 
   const columns: ProColumns<API.ClusterWorkloadItem>[] = [
     {
@@ -293,6 +318,7 @@ const Workloads = () => {
       width: 180,
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   const handleCreateWorkload = async (values: {
     namespace: string;
@@ -308,7 +334,7 @@ const Workloads = () => {
       });
       message.success('工作负载已创建');
       setCreateOpen(false);
-      actionRef.current?.reloadAndRest?.();
+      reloadWorkloadsFromFirstPage();
     } finally {
       setCreateLoading(false);
     }
@@ -332,14 +358,15 @@ const Workloads = () => {
         const nextWorkloadType = key as API.ClusterWorkloadType;
         activeWorkloadTypeRef.current = nextWorkloadType;
         setActiveWorkloadType(nextWorkloadType);
-        actionRef.current?.reloadAndRest?.();
+        reloadWorkloadsFromFirstPage();
       }}
     >
       <ProTable<API.ClusterWorkloadItem>
         rowKey="id"
         actionRef={actionRef}
         search={false}
-        columns={columns}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns)}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,
@@ -347,17 +374,73 @@ const Workloads = () => {
         request={async (params) => {
           const current = params.current || 1;
           const pageSize = params.pageSize || DEFAULT_PAGE_SIZE;
+          const keyword = normalizeOptionalText(keywordRef.current);
+          const type = activeWorkloadTypeRef.current;
+          const namespace = namespaceRef.current;
+          const requestSignature = [keyword || '', namespace || '', type].join(
+            '\n',
+          );
+
+          if (
+            pageSizeRef.current !== pageSize ||
+            requestSignatureRef.current !== requestSignature
+          ) {
+            pageSizeRef.current = pageSize;
+            requestSignatureRef.current = requestSignature;
+            resetContinuePagination();
+          }
+
+          if (keyword) {
+            const allItems: API.ClusterWorkloadItem[] = [];
+            let searchContinueToken: string | undefined;
+
+            do {
+              const res = await getClusterWorkloadList({
+                keyword,
+                type,
+                namespace,
+                limit: KEYWORD_SEARCH_PAGE_SIZE,
+                continue: searchContinueToken,
+              });
+              allItems.push(...(res.data.items || []));
+              searchContinueToken = res.data.continue || undefined;
+            } while (searchContinueToken);
+
+            return {
+              data: allItems.slice(
+                (current - 1) * pageSize,
+                current * pageSize,
+              ),
+              success: true,
+              total: allItems.length,
+            };
+          }
+
+          const continueToken = continueTokenRef.current[current] || '';
           const res = await getClusterWorkloadList({
-            keyword: normalizeOptionalText(keywordRef.current),
-            type: activeWorkloadTypeRef.current,
-            namespace: namespaceRef.current,
+            type,
+            namespace,
+            limit: pageSize,
+            continue: continueToken || undefined,
           });
-          const allItems = res.data.items || [];
+          const items = res.data.items || [];
+          const nextContinueToken = res.data.continue || '';
+
+          if (nextContinueToken) {
+            continueTokenRef.current[current + 1] = nextContinueToken;
+          } else {
+            delete continueTokenRef.current[current + 1];
+          }
 
           return {
-            data: allItems.slice((current - 1) * pageSize, current * pageSize),
+            data: items,
             success: true,
-            total: allItems.length,
+            total: getPagedTotal(
+              current,
+              pageSize,
+              items.length,
+              Boolean(nextContinueToken),
+            ),
           };
         }}
         headerTitle={
@@ -393,7 +476,7 @@ const Workloads = () => {
                 namespaceRef.current =
                   value === ALL_NAMESPACES_VALUE ? undefined : value;
                 setNamespaceValue(value);
-                actionRef.current?.reloadAndRest?.();
+                reloadWorkloadsFromFirstPage();
               }}
             />
             <ClusterTableSearch
@@ -404,7 +487,7 @@ const Workloads = () => {
               })}
               onSearch={(value) => {
                 keywordRef.current = value;
-                actionRef.current?.reloadAndRest?.();
+                reloadWorkloadsFromFirstPage();
               }}
             />
           </Space>

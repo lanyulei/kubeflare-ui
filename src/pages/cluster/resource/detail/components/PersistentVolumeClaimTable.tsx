@@ -7,9 +7,14 @@ import { createStyles } from 'antd-style';
 import { useRef } from 'react';
 import { ClusterTableSearch } from '@/components';
 import { getClusterPersistentVolumeClaimList } from '@/services/kubeflare/cluster/resource';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import StatusText from './StatusText';
 
 const DEFAULT_PAGE_SIZE = 10;
+const PVC_SCAN_PAGE_SIZE = 500;
 
 const useStyles = createStyles(({ token }) => ({
   content: {
@@ -127,6 +132,7 @@ const PersistentVolumeClaimTable = ({
       width: 190,
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <div className={styles.content}>
@@ -137,7 +143,10 @@ const PersistentVolumeClaimTable = ({
         }
         actionRef={actionRef}
         search={false}
-        columns={columns}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns, undefined, {
+          minScrollX: 820,
+        })}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,
@@ -145,13 +154,23 @@ const PersistentVolumeClaimTable = ({
         request={async (params) => {
           const current = params.current || 1;
           const pageSize = params.pageSize || DEFAULT_PAGE_SIZE;
-          const res = await getClusterPersistentVolumeClaimList({
-            keyword: keywordRef.current.trim() || undefined,
-            limit: 500,
-          });
-          const items = (res.data.items || []).filter(
-            (item) => item.storageClassName === storageClassName,
-          );
+          const keyword = keywordRef.current.trim() || undefined;
+          const items: API.ClusterPersistentVolumeClaimItem[] = [];
+          let continueToken: string | undefined;
+
+          do {
+            const res = await getClusterPersistentVolumeClaimList({
+              keyword,
+              limit: PVC_SCAN_PAGE_SIZE,
+              continue: continueToken,
+            });
+            items.push(
+              ...(res.data.items || []).filter(
+                (item) => item.storageClassName === storageClassName,
+              ),
+            );
+            continueToken = res.data.continue || undefined;
+          } while (continueToken);
 
           return {
             data: items.slice((current - 1) * pageSize, current * pageSize),

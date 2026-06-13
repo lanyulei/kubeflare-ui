@@ -19,6 +19,7 @@ import {
   UpOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { Link } from '@umijs/max';
 import {
   Avatar,
   Button,
@@ -375,6 +376,17 @@ const AgentRunPanel = ({
           <span className={styles.agentConfidence}>
             {Math.round(confidence * 100)}%
           </span>
+        ) : null}
+        {runID ? (
+          <Tooltip title="打开 Run 运维详情">
+            <Link
+              className={styles.agentRunOpenLink}
+              to={`/ai/runs?run_id=${encodeURIComponent(runID)}`}
+            >
+              <FileSearchOutlined />
+              Run
+            </Link>
+          </Tooltip>
         ) : null}
       </div>
       {agentRun.route?.reason ? (

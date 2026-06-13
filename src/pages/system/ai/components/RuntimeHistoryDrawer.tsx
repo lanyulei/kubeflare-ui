@@ -1,13 +1,17 @@
-import { RollbackOutlined } from '@ant-design/icons';
+import { AuditOutlined, RollbackOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { Button, Drawer, Space, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Drawer, Space, Tabs, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getAgentRuntimeConfigAuditList,
   getAgentRuntimeConfigVersionList,
 } from '@/services/kubeflare/agent';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 import { prettyJson } from '../utils';
 import JsonCodeBlock from './JsonCodeBlock';
 
@@ -78,13 +82,31 @@ const RuntimeHistoryDrawer = ({
 }: RuntimeHistoryDrawerProps) => {
   const versionActionRef = useRef<ActionType | null>(null);
   const auditActionRef = useRef<ActionType | null>(null);
+  const [activeTab, setActiveTab] = useState('version');
+  const [auditVersionID, setAuditVersionID] = useState<string>();
 
   useEffect(() => {
     if (open) {
       versionActionRef.current?.reload();
-      auditActionRef.current?.reload();
     }
   }, [open, refreshKey]);
+
+  useEffect(() => {
+    if (open) {
+      auditActionRef.current?.reload();
+    }
+  }, [auditVersionID, open, refreshKey]);
+
+  const openVersionAudit = (versionID: string) => {
+    setAuditVersionID(versionID);
+    setActiveTab('audit');
+  };
+
+  const closeDrawer = () => {
+    setAuditVersionID(undefined);
+    setActiveTab('version');
+    onClose();
+  };
 
   const versionColumns: ProColumns<API.AgentRuntimeConfigVersion>[] = [
     {
@@ -122,9 +144,18 @@ const RuntimeHistoryDrawer = ({
     {
       title: '操作',
       valueType: 'option',
-      width: 100,
+      width: 180,
       fixed: 'right',
       render: (_, record) => [
+        <Button
+          key="audit"
+          type="link"
+          size="small"
+          icon={<AuditOutlined />}
+          onClick={() => openVersionAudit(record.id)}
+        >
+          审计
+        </Button>,
         <Button
           key="rollback"
           type="link"
@@ -178,6 +209,8 @@ const RuntimeHistoryDrawer = ({
       renderText: (value) => formatTime(value),
     },
   ];
+  const comfortableVersionColumns = withComfortableTableColumns(versionColumns);
+  const comfortableAuditColumns = withComfortableTableColumns(auditColumns);
 
   return (
     <Drawer
@@ -185,9 +218,11 @@ const RuntimeHistoryDrawer = ({
       open={open}
       title="运行时配置历史"
       width="72vw"
-      onClose={onClose}
+      onClose={closeDrawer}
     >
       <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
         items={[
           {
             key: 'version',
@@ -196,12 +231,14 @@ const RuntimeHistoryDrawer = ({
               <ProTable<API.AgentRuntimeConfigVersion>
                 rowKey="id"
                 actionRef={versionActionRef}
-                columns={versionColumns}
+                columns={comfortableVersionColumns}
                 options={false}
                 pagination={false}
                 search={false}
                 size="small"
-                scroll={{ x: 1100 }}
+                scroll={getComfortableTableScroll(comfortableVersionColumns, {
+                  x: 1100,
+                })}
                 request={async () => {
                   const res = await getAgentRuntimeConfigVersionList(
                     { limit: HISTORY_LIMIT },
@@ -220,31 +257,59 @@ const RuntimeHistoryDrawer = ({
           },
           {
             key: 'audit',
-            label: '审计',
+            label: auditVersionID ? '审计（已筛选）' : '审计',
             children: (
-              <ProTable<API.AgentRuntimeConfigAudit>
-                rowKey="id"
-                actionRef={auditActionRef}
-                columns={auditColumns}
-                options={false}
-                pagination={false}
-                search={false}
-                size="small"
-                scroll={{ x: 1100 }}
-                request={async () => {
-                  const res = await getAgentRuntimeConfigAuditList(
-                    { limit: HISTORY_LIMIT },
-                    { skipErrorHandler: true },
-                  );
-                  const items = res.data.items || [];
-                  return { data: items, success: true, total: items.length };
-                }}
-                expandable={{
-                  expandedRowRender: (record) => (
-                    <JsonCodeBlock value={prettyJson(record.diff)} />
-                  ),
-                }}
-              />
+              <Space
+                direction="vertical"
+                size="middle"
+                style={{ width: '100%' }}
+              >
+                {auditVersionID ? (
+                  <Alert
+                    showIcon
+                    type="info"
+                    message={
+                      <Space wrap>
+                        <span>仅查看版本 {auditVersionID} 的审计记录</span>
+                        <Button
+                          type="link"
+                          size="small"
+                          onClick={() => setAuditVersionID(undefined)}
+                        >
+                          查看全部
+                        </Button>
+                      </Space>
+                    }
+                  />
+                ) : null}
+                <ProTable<API.AgentRuntimeConfigAudit>
+                  rowKey="id"
+                  actionRef={auditActionRef}
+                  columns={comfortableAuditColumns}
+                  options={false}
+                  pagination={false}
+                  search={false}
+                  size="small"
+                  scroll={getComfortableTableScroll(comfortableAuditColumns, {
+                    x: 1100,
+                  })}
+                  request={async () => {
+                    const params = auditVersionID
+                      ? { limit: HISTORY_LIMIT, version_id: auditVersionID }
+                      : { limit: HISTORY_LIMIT };
+                    const res = await getAgentRuntimeConfigAuditList(params, {
+                      skipErrorHandler: true,
+                    });
+                    const items = res.data.items || [];
+                    return { data: items, success: true, total: items.length };
+                  }}
+                  expandable={{
+                    expandedRowRender: (record) => (
+                      <JsonCodeBlock value={prettyJson(record.diff)} />
+                    ),
+                  }}
+                />
+              </Space>
             ),
           },
         ]}

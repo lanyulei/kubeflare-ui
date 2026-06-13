@@ -5,6 +5,10 @@ import { createStyles } from 'antd-style';
 import { useEffect, useRef } from 'react';
 import { ClusterTableSearch } from '@/components';
 import { getClusterNodeList } from '@/services/kubeflare/cluster/node';
+import {
+  getComfortableTableScroll,
+  withComfortableTableColumns,
+} from '@/utils/table';
 
 const CURRENT_CLUSTER_CHANGE_EVENT = 'kubeflare:currentClusterChange';
 const DEFAULT_PAGE_SIZE = 10;
@@ -242,6 +246,7 @@ const ClusterNodes = () => {
       renderText: (_, record) => getNodeVersion(record),
     },
   ];
+  const tableColumns = withComfortableTableColumns(columns);
 
   return (
     <PageContainer
@@ -254,7 +259,8 @@ const ClusterNodes = () => {
         rowKey="name"
         actionRef={actionRef}
         search={false}
-        columns={columns}
+        columns={tableColumns}
+        scroll={getComfortableTableScroll(tableColumns)}
         pagination={{
           defaultPageSize: DEFAULT_PAGE_SIZE,
           showSizeChanger: true,

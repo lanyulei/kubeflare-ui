@@ -45,11 +45,33 @@ import { getClusterWorkloadList } from '@/services/kubeflare/cluster/workload';
 import { createKeyValueItem } from '../../workloads/ingresses/components/CreateIngressDrawer/helpers';
 import type { IngressServiceOption } from '../../workloads/ingresses/components/CreateIngressDrawer/types';
 import {
+  buildEndpointSliceBasicInfo,
+  buildEndpointSliceEndpointItems,
+  buildHpaBasicInfo,
+  buildHpaRelationItems,
+  buildIngressClassBasicInfo,
+  buildIngressClassParameterItems,
+  buildNetworkPolicyBasicInfo,
+  buildNetworkPolicyRuleItems,
+  buildPersistentVolumeBasicInfo,
+  buildPersistentVolumeRelationItems,
+  type EndpointSliceBasicInfo,
+  type HorizontalPodAutoscalerBasicInfo,
+  type IngressClassBasicInfo,
+  type NetworkPolicyBasicInfo,
+  type PersistentVolumeBasicInfo,
+} from './components/advancedResourceHelpers';
+import {
   configMapBasicInfoColumns,
   cronJobBasicInfoColumns,
   customResourceDefinitionBasicInfoColumns,
+  endpointSliceBasicInfoColumns,
+  horizontalPodAutoscalerBasicInfoColumns,
   ingressBasicInfoColumns,
+  ingressClassBasicInfoColumns,
   jobBasicInfoColumns,
+  networkPolicyBasicInfoColumns,
+  persistentVolumeBasicInfoColumns,
   persistentVolumeClaimBasicInfoColumns,
   podBasicInfoColumns,
   secretBasicInfoColumns,
@@ -353,9 +375,22 @@ const ClusterResourceDetail = () => {
                             namespace,
                             pvcStorageClassProvisioner,
                           )
-                        : detailType === 'StorageClass'
-                          ? buildStorageClassBasicInfo(manifest)
-                          : buildJobBasicInfo(manifest, namespace),
+                        : detailType === 'PersistentVolume'
+                          ? buildPersistentVolumeBasicInfo(manifest)
+                          : detailType === 'HorizontalPodAutoscaler'
+                            ? buildHpaBasicInfo(manifest, namespace)
+                            : detailType === 'NetworkPolicy'
+                              ? buildNetworkPolicyBasicInfo(manifest, namespace)
+                              : detailType === 'IngressClass'
+                                ? buildIngressClassBasicInfo(manifest)
+                                : detailType === 'EndpointSlice'
+                                  ? buildEndpointSliceBasicInfo(
+                                      manifest,
+                                      namespace,
+                                    )
+                                  : detailType === 'StorageClass'
+                                    ? buildStorageClassBasicInfo(manifest)
+                                    : buildJobBasicInfo(manifest, namespace),
     [
       detailType,
       manifest,
@@ -387,6 +422,26 @@ const ClusterResourceDetail = () => {
   );
   const storageClassVolumeOperations = useMemo(
     () => buildStorageClassVolumeOperations(manifest),
+    [manifest],
+  );
+  const hpaRelationItems = useMemo(
+    () => buildHpaRelationItems(manifest),
+    [manifest],
+  );
+  const persistentVolumeRelationItems = useMemo(
+    () => buildPersistentVolumeRelationItems(manifest),
+    [manifest],
+  );
+  const networkPolicyRuleItems = useMemo(
+    () => buildNetworkPolicyRuleItems(manifest),
+    [manifest],
+  );
+  const ingressClassParameterItems = useMemo(
+    () => buildIngressClassParameterItems(manifest),
+    [manifest],
+  );
+  const endpointSliceEndpointItems = useMemo(
+    () => buildEndpointSliceEndpointItems(manifest),
     [manifest],
   );
   const storageClassDefault = isDefaultStorageClass(manifest);
@@ -1472,6 +1527,76 @@ const ClusterResourceDetail = () => {
       ];
     }
 
+    if (detailType === 'HorizontalPodAutoscaler') {
+      return [
+        {
+          key: 'target',
+          label: '目标与指标',
+          children: <ResourceDataFields items={hpaRelationItems} />,
+        },
+        metadataTab,
+        eventsTab,
+      ];
+    }
+
+    if (detailType === 'PersistentVolume') {
+      return [
+        {
+          key: 'claim',
+          label: '绑定关系',
+          children: (
+            <ResourceDataFields items={persistentVolumeRelationItems} />
+          ),
+        },
+        metadataTab,
+      ];
+    }
+
+    if (detailType === 'NetworkPolicy') {
+      return [
+        {
+          key: 'rules',
+          label: '规则摘要',
+          children: (
+            <ResourceDataFields
+              emptyText="暂无 ingress/egress 规则"
+              items={networkPolicyRuleItems}
+            />
+          ),
+        },
+        metadataTab,
+        eventsTab,
+      ];
+    }
+
+    if (detailType === 'IngressClass') {
+      return [
+        {
+          key: 'parameters',
+          label: '参数引用',
+          children: <ResourceDataFields items={ingressClassParameterItems} />,
+        },
+        metadataTab,
+      ];
+    }
+
+    if (detailType === 'EndpointSlice') {
+      return [
+        {
+          key: 'endpoints',
+          label: '端点',
+          children: (
+            <ResourceDataFields
+              emptyText="暂无端点"
+              items={endpointSliceEndpointItems}
+            />
+          ),
+        },
+        metadataTab,
+        eventsTab,
+      ];
+    }
+
     if (detailType === 'StorageClass') {
       return [
         {
@@ -1556,7 +1681,12 @@ const ClusterResourceDetail = () => {
     configMapDataItems,
     customResourceDefinitionVersions,
     secretData,
+    endpointSliceEndpointItems,
+    hpaRelationItems,
+    ingressClassParameterItems,
     ingressRules,
+    networkPolicyRuleItems,
+    persistentVolumeRelationItems,
     servicePorts,
     serviceWorkloads,
     workloadLoading,
@@ -1696,6 +1826,41 @@ const ClusterResourceDetail = () => {
                     column={3}
                     columns={persistentVolumeClaimBasicInfoColumns}
                     dataSource={basicInfo as PersistentVolumeClaimBasicInfo}
+                  />
+                ) : detailType === 'PersistentVolume' ? (
+                  <ResourceBasicInfo<PersistentVolumeBasicInfo>
+                    className={styles.description}
+                    column={3}
+                    columns={persistentVolumeBasicInfoColumns}
+                    dataSource={basicInfo as PersistentVolumeBasicInfo}
+                  />
+                ) : detailType === 'HorizontalPodAutoscaler' ? (
+                  <ResourceBasicInfo<HorizontalPodAutoscalerBasicInfo>
+                    className={styles.description}
+                    column={3}
+                    columns={horizontalPodAutoscalerBasicInfoColumns}
+                    dataSource={basicInfo as HorizontalPodAutoscalerBasicInfo}
+                  />
+                ) : detailType === 'NetworkPolicy' ? (
+                  <ResourceBasicInfo<NetworkPolicyBasicInfo>
+                    className={styles.description}
+                    column={3}
+                    columns={networkPolicyBasicInfoColumns}
+                    dataSource={basicInfo as NetworkPolicyBasicInfo}
+                  />
+                ) : detailType === 'IngressClass' ? (
+                  <ResourceBasicInfo<IngressClassBasicInfo>
+                    className={styles.description}
+                    column={2}
+                    columns={ingressClassBasicInfoColumns}
+                    dataSource={basicInfo as IngressClassBasicInfo}
+                  />
+                ) : detailType === 'EndpointSlice' ? (
+                  <ResourceBasicInfo<EndpointSliceBasicInfo>
+                    className={styles.description}
+                    column={3}
+                    columns={endpointSliceBasicInfoColumns}
+                    dataSource={basicInfo as EndpointSliceBasicInfo}
                   />
                 ) : detailType === 'CustomResourceDefinition' ? (
                   <ResourceBasicInfo<CustomResourceDefinitionBasicInfo>
