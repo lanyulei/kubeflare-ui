@@ -290,6 +290,9 @@ const AgentRunPanel = ({
   const leaseOwner = agentRun.run?.lease_owner?.trim();
   const leaseOwnerText = getLeaseOwnerDisplayText(leaseOwner);
   const leaseExpiresText = formatDateTime(agentRun.run?.lease_expires);
+  const routeCandidates = agentRun.route?.candidates || [];
+  const hasRouteMeta =
+    routeCandidates.length > 0 || Boolean(heartbeatText || leaseOwnerText);
   const statusIcon =
     status === 'completed' ? (
       <CheckCircleOutlined />
@@ -377,8 +380,30 @@ const AgentRunPanel = ({
       {agentRun.route?.reason ? (
         <div className={styles.agentReason}>{agentRun.route.reason}</div>
       ) : null}
-      {heartbeatText || leaseOwnerText ? (
+      {hasRouteMeta ? (
         <div className={styles.agentRouteMeta}>
+          {routeCandidates.map((candidate) => {
+            const candidateName =
+              candidate.name ||
+              getAgentModeLabel(candidate.agent_type, agentModeOptions);
+
+            return (
+              <Tooltip
+                key={`candidate-${candidate.agent_type}`}
+                title={candidate.reason || undefined}
+              >
+                <Tag
+                  color={
+                    candidate.agent_type === route?.agent_type
+                      ? 'processing'
+                      : undefined
+                  }
+                >
+                  候选 {candidateName} {Math.round(candidate.confidence * 100)}%
+                </Tag>
+              </Tooltip>
+            );
+          })}
           {heartbeatText ? <Tag>心跳 {heartbeatText}</Tag> : null}
           {leaseOwnerText ? (
             <Tooltip
