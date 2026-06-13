@@ -16,6 +16,7 @@ import {
   getAiChatSessionList,
 } from '@/services/kubeflare/ai/chat';
 import { buildAgentDiagnosePrompt, normalizeAgentScope } from '@/utils/agent';
+import { pickBestAgentAnswerContent } from '@/utils/agentAnswer';
 import { applyAgentStreamTimelineEvent } from '@/utils/agentTimeline';
 import type { AgentDiagnoseRequest } from '../AgentDiagnoseButton';
 import type {
@@ -202,23 +203,6 @@ const getAPIErrorMessage = (error: unknown, fallback: string) => {
   );
 };
 
-// Completion events may carry an empty or stale message; keep the streamed
-// answer unless the server has at least as much content.
-const pickAgentMessageContent = (
-  currentContent: string,
-  serverContent?: string,
-) => {
-  if (!serverContent) {
-    return currentContent;
-  }
-  if (!currentContent) {
-    return serverContent;
-  }
-  return serverContent.length >= currentContent.length
-    ? serverContent
-    : currentContent;
-};
-
 const getNextAgentMessageContent = (
   message: ChatMessageItem,
   event: AgentStreamEvent,
@@ -229,9 +213,11 @@ const getNextAgentMessageContent = (
   }
 
   return (
-    pickAgentMessageContent(message.content, completedMessage?.content) ||
-    event.run?.summary ||
-    ''
+    pickBestAgentAnswerContent(
+      message.content,
+      completedMessage?.content,
+      event.run?.summary,
+    ) || ''
   );
 };
 

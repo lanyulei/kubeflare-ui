@@ -40,6 +40,11 @@ import {
   hasAgentScope,
   normalizeAgentScope,
 } from '@/utils/agent';
+import {
+  buildAgentRunEvidenceFallback,
+  isGenericAgentAnswer,
+  pickBestAgentAnswerContent,
+} from '@/utils/agentAnswer';
 import { getAgentDisplayErrorMessage } from '@/utils/agentError';
 import MarkdownContent from '../MarkdownContent';
 import { useStyles } from './styles';
@@ -197,9 +202,41 @@ const getAssistantDisplayContent = (message: ChatMessageItem) => {
     );
   }
 
-  const localizedContent = getAgentDisplayErrorMessage(message.content);
+  if (!message.agentRun) {
+    return (
+      getAgentDisplayErrorMessage(message.content) ||
+      message.content ||
+      (message.status === 'pending' || message.status === 'streaming'
+        ? '正在生成...'
+        : '')
+    );
+  }
+
+  const bestContent = pickBestAgentAnswerContent(
+    message.content,
+    message.agentRun?.run?.summary,
+  );
+  if (bestContent && !isGenericAgentAnswer(bestContent)) {
+    return getAgentDisplayErrorMessage(bestContent) || bestContent;
+  }
+
+  const isStreaming =
+    message.status === 'pending' || message.status === 'streaming';
+  const fallbackContent = isStreaming
+    ? undefined
+    : buildAgentRunEvidenceFallback(message.agentRun);
+  if (fallbackContent) {
+    return fallbackContent;
+  }
+
+  const localizedContent = getAgentDisplayErrorMessage(bestContent);
+  const genericFallbackContent =
+    bestContent && isGenericAgentAnswer(bestContent)
+      ? '### 结论\n本次诊断已完成，但最终回答没有返回完整诊断正文。\n\n### 建议\n- 请打开 Run 运维详情查看执行记录、工具调用和证据链路。\n- 可基于当前 Run 继续追问，以补充生成完整根因结论。\n\n### 准确性提示\n当前内容仅说明前端未收到完整诊断正文，不能替代模型完整诊断结论。'
+      : undefined;
   return (
     localizedContent ||
+    genericFallbackContent ||
     (message.status === 'pending' || message.status === 'streaming'
       ? '正在生成...'
       : '')
