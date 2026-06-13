@@ -1,3 +1,4 @@
+import { buildAgentRunHistoryTimeline } from '@/utils/agentTimeline';
 import type {
   ChatAgentRun,
   ChatMessageItem,
@@ -52,6 +53,14 @@ const toChatAgentRun = (
     route: agentRun.route,
     run: agentRun.run,
     status: agentRun.status || agentRun.run?.status,
+    timeline: buildAgentRunHistoryTimeline({
+      answerContent: agentRun.run?.summary,
+      errorMessage: agentRun.error_message,
+      evidences: agentRun.evidences || [],
+      route: agentRun.route,
+      run: agentRun.run,
+      toolCalls: agentRun.tool_calls || [],
+    }),
     toolCalls: agentRun.tool_calls || [],
   };
 };

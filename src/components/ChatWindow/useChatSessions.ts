@@ -16,6 +16,7 @@ import {
   getAiChatSessionList,
 } from '@/services/kubeflare/ai/chat';
 import { buildAgentDiagnosePrompt, normalizeAgentScope } from '@/utils/agent';
+import { applyAgentStreamTimelineEvent } from '@/utils/agentTimeline';
 import type { AgentDiagnoseRequest } from '../AgentDiagnoseButton';
 import type {
   ChatAgentMode,
@@ -136,6 +137,7 @@ const mergeAgentRun = (
   route: patch.route || agentRun?.route,
   run: patch.run || agentRun?.run,
   status: patch.status || agentRun?.status,
+  timeline: patch.timeline || agentRun?.timeline || [],
   toolCalls: patch.toolCalls || agentRun?.toolCalls || [],
 });
 
@@ -936,6 +938,13 @@ export const useChatSessions = ({
                       event,
                       completedMessage,
                     );
+                    const timeline = applyAgentStreamTimelineEvent(
+                      currentAgentRun?.timeline || [],
+                      event,
+                      {
+                        answerContent: nextContent,
+                      },
+                    );
                     const runFailed = event.event === 'agent.run.failed';
 
                     return {
@@ -949,6 +958,7 @@ export const useChatSessions = ({
                         route: event.route,
                         run: event.run,
                         status: runFailed ? 'failed' : status,
+                        timeline,
                         toolCalls,
                       }),
                       content: nextContent,
@@ -1036,6 +1046,7 @@ export const useChatSessions = ({
         optimisticPair = appendOptimisticMessages(sessionId, content, {
           evidences: [],
           status: 'pending',
+          timeline: [],
           toolCalls: [],
         });
         streamingMessageIdRef.current = optimisticPair.assistantMessageId;
@@ -1290,6 +1301,25 @@ export const useChatSessions = ({
     setDraft(content);
   }, []);
 
+  const syncAgentFeedback = useCallback((feedback: API.AgentRunFeedback) => {
+    setChatState((prevState) => {
+      const sessions = applyAgentRunFeedback(
+        prevState.sessions,
+        feedback.run_id,
+        feedback,
+      );
+
+      if (sessions === prevState.sessions) {
+        return prevState;
+      }
+
+      return {
+        ...prevState,
+        sessions,
+      };
+    });
+  }, []);
+
   const submitAgentFeedback = useCallback(
     async (runID: string, body: API.SubmitAgentRunFeedbackParams) => {
       const comment = body.comment?.trim();
@@ -1369,6 +1399,7 @@ export const useChatSessions = ({
     setAgentScope,
     setDraft,
     submitAgentFeedback,
+    syncAgentFeedback,
     submitting,
   };
 };

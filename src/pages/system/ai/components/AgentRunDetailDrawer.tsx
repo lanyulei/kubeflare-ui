@@ -10,15 +10,21 @@ import {
   Table,
   Tabs,
   Tag,
+  Timeline,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { submitAgentRunFeedback } from '@/services/kubeflare/agent';
 import { getAgentTypeLabel } from '@/utils/agent';
+import { getAgentDisplayErrorMessage } from '@/utils/agentError';
+import {
+  type AgentTimelineItem,
+  buildAgentRunHistoryTimeline,
+} from '@/utils/agentTimeline';
 import {
   getComfortableTableScroll,
   withComfortableTableColumns,
@@ -69,6 +75,39 @@ const useStyles = createStyles(({ token }) => ({
     display: 'grid',
     gap: token.marginSM,
     maxWidth: 720,
+  },
+  timelineContent: {
+    display: 'grid',
+    gap: token.marginXS,
+    minWidth: 0,
+  },
+  timelineTitle: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: token.marginXS,
+  },
+  timelineTitleText: {
+    color: token.colorText,
+    fontWeight: 600,
+    overflowWrap: 'anywhere',
+  },
+  timelineTime: {
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+  },
+  timelineMeta: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: token.marginXS,
+  },
+  timelineBody: {
+    maxWidth: 900,
+    maxHeight: 180,
+    overflow: 'auto',
+    color: token.colorTextSecondary,
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
   },
 }));
 
@@ -129,6 +168,72 @@ const renderText = (value?: string) =>
   value ? <Typography.Text>{value}</Typography.Text> : '-';
 
 const formatBoolean = (value?: boolean) => (value ? '是' : '否');
+
+const getTimelineColor = (status?: string) => {
+  if (status === 'failed') {
+    return 'red';
+  }
+  if (status === 'completed') {
+    return 'green';
+  }
+  if (status === 'running') {
+    return 'blue';
+  }
+  if (status === 'cancelled') {
+    return 'gray';
+  }
+  return 'gray';
+};
+
+const timelineStatusText: Record<string, string> = {
+  cancelled: '已取消',
+  completed: '完成',
+  failed: '失败',
+  info: '记录',
+  pending: '等待',
+  running: '进行中',
+};
+
+const AgentExecutionTimeline = ({ items }: { items: AgentTimelineItem[] }) => {
+  const { styles } = useStyles();
+
+  if (items.length === 0) {
+    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+  }
+
+  return (
+    <Timeline
+      items={items.map((item) => ({
+        color: getTimelineColor(item.status),
+        children: (
+          <div className={styles.timelineContent}>
+            <div className={styles.timelineTitle}>
+              <span className={styles.timelineTitleText}>{item.title}</span>
+              {item.status ? (
+                <Tag>{timelineStatusText[item.status] || item.status}</Tag>
+              ) : null}
+              {item.timestamp ? (
+                <span className={styles.timelineTime}>
+                  {dayjs(item.timestamp).format('YYYY-MM-DD HH:mm:ss')}
+                </span>
+              ) : null}
+            </div>
+            {item.meta?.length ? (
+              <div className={styles.timelineMeta}>
+                {item.meta.map((meta) => (
+                  <Tag key={`${item.id}-${meta}`}>{meta}</Tag>
+                ))}
+              </div>
+            ) : null}
+            {item.content ? (
+              <div className={styles.timelineBody}>{item.content}</div>
+            ) : null}
+          </div>
+        ),
+      }))}
+    />
+  );
+};
 
 const RESOURCE_KIND_MAP: Record<string, API.ClusterResourceCreateType> = {
   clusterrole: 'ClusterRole',
@@ -234,6 +339,18 @@ const AgentRunDetailDrawer = ({
   const run = detail?.run;
   const toolCalls = detail?.tool_calls || [];
   const evidences = detail?.evidences || [];
+  const timelineItems = useMemo(
+    () =>
+      buildAgentRunHistoryTimeline({
+        answerContent: detail?.run.summary,
+        errorMessage: detail?.run.error_message,
+        evidences,
+        metrics: detail?.metrics,
+        run: detail?.run,
+        toolCalls,
+      }),
+    [detail?.metrics, detail?.run, evidences, toolCalls],
+  );
   const canSubmitFeedback =
     run?.status === 'completed' || run?.status === 'failed';
   const [feedback, setFeedback] = useState<API.AgentRunFeedback>();
@@ -443,7 +560,9 @@ const AgentRunDetailDrawer = ({
                   <SummaryItem label="摘要" value={renderText(run.summary)} />
                   <SummaryItem
                     label="错误"
-                    value={renderText(run.error_message)}
+                    value={renderText(
+                      getAgentDisplayErrorMessage(run.error_message),
+                    )}
                   />
                   <SummaryItem
                     label="Scope"
@@ -490,6 +609,11 @@ const AgentRunDetailDrawer = ({
                   ) : null}
                 </div>
               ),
+            },
+            {
+              key: 'timeline',
+              label: `执行时间线 ${timelineItems.length}`,
+              children: <AgentExecutionTimeline items={timelineItems} />,
             },
             {
               key: 'tool',

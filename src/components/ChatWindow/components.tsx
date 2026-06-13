@@ -19,7 +19,6 @@ import {
   UpOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Link } from '@umijs/max';
 import {
   Avatar,
   Button,
@@ -41,6 +40,7 @@ import {
   hasAgentScope,
   normalizeAgentScope,
 } from '@/utils/agent';
+import { getAgentDisplayErrorMessage } from '@/utils/agentError';
 import MarkdownContent from '../MarkdownContent';
 import { useStyles } from './styles';
 import type {
@@ -64,11 +64,14 @@ type SubmitAgentFeedback = (
   body: API.SubmitAgentRunFeedbackParams,
 ) => Promise<boolean>;
 
+type OpenAgentRunDetail = (runID: string) => void;
+
 type ChatMessageProps = {
   agentModeOptions: AgentModeOption[];
   agentToolNameMap: AgentToolNameMap;
   message: ChatMessageItem;
   onEditMessage: (content: string) => void;
+  onOpenAgentRunDetail: OpenAgentRunDetail;
   onSubmitAgentFeedback: SubmitAgentFeedback;
 };
 
@@ -85,6 +88,7 @@ type ConversationPanelProps = {
   agentToolNameMap: AgentToolNameMap;
   session?: ChatSession;
   onEditMessage: (content: string) => void;
+  onOpenAgentRunDetail: OpenAgentRunDetail;
   onSubmitAgentFeedback: SubmitAgentFeedback;
 };
 
@@ -120,6 +124,32 @@ const agentRunStatusText: Record<API.AgentRunStatus, string> = {
 
 const getAgentRunStatusText = (status: API.AgentRunStatus) =>
   agentRunStatusText[status] || status;
+
+const getAgentRunStatusIcon = (status: API.AgentRunStatus) => {
+  if (status === 'completed') {
+    return <CheckCircleOutlined />;
+  }
+  if (status === 'failed') {
+    return <CloseCircleOutlined />;
+  }
+  if (status === 'cancelled') {
+    return <StopOutlined />;
+  }
+  return <LoadingOutlined />;
+};
+
+const getAgentRunStatusColor = (status: API.AgentRunStatus) => {
+  if (status === 'failed') {
+    return 'error';
+  }
+  if (status === 'completed') {
+    return 'success';
+  }
+  if (status === 'cancelled') {
+    return 'default';
+  }
+  return 'blue';
+};
 
 const formatSessionTime = (timestamp: number) =>
   sessionTimeFormatter.format(timestamp);
@@ -159,23 +189,35 @@ const getSessionPreview = (session: ChatSession) => {
   return preview.length > 42 ? `${preview.slice(0, 42)}...` : preview;
 };
 
+const getAssistantDisplayContent = (message: ChatMessageItem) => {
+  if (message.status === 'failed') {
+    return (
+      getAgentDisplayErrorMessage(message.errorMessage) ||
+      '消息生成失败，请重试'
+    );
+  }
+
+  const localizedContent = getAgentDisplayErrorMessage(message.content);
+  return (
+    localizedContent ||
+    (message.status === 'pending' || message.status === 'streaming'
+      ? '正在生成...'
+      : '')
+  );
+};
+
 const ChatMessage = ({
   agentModeOptions,
   agentToolNameMap,
   message,
   onEditMessage,
+  onOpenAgentRunDetail,
   onSubmitAgentFeedback,
 }: ChatMessageProps) => {
   const { styles, cx } = useStyles();
   const isUser = message.role === 'user';
   const avatar: ReactNode = isUser ? <UserOutlined /> : <RobotOutlined />;
-  const assistantContent =
-    message.status === 'failed'
-      ? message.errorMessage || '消息生成失败，请重试'
-      : message.content ||
-        (message.status === 'pending' || message.status === 'streaming'
-          ? '正在生成...'
-          : '');
+  const assistantContent = getAssistantDisplayContent(message);
 
   return (
     <div
@@ -218,6 +260,7 @@ const ChatMessage = ({
               agentModeOptions={agentModeOptions}
               agentRun={message.agentRun}
               toolNameMap={agentToolNameMap}
+              onOpenAgentRunDetail={onOpenAgentRunDetail}
               onSubmitAgentFeedback={onSubmitAgentFeedback}
             />
             <MarkdownContent content={assistantContent} />
@@ -232,10 +275,12 @@ const AgentRunPanel = ({
   agentModeOptions,
   agentRun,
   toolNameMap,
+  onOpenAgentRunDetail,
   onSubmitAgentFeedback,
 }: {
   agentModeOptions: AgentModeOption[];
   agentRun?: ChatAgentRun;
+  onOpenAgentRunDetail: OpenAgentRunDetail;
   onSubmitAgentFeedback: SubmitAgentFeedback;
   toolNameMap: AgentToolNameMap;
 }) => {
@@ -294,14 +339,9 @@ const AgentRunPanel = ({
   const routeCandidates = agentRun.route?.candidates || [];
   const hasRouteMeta =
     routeCandidates.length > 0 || Boolean(heartbeatText || leaseOwnerText);
-  const statusIcon =
-    status === 'completed' ? (
-      <CheckCircleOutlined />
-    ) : status === 'failed' ? (
-      <CloseCircleOutlined />
-    ) : (
-      <LoadingOutlined />
-    );
+  const displayErrorMessage = getAgentDisplayErrorMessage(
+    agentRun.errorMessage,
+  );
 
   const submitFeedback = async (useful: boolean, comment?: string) => {
     if (!runID || !canSubmitFeedback || feedbackSubmittingRef.current) {
@@ -365,7 +405,10 @@ const AgentRunPanel = ({
         <Tag icon={<BranchesOutlined />} color="processing">
           {getAgentModeLabel(route?.agent_type, agentModeOptions)}
         </Tag>
-        <Tag icon={statusIcon} color={status === 'failed' ? 'error' : 'blue'}>
+        <Tag
+          icon={getAgentRunStatusIcon(status)}
+          color={getAgentRunStatusColor(status)}
+        >
           {getAgentRunStatusText(status)}
         </Tag>
         {routeSource ? (
@@ -379,13 +422,14 @@ const AgentRunPanel = ({
         ) : null}
         {runID ? (
           <Tooltip title="打开 Run 运维详情">
-            <Link
+            <button
               className={styles.agentRunOpenLink}
-              to={`/ai/runs?run_id=${encodeURIComponent(runID)}`}
+              type="button"
+              onClick={() => onOpenAgentRunDetail(runID)}
             >
               <FileSearchOutlined />
               Run
-            </Link>
+            </button>
           </Tooltip>
         ) : null}
       </div>
@@ -514,8 +558,8 @@ const AgentRunPanel = ({
           ) : null}
         </div>
       ) : null}
-      {agentRun.errorMessage ? (
-        <div className={styles.agentError}>{agentRun.errorMessage}</div>
+      {displayErrorMessage ? (
+        <div className={styles.agentError}>{displayErrorMessage}</div>
       ) : null}
       {canSubmitFeedback ? (
         <div className={styles.agentFeedback}>
@@ -676,6 +720,7 @@ export const ConversationPanel = ({
   agentToolNameMap,
   session,
   onEditMessage,
+  onOpenAgentRunDetail,
   onSubmitAgentFeedback,
 }: ConversationPanelProps) => {
   const { styles } = useStyles();
@@ -717,6 +762,7 @@ export const ConversationPanel = ({
             key={message.id}
             message={message}
             onEditMessage={onEditMessage}
+            onOpenAgentRunDetail={onOpenAgentRunDetail}
             onSubmitAgentFeedback={onSubmitAgentFeedback}
           />
         ))}

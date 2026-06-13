@@ -1,5 +1,5 @@
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
-import type { ProColumns } from '@ant-design/pro-components';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import type { TableColumnsType } from 'antd';
 import {
@@ -223,6 +223,7 @@ const AgentEvaluation = () => {
   const [evaluation, setEvaluation] = useState<API.AgentRunMetricsEvaluation>();
   const [loading, setLoading] = useState(false);
   const [sampleDrawer, setSampleDrawer] = useState<SampleDrawerState>();
+  const [sampleReloadKey, setSampleReloadKey] = useState(0);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<API.AgentRunDetail>();
@@ -309,6 +310,8 @@ const AgentEvaluation = () => {
           }
         : current,
     );
+    setSampleReloadKey((key) => key + 1);
+    void loadEvaluation(days, agentType, clusterID);
   };
 
   const columns: TableColumnsType<FeatureMetricRow> = [
@@ -609,6 +612,7 @@ const AgentEvaluation = () => {
           days={days}
           enabled={sampleDrawer.enabled}
           feature={sampleDrawer.feature.key}
+          reloadKey={sampleReloadKey}
           title={`${sampleDrawer.feature.title} / ${
             sampleDrawer.enabled ? '开启' : '关闭'
           }样本`}
@@ -634,6 +638,7 @@ const SampleDrawer = ({
   days,
   enabled,
   feature,
+  reloadKey,
   onClose,
   open,
   title,
@@ -644,11 +649,23 @@ const SampleDrawer = ({
   days: number;
   enabled?: boolean;
   feature: string;
+  reloadKey: number;
   onClose: () => void;
   open: boolean;
   title: string;
 }) => {
   const { message } = App.useApp();
+  const actionRef = useRef<ActionType | null>(null);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+
+    actionRef.current?.reload();
+  }, [reloadKey]);
 
   return (
     <Drawer
@@ -660,6 +677,7 @@ const SampleDrawer = ({
     >
       <ProTable<API.AgentRunMetricsSample, API.AgentRunMetricsSampleParams>
         rowKey={(record) => record.run.id}
+        actionRef={actionRef}
         columns={columns}
         options={false}
         pagination={{ defaultPageSize: 10, showSizeChanger: true }}

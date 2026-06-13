@@ -1,3 +1,5 @@
+import type { AgentTimelineItem } from '@/utils/agentTimeline';
+
 export type ChatMessageRole = 'assistant' | 'system' | 'user';
 
 export type ChatAgentMode = API.AgentType;
@@ -9,6 +11,7 @@ export type ChatAgentRun = {
   route?: API.AgentRouteResult;
   run?: API.AgentRun;
   status?: API.AgentRunStatus;
+  timeline: AgentTimelineItem[];
   toolCalls: API.AgentToolCall[];
 };
 

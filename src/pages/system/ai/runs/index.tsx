@@ -11,6 +11,7 @@ import {
   getAgentRunList,
 } from '@/services/kubeflare/agent';
 import { getAgentTypeLabel } from '@/utils/agent';
+import { getAgentDisplayErrorMessage } from '@/utils/agentError';
 import {
   getComfortableTableScroll,
   withComfortableTableColumns,
@@ -88,6 +89,7 @@ const AgentRuns = () => {
           }
         : current,
     );
+    actionRef.current?.reload();
   };
 
   const handleCancelRun = async (runID: string) => {
@@ -205,7 +207,8 @@ const AgentRuns = () => {
       dataIndex: 'error_message',
       ellipsis: true,
       search: false,
-      renderText: (_, record) => record.error_message || '-',
+      renderText: (_, record) =>
+        getAgentDisplayErrorMessage(record.error_message) || '-',
     },
     {
       title: '创建时间',

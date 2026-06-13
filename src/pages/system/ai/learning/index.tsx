@@ -119,6 +119,12 @@ const Learning = () => {
           }
         : current,
     );
+    caseActionRef.current?.reload();
+    routeActionRef.current?.reload();
+
+    if (!feedback.useful && selectedCase?.run_id === feedback.run_id) {
+      setSelectedCase(undefined);
+    }
   };
 
   const caseColumns: ProColumns<API.AgentDiagnosisCase>[] = [
