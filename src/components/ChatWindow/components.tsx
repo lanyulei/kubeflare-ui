@@ -42,8 +42,10 @@ import {
 } from '@/utils/agent';
 import {
   buildAgentRunEvidenceFallback,
+  hasAgentToolCallProtocol,
   isGenericAgentAnswer,
   pickBestAgentAnswerContent,
+  stripAgentProtocolContent,
 } from '@/utils/agentAnswer';
 import { getAgentDisplayErrorMessage } from '@/utils/agentError';
 import MarkdownContent from '../MarkdownContent';
@@ -187,11 +189,38 @@ const getLeaseOwnerDisplayText = (leaseOwner?: string) => {
 
 const getSessionPreview = (session: ChatSession) => {
   const lastMessage = session.messages[session.messages.length - 1];
+  const messagePreview =
+    lastMessage?.role === 'assistant'
+      ? stripAgentProtocolContent(lastMessage.content)
+      : lastMessage?.content;
   const preview =
-    lastMessage?.content.replace(/\s+/g, ' ').trim() ||
+    messagePreview?.replace(/\s+/g, ' ').trim() ||
     session.summary?.replace(/\s+/g, ' ').trim() ||
     '暂无消息';
   return preview.length > 42 ? `${preview.slice(0, 42)}...` : preview;
+};
+
+const getProtocolOnlyFallbackContent = (
+  isStreaming: boolean,
+  hasAgentRun: boolean,
+) => {
+  if (isStreaming) {
+    return '正在调用工具...';
+  }
+
+  const detailSuggestion = hasAgentRun
+    ? '- 请打开 Run 运维详情查看工具调用、执行记录和证据链路。'
+    : '- 请稍后重试，或重新发送问题以获取完整回答。';
+
+  return `### 结论
+本次回复没有返回可展示正文。
+
+### 建议
+${detailSuggestion}
+- 可基于当前问题继续追问，以补充完整结论。
+
+### 准确性提示
+当前内容仅说明前端未收到完整回答正文，不能替代模型完整诊断结论。`;
 };
 
 const getAssistantDisplayContent = (message: ChatMessageItem) => {
@@ -202,13 +231,20 @@ const getAssistantDisplayContent = (message: ChatMessageItem) => {
     );
   }
 
+  const isStreaming =
+    message.status === 'pending' || message.status === 'streaming';
+  const hasProtocolContent = hasAgentToolCallProtocol(message.content);
+
   if (!message.agentRun) {
+    const displayContent = stripAgentProtocolContent(message.content);
     return (
-      getAgentDisplayErrorMessage(message.content) ||
-      message.content ||
-      (message.status === 'pending' || message.status === 'streaming'
-        ? '正在生成...'
-        : '')
+      getAgentDisplayErrorMessage(displayContent) ||
+      displayContent ||
+      (hasProtocolContent
+        ? getProtocolOnlyFallbackContent(isStreaming, false)
+        : isStreaming
+          ? '正在生成...'
+          : '')
     );
   }
 
@@ -220,8 +256,6 @@ const getAssistantDisplayContent = (message: ChatMessageItem) => {
     return getAgentDisplayErrorMessage(bestContent) || bestContent;
   }
 
-  const isStreaming =
-    message.status === 'pending' || message.status === 'streaming';
   const fallbackContent = isStreaming
     ? undefined
     : buildAgentRunEvidenceFallback(message.agentRun);
@@ -237,9 +271,10 @@ const getAssistantDisplayContent = (message: ChatMessageItem) => {
   return (
     localizedContent ||
     genericFallbackContent ||
-    (message.status === 'pending' || message.status === 'streaming'
-      ? '正在生成...'
-      : '')
+    (hasProtocolContent
+      ? getProtocolOnlyFallbackContent(isStreaming, true)
+      : '') ||
+    (isStreaming ? '正在生成...' : '')
   );
 };
 

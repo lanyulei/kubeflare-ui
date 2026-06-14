@@ -5,6 +5,7 @@ import ClusterResourceListPage, {
   createStatusColumn,
 } from '../../resource';
 import { createHorizontalPodAutoscalerConfig } from '../../resource/createConfigs';
+import CreateHorizontalPodAutoscalerDrawer from './components/CreateHorizontalPodAutoscalerDrawer';
 
 const renderMetrics = (values?: string[]) => {
   if (!values?.length) {
@@ -27,6 +28,9 @@ const HorizontalPodAutoscalers = () => (
     searchPlaceholder="搜索水平伸缩名称 / 目标资源 / 指标"
     showNamespaceFilter
     createConfig={createHorizontalPodAutoscalerConfig}
+    renderCreateDrawer={(props) => (
+      <CreateHorizontalPodAutoscalerDrawer {...props} />
+    )}
     resourceType="HorizontalPodAutoscaler"
     resourceTypeName="水平伸缩"
     request={getClusterHorizontalPodAutoscalerList}

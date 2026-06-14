@@ -21,6 +21,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { KeyValueEditor } from '@/components';
 import type { KeyValueEditorItem } from '@/components/KeyValueEditor';
+import WorkloadSelectorModal from '../../../components/WorkloadSelectorModal';
 import { createKeyValueItem, createServicePortItem } from './helpers';
 import type {
   CreateServiceFormValues,
@@ -28,7 +29,6 @@ import type {
   ServicePortItem,
   ServicePortProtocol,
 } from './types';
-import WorkloadSelectorModal from './WorkloadSelectorModal';
 
 const PORT_NAME_PATTERN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 const PORT_NUMBER_RULES = [

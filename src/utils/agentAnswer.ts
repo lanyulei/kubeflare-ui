@@ -15,8 +15,37 @@ const GENERIC_AGENT_ANSWER_PHRASES = [
   '问题已就绪',
 ];
 
+const DSML_PIPE_PAIR = '(?:\\|{2}|\\uFF5C{2})';
+const DSML_TOOL_CALLS_TAG = `${DSML_PIPE_PAIR}DSML${DSML_PIPE_PAIR}tool_calls`;
+const DSML_TOOL_CALLS_BLOCK_PATTERN = new RegExp(
+  `<\\s*${DSML_TOOL_CALLS_TAG}\\s*>[\\s\\S]*?(?:<\\s*\\/\\s*${DSML_TOOL_CALLS_TAG}\\s*>|$)`,
+  'g',
+);
+const DSML_TOOL_CALLS_DETECT_PATTERN = new RegExp(
+  `<\\s*${DSML_TOOL_CALLS_TAG}\\s*>`,
+);
+const DSML_TOOL_CALLS_CLOSE_PATTERN = new RegExp(
+  `<\\s*\\/\\s*${DSML_TOOL_CALLS_TAG}\\s*>`,
+  'g',
+);
+
+export const hasAgentToolCallProtocol = (value?: string) =>
+  Boolean(value && DSML_TOOL_CALLS_DETECT_PATTERN.test(value));
+
+export const stripAgentProtocolContent = (value?: string) => {
+  if (!value) {
+    return '';
+  }
+
+  return value
+    .replace(DSML_TOOL_CALLS_BLOCK_PATTERN, '')
+    .replace(DSML_TOOL_CALLS_CLOSE_PATTERN, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
 const normalizeAnswer = (value?: string) => {
-  const answer = value?.trim();
+  const answer = stripAgentProtocolContent(value);
   return answer || undefined;
 };
 
