@@ -5,9 +5,39 @@ const REQUIRED_DIAGNOSTIC_SECTIONS = [
   '### 准确性提示',
 ];
 
+const GENERIC_AGENT_ANSWER_PHRASES = [
+  '已经为您输出完整的诊断结论',
+  '已为您输出完整的诊断结论',
+  '已完整输出上述诊断',
+  '完整输出上述诊断',
+  '上述诊断已完整输出',
+  '您的问题已就绪',
+  '问题已就绪',
+];
+
 const normalizeAnswer = (value?: string) => {
   const answer = value?.trim();
   return answer || undefined;
+};
+
+const hasGenericAgentCompletionPhrase = (compact: string) => {
+  if (GENERIC_AGENT_ANSWER_PHRASES.some((phrase) => compact.includes(phrase))) {
+    return true;
+  }
+
+  if (
+    (compact.includes('已完整输出') || compact.includes('完整输出')) &&
+    (compact.includes('诊断') || compact.includes('结论'))
+  ) {
+    return true;
+  }
+
+  return (
+    compact.includes('完整的诊断结论') &&
+    compact.includes('证据') &&
+    compact.includes('建议') &&
+    compact.includes('准确性提示')
+  );
 };
 
 export const isGenericAgentAnswer = (value?: string) => {
@@ -26,12 +56,7 @@ export const isGenericAgentAnswer = (value?: string) => {
 
   return (
     (compact.includes('以上就是') && compact.includes('完整诊断')) ||
-    compact.includes('已经为您输出完整的诊断结论') ||
-    compact.includes('已为您输出完整的诊断结论') ||
-    (compact.includes('完整的诊断结论') &&
-      compact.includes('证据') &&
-      compact.includes('建议') &&
-      compact.includes('准确性提示')) ||
+    hasGenericAgentCompletionPhrase(compact) ||
     (compact.includes('如果你能提供') && !answer.includes('###'))
   );
 };
@@ -75,7 +100,7 @@ export const buildAgentRunEvidenceFallback = (agentRun?: {
 
   const lines: string[] = [
     '### 结论',
-    '本次诊断已完成只读取证流程，但最终回答没有返回完整诊断正文。以下先展示本次已采集到的证据摘要，便于继续判断。',
+    '本次诊断已完成只读的取证流程，但最终回答没有返回完整诊断正文。以下先展示本次已采集到的证据摘要，便于继续判断。',
     '',
     '### 证据',
   ];
