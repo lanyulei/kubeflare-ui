@@ -4,6 +4,7 @@ import ClusterResourceListPage, {
   renderTextList,
 } from '../../resource';
 import { createNetworkPolicyConfig } from '../../resource/createConfigs';
+import CreateNetworkPolicyDrawer from './components/CreateNetworkPolicyDrawer';
 
 const NetworkPolicies = () => (
   <ClusterResourceListPage<API.ClusterNetworkPolicyItem>
@@ -12,6 +13,7 @@ const NetworkPolicies = () => (
     searchPlaceholder="搜索网络策略名称 / Pod 选择器 / 策略类型"
     showNamespaceFilter
     createConfig={createNetworkPolicyConfig}
+    renderCreateDrawer={(props) => <CreateNetworkPolicyDrawer {...props} />}
     resourceType="NetworkPolicy"
     resourceTypeName="网络策略"
     request={getClusterNetworkPolicyList}
