@@ -6,7 +6,7 @@ import { useState } from 'react';
 const useStyles = createStyles(({ token }) => ({
   headerButton: {
     display: 'grid',
-    gridTemplateColumns: '24px minmax(0, 1fr)',
+    gridTemplateColumns: 'minmax(0, 1fr) 24px',
     alignItems: 'start',
     gap: token.marginSM,
     width: '100%',
@@ -45,6 +45,7 @@ const useStyles = createStyles(({ token }) => ({
 
 type CollapsibleFieldProps = {
   children: ReactNode;
+  contentClassName?: string;
   defaultOpen?: boolean;
   description?: ReactNode;
   title: ReactNode;
@@ -52,11 +53,12 @@ type CollapsibleFieldProps = {
 
 const CollapsibleField = ({
   children,
+  contentClassName,
   defaultOpen = true,
   description,
   title,
 }: CollapsibleFieldProps) => {
-  const { styles } = useStyles();
+  const { cx, styles } = useStyles();
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -67,20 +69,23 @@ const CollapsibleField = ({
         type="button"
         onClick={() => setOpen((value) => !value)}
       >
-        <span className={styles.headerIcon}>
-          {open ? <UpOutlined /> : <DownOutlined />}
-        </span>
         <span>
           <span className={styles.title}>{title}</span>
           {description && (
             <span className={styles.description}>{description}</span>
           )}
         </span>
+        <span className={styles.headerIcon}>
+          {open ? <UpOutlined /> : <DownOutlined />}
+        </span>
       </button>
 
-      {open && <div className={styles.content}>{children}</div>}
+      {open && (
+        <div className={cx(styles.content, contentClassName)}>{children}</div>
+      )}
     </div>
   );
 };
 
+export type { CollapsibleFieldProps };
 export default CollapsibleField;

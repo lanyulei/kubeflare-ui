@@ -1,6 +1,6 @@
 import { Checkbox, Form } from 'antd';
 import { createStyles } from 'antd-style';
-import FormSection from './FormSection';
+import { ResourceFormSection } from '@/components';
 import LabelSelectorEditor from './LabelSelectorEditor';
 
 const useStyles = createStyles(({ token }) => ({
@@ -33,7 +33,7 @@ const NetworkPolicySelectorSettings = () => {
 
   return (
     <div className={styles.stack}>
-      <FormSection
+      <ResourceFormSection
         description="为空时会匹配当前命名空间内的所有 Pod。"
         title="Pod 选择器"
         tooltip="对应 spec.podSelector，可使用 matchLabels 与 matchExpressions。"
@@ -41,9 +41,9 @@ const NetworkPolicySelectorSettings = () => {
         <Form.Item name="podSelector">
           <LabelSelectorEditor />
         </Form.Item>
-      </FormSection>
+      </ResourceFormSection>
 
-      <FormSection
+      <ResourceFormSection
         description="选择网络策略生效的流量方向。未选择的方向不会输出对应规则。"
         title="策略类型"
         tooltip="对应 spec.policyTypes。"
@@ -63,7 +63,7 @@ const NetworkPolicySelectorSettings = () => {
         >
           <Checkbox.Group options={POLICY_TYPE_OPTIONS} />
         </Form.Item>
-      </FormSection>
+      </ResourceFormSection>
     </div>
   );
 };

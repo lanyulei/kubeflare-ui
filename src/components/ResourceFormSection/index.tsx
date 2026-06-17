@@ -43,7 +43,7 @@ const useStyles = createStyles(({ token }) => ({
   },
 }));
 
-type FormSectionProps = {
+type ResourceFormSectionProps = {
   bordered?: boolean;
   children: ReactNode;
   description?: ReactNode;
@@ -51,13 +51,13 @@ type FormSectionProps = {
   tooltip?: ReactNode;
 };
 
-const FormSection = ({
+const ResourceFormSection = ({
   bordered = true,
   children,
   description,
   title,
   tooltip,
-}: FormSectionProps) => {
+}: ResourceFormSectionProps) => {
   const { styles } = useStyles();
   const titleNode = (
     <span className={styles.title}>
@@ -92,4 +92,5 @@ const FormSection = ({
   );
 };
 
-export default FormSection;
+export type { ResourceFormSectionProps };
+export default ResourceFormSection;

@@ -1,8 +1,7 @@
 import { DeleteOutlined } from '@ant-design/icons';
 import { Button, Input, message, Select } from 'antd';
 import { createStyles } from 'antd-style';
-import { KeyValueEditor } from '@/components';
-import CollapsibleField from './CollapsibleField';
+import { CollapsibleField, KeyValueEditor } from '@/components';
 import {
   createKeyValueItem,
   createSelectorExpressionItem,

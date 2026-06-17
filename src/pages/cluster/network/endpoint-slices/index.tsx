@@ -4,6 +4,7 @@ import ClusterResourceListPage, {
   renderTextList,
 } from '../../resource';
 import { createEndpointSliceConfig } from '../../resource/createConfigs';
+import CreateEndpointSliceDrawer from './components/CreateEndpointSliceDrawer';
 
 const renderPorts = (ports?: API.ClusterServiceEndpointPort[]) =>
   renderTextList(
@@ -23,6 +24,7 @@ const EndpointSlices = () => (
     searchPlaceholder="搜索 EndpointSlice 名称 / 服务 / 地址类型"
     showNamespaceFilter
     createConfig={createEndpointSliceConfig}
+    renderCreateDrawer={(props) => <CreateEndpointSliceDrawer {...props} />}
     resourceType="EndpointSlice"
     resourceTypeName="EndpointSlice"
     request={getClusterEndpointSliceList}

@@ -1,7 +1,7 @@
 import type { FormInstance } from 'antd';
 import { Alert, Form } from 'antd';
 import { createStyles } from 'antd-style';
-import FormSection from './FormSection';
+import { ResourceFormSection } from '@/components';
 import NetworkPolicyRuleEditor from './NetworkPolicyRuleEditor';
 import type {
   CreateNetworkPolicyFormValues,
@@ -58,7 +58,11 @@ const NetworkPolicyRuleSettings = ({
 
   return (
     <div className={styles.stack}>
-      <FormSection bordered={false} title={meta.title} tooltip={meta.tooltip}>
+      <ResourceFormSection
+        bordered={false}
+        title={meta.title}
+        tooltip={meta.tooltip}
+      >
         {enabled ? (
           <Form.Item name={meta.fieldName}>
             <NetworkPolicyRuleEditor direction={direction} />
@@ -66,7 +70,7 @@ const NetworkPolicyRuleSettings = ({
         ) : (
           <Alert message={meta.disabledMessage} showIcon type="info" />
         )}
-      </FormSection>
+      </ResourceFormSection>
     </div>
   );
 };

@@ -137,7 +137,11 @@ const ResourceCreateWizardDrawer = ({
         <div className={styles.headerExtra}>
           <Space className={styles.yamlSwitch}>
             <span>编辑 YAML</span>
-            <Switch checked={yamlMode} onChange={onYamlModeChange} />
+            <Switch
+              aria-label="切换 YAML 编辑模式"
+              checked={yamlMode}
+              onChange={onYamlModeChange}
+            />
           </Space>
         </div>
       }

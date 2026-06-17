@@ -4,6 +4,7 @@ import ClusterResourceListPage, {
   createResourceNameColumn,
 } from '../../resource';
 import { createIngressClassConfig } from '../../resource/createConfigs';
+import CreateIngressClassDrawer from './components/CreateIngressClassDrawer';
 
 const IngressClasses = () => (
   <ClusterResourceListPage<API.ClusterIngressClassItem>
@@ -11,6 +12,9 @@ const IngressClasses = () => (
     defaultTitle="IngressClass"
     searchPlaceholder="搜索 IngressClass 名称 / 控制器 / 参数引用"
     createConfig={createIngressClassConfig}
+    renderCreateDrawer={({ namespaceOptions: _namespaceOptions, ...props }) => (
+      <CreateIngressClassDrawer {...props} />
+    )}
     resourceType="IngressClass"
     resourceTypeName="IngressClass"
     request={getClusterIngressClassList}
