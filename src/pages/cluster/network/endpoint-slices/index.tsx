@@ -20,13 +20,13 @@ const renderPorts = (ports?: API.ClusterServiceEndpointPort[]) =>
 const EndpointSlices = () => (
   <ClusterResourceListPage<API.ClusterEndpointSliceItem>
     titleId="menu.cluster.clusterNetwork.clusterEndpointSlices"
-    defaultTitle="EndpointSlice"
-    searchPlaceholder="搜索 EndpointSlice 名称 / 服务 / 地址类型"
+    defaultTitle="端点切片"
+    searchPlaceholder="搜索端点切片名称 / 服务 / 地址类型"
     showNamespaceFilter
     createConfig={createEndpointSliceConfig}
     renderCreateDrawer={(props) => <CreateEndpointSliceDrawer {...props} />}
     resourceType="EndpointSlice"
-    resourceTypeName="EndpointSlice"
+    resourceTypeName="端点切片"
     request={getClusterEndpointSliceList}
     columns={[
       createResourceNameColumn<API.ClusterEndpointSliceItem>('EndpointSlice'),

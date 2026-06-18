@@ -37,8 +37,8 @@ export const resourceTypeLabels: Record<API.ClusterResourceCreateType, string> =
     StorageClass: '存储类',
     HorizontalPodAutoscaler: '水平伸缩',
     NetworkPolicy: '网络策略',
-    IngressClass: 'IngressClass',
-    EndpointSlice: 'EndpointSlice',
+    IngressClass: 'Ingress 类',
+    EndpointSlice: '端点切片',
   };
 
 export const resourceListPaths: Record<API.ClusterResourceCreateType, string> =

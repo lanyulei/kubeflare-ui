@@ -121,9 +121,7 @@ const getValidatedYamlResource = (yamlValue: string) => {
     return undefined;
   }
   if (namespace) {
-    message.error(
-      'IngressClass 是集群级资源，YAML 不应包含 metadata.namespace',
-    );
+    message.error('Ingress 类是集群级资源，YAML 不应包含 metadata.namespace');
     return undefined;
   }
   if (kind !== INGRESS_CLASS_KIND) {
@@ -312,7 +310,7 @@ const CreateIngressClassDrawer = ({
       <Col span={12}>
         <Form.Item
           extra="设置后会输出 ingressclass.kubernetes.io/is-default-class 注解。"
-          label="默认 IngressClass"
+          label="默认 Ingress 类"
           name="isDefaultClass"
           rules={[{ required: true, message: '请选择是否作为默认类' }]}
         >
@@ -337,7 +335,7 @@ const CreateIngressClassDrawer = ({
       loading={loading}
       open={open}
       steps={steps}
-      title="创建 IngressClass"
+      title="创建 Ingress 类"
       yamlMode={yamlMode}
       yamlValue={yamlValue}
       onCancel={onCancel}

@@ -251,7 +251,7 @@ const CreateEndpointSliceDrawer = ({
       </Col>
       <Col md={12} xs={24}>
         <Form.Item
-          tooltip="EndpointSlice 是命名空间级资源。"
+          tooltip="端点切片是命名空间级资源。"
           label="命名空间"
           name="namespace"
           rules={[{ required: true, message: '请选择命名空间' }]}
@@ -311,7 +311,7 @@ const CreateEndpointSliceDrawer = ({
       loading={loading}
       open={open}
       steps={steps}
-      title="创建 EndpointSlice"
+      title="创建端点切片"
       yamlMode={yamlMode}
       yamlValue={yamlValue}
       onCancel={onCancel}

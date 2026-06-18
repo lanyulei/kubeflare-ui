@@ -379,11 +379,11 @@ export const createNetworkPolicyConfig: CreateResourceConfig = {
 
 export const createIngressClassConfig: CreateResourceConfig = {
   type: 'IngressClass',
-  title: '创建 IngressClass',
+  title: '创建 Ingress 类',
   createWarning: {
-    title: '确认创建 IngressClass 吗？',
+    title: '确认创建 Ingress 类吗？',
     description:
-      'IngressClass 是集群级入口控制器声明，请确认 controller 与集群内实际控制器一致，避免 Ingress 路由被错误接管。',
+      'Ingress 类是集群级入口控制器声明，请确认 controller 与集群内实际控制器一致，避免 Ingress 路由被错误接管。',
     okText: '继续创建',
   },
   getDefaultManifest: () => ({
@@ -400,11 +400,11 @@ export const createIngressClassConfig: CreateResourceConfig = {
 
 export const createEndpointSliceConfig: CreateResourceConfig = {
   type: 'EndpointSlice',
-  title: '创建 EndpointSlice',
+  title: '创建端点切片',
   createWarning: {
-    title: '确认创建 EndpointSlice 吗？',
+    title: '确认创建端点切片吗？',
     description:
-      'EndpointSlice 会参与 Service 端点发现，错误地址或端口可能影响服务流量，请确认关联 Service、地址类型和端口配置。',
+      '端点切片会参与 Service 端点发现，错误地址或端口可能影响服务流量，请确认关联 Service、地址类型和端口配置。',
     okText: '继续创建',
   },
   namespaced: true,

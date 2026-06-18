@@ -9,14 +9,14 @@ import CreateIngressClassDrawer from './components/CreateIngressClassDrawer';
 const IngressClasses = () => (
   <ClusterResourceListPage<API.ClusterIngressClassItem>
     titleId="menu.cluster.clusterNetwork.clusterIngressClasses"
-    defaultTitle="IngressClass"
-    searchPlaceholder="搜索 IngressClass 名称 / 控制器 / 参数引用"
+    defaultTitle="Ingress 类"
+    searchPlaceholder="搜索 Ingress 类名称 / 控制器 / 参数引用"
     createConfig={createIngressClassConfig}
     renderCreateDrawer={({ namespaceOptions: _namespaceOptions, ...props }) => (
       <CreateIngressClassDrawer {...props} />
     )}
     resourceType="IngressClass"
-    resourceTypeName="IngressClass"
+    resourceTypeName="Ingress 类"
     request={getClusterIngressClassList}
     columns={[
       createResourceNameColumn<API.ClusterIngressClassItem>('IngressClass'),

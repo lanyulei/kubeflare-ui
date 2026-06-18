@@ -90,7 +90,7 @@ const EndpointSlicePortSettings = ({
   return (
     <ResourceFormSection
       bordered={false}
-      description="端口可选；填写后会输出 ports 数组，端口名称应在当前 EndpointSlice 内保持唯一。"
+      description="端口可选；填写后会输出 ports 数组，端口名称应在当前端点切片内保持唯一。"
       title="端口"
     >
       <div className={styles.unframedContent}>
