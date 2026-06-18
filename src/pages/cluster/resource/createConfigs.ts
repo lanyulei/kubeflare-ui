@@ -270,12 +270,6 @@ export const createStorageClassConfig: CreateResourceConfig = {
 export const createPersistentVolumeConfig: CreateResourceConfig = {
   type: 'PersistentVolume',
   title: '创建持久卷',
-  createWarning: {
-    title: '确认创建持久卷吗？',
-    description:
-      'PersistentVolume 是集群级存储资源，错误的容量、回收策略或本地路径可能影响数据安全，请确认 YAML 与目标集群匹配。',
-    okText: '继续创建',
-  },
   getDefaultManifest: () => ({
     apiVersion: 'v1',
     kind: 'PersistentVolume',
@@ -339,12 +333,6 @@ export const createHorizontalPodAutoscalerConfig: CreateResourceConfig = {
 export const createNetworkPolicyConfig: CreateResourceConfig = {
   type: 'NetworkPolicy',
   title: '创建网络策略',
-  createWarning: {
-    title: '确认创建网络策略吗？',
-    description:
-      'NetworkPolicy 可能立即改变命名空间内 Pod 的入口或出口流量，请确认选择器和规则范围不会误拦截业务流量。',
-    okText: '继续创建',
-  },
   namespaced: true,
   getDefaultManifest: (namespace) => ({
     apiVersion: 'networking.k8s.io/v1',
@@ -380,12 +368,6 @@ export const createNetworkPolicyConfig: CreateResourceConfig = {
 export const createIngressClassConfig: CreateResourceConfig = {
   type: 'IngressClass',
   title: '创建 Ingress 类',
-  createWarning: {
-    title: '确认创建 Ingress 类吗？',
-    description:
-      'Ingress 类是集群级入口控制器声明，请确认 controller 与集群内实际控制器一致，避免 Ingress 路由被错误接管。',
-    okText: '继续创建',
-  },
   getDefaultManifest: () => ({
     apiVersion: 'networking.k8s.io/v1',
     kind: 'IngressClass',
@@ -401,12 +383,6 @@ export const createIngressClassConfig: CreateResourceConfig = {
 export const createEndpointSliceConfig: CreateResourceConfig = {
   type: 'EndpointSlice',
   title: '创建端点切片',
-  createWarning: {
-    title: '确认创建端点切片吗？',
-    description:
-      '端点切片会参与 Service 端点发现，错误地址或端口可能影响服务流量，请确认关联 Service、地址类型和端口配置。',
-    okText: '继续创建',
-  },
   namespaced: true,
   getDefaultManifest: (namespace) => ({
     apiVersion: 'discovery.k8s.io/v1',
