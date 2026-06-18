@@ -3,16 +3,20 @@ import ClusterResourceListPage, {
   createResourceNameColumn,
   createStatusColumn,
 } from '../../resource';
-import { createPersistentVolumeConfig } from '../../resource/createConfigs';
+import CreatePersistentVolumeDrawer from './components/CreatePersistentVolumeDrawer';
 
 const PersistentVolumes = () => (
   <ClusterResourceListPage<API.ClusterPersistentVolumeItem>
     titleId="menu.cluster.clusterStorage.clusterStoragePersistentVolumes"
     defaultTitle="持久卷"
     searchPlaceholder="搜索持久卷名称 / 声明 / 访问模式"
-    createConfig={createPersistentVolumeConfig}
     resourceType="PersistentVolume"
     resourceTypeName="持久卷"
+    renderCreateDrawer={({
+      defaultNamespace: _defaultNamespace,
+      namespaceOptions: _namespaceOptions,
+      ...props
+    }) => <CreatePersistentVolumeDrawer {...props} />}
     request={getClusterPersistentVolumeList}
     columns={[
       createResourceNameColumn<API.ClusterPersistentVolumeItem>(
