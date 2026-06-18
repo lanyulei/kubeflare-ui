@@ -5,6 +5,14 @@ import {
 
 export type AgentModeOption = AgentSelectOption;
 
+const TEMP_HIDDEN_AGENT_MODE_TYPES = new Set<API.AgentType>([
+  'capacity',
+  'change_review',
+  'cost',
+  'remediation',
+  'security',
+]);
+
 export const useAgentModeOptions = () => {
   const { options } = useAgentOptions({
     disableUnavailable: true,
@@ -12,5 +20,7 @@ export const useAgentModeOptions = () => {
     includeAuto: true,
   });
 
-  return options;
+  return options.filter(
+    (option) => !TEMP_HIDDEN_AGENT_MODE_TYPES.has(option.value),
+  );
 };
