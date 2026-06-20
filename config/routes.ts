@@ -68,11 +68,6 @@ export default [
         component: './cluster/namespaces/detail',
       },
       {
-        path: '/cluster/events',
-        name: 'clusterEvents',
-        component: './cluster/events',
-      },
-      {
         path: '/cluster/resource/detail/:type/:namespace/:name',
         name: 'clusterResourceDetail',
         hideInMenu: true,
@@ -224,6 +219,11 @@ export default [
             component: './access-control/bindings',
           },
         ],
+      },
+      {
+        path: '/cluster/events',
+        name: 'clusterEvents',
+        component: './cluster/events',
       },
       {
         path: '/cluster/custom-resource-definitions',
