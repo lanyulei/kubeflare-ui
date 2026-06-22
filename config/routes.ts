@@ -271,51 +271,51 @@ export default [
         name: 'gitopsAudit',
         component: './gitops/audit',
       },
+    ],
+  },
+  {
+    path: '/ai',
+    name: 'systemAI',
+    icon: 'robot',
+    routes: [
       {
         path: '/ai',
-        name: 'systemAI',
-        icon: 'robot',
-        routes: [
-          {
-            path: '/ai',
-            redirect: '/ai/agent',
-          },
-          {
-            path: '/ai/agent',
-            name: 'systemAIAgent',
-            component: './system/ai/agents',
-          },
-          {
-            path: '/ai/runs',
-            name: 'systemAIRuns',
-            component: './system/ai/runs',
-          },
-          {
-            path: '/ai/runtime',
-            name: 'systemAIRuntime',
-            component: './system/ai/runtime',
-          },
-          {
-            path: '/ai/evaluation',
-            name: 'systemAIEvaluation',
-            component: './system/ai/evaluation',
-          },
-          {
-            path: '/ai/learning',
-            name: 'systemAILearning',
-            component: './system/ai/learning',
-          },
-          {
-            path: '/ai/tool',
-            name: 'systemAITool',
-            component: './system/ai/tools',
-          },
-          {
-            path: '/ai/skill',
-            name: 'systemAISkill',
-            component: './system/ai/skills',
-          },
-        ],
+        redirect: '/ai/agent',
+      },
+      {
+        path: '/ai/agent',
+        name: 'systemAIAgent',
+        component: './system/ai/agents',
+      },
+      {
+        path: '/ai/runs',
+        name: 'systemAIRuns',
+        component: './system/ai/runs',
+      },
+      {
+        path: '/ai/runtime',
+        name: 'systemAIRuntime',
+        component: './system/ai/runtime',
+      },
+      {
+        path: '/ai/evaluation',
+        name: 'systemAIEvaluation',
+        component: './system/ai/evaluation',
+      },
+      {
+        path: '/ai/learning',
+        name: 'systemAILearning',
+        component: './system/ai/learning',
+      },
+      {
+        path: '/ai/tool',
+        name: 'systemAITool',
+        component: './system/ai/tools',
+      },
+      {
+        path: '/ai/skill',
+        name: 'systemAISkill',
+        component: './system/ai/skills',
       },
     ],
   },
