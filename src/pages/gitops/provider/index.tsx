@@ -33,11 +33,16 @@ import {
   withComfortableTableColumns,
 } from '@/utils/table';
 import { EnabledStatusTag } from '../components/status';
+import { useGitOpsTableStyles } from '../components/tableStyles';
 import {
   invalidateGitOpsOptions,
   useGitOpsProviderOptions,
 } from '../hooks/useGitOpsOptions';
-import { formatDateTimeText, getGitOpsErrorMessage } from '../utils';
+import {
+  formatDateTimeText,
+  getGitOpsErrorMessage,
+  toGitOpsTableResult,
+} from '../utils';
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -49,6 +54,7 @@ type RepositoryFormValues = API.CreateGitOpsRepositoryParams &
 
 const GitOpsProviderPage = () => {
   const { message } = App.useApp();
+  const { styles } = useGitOpsTableStyles();
   const providerActionRef = useRef<ActionType | null>(null);
   const repositoryActionRef = useRef<ActionType | null>(null);
   const { loading: providerOptionsLoading, options: providerOptions } =
@@ -177,6 +183,12 @@ const GitOpsProviderPage = () => {
         renderText: (value) => formatDateTimeText(value),
       },
       {
+        title: '检测消息',
+        dataIndex: 'last_check_message',
+        ellipsis: true,
+        search: false,
+      },
+      {
         title: '操作',
         valueType: 'option',
         width: 220,
@@ -246,6 +258,13 @@ const GitOpsProviderPage = () => {
         title: '仓库',
         dataIndex: 'name',
         ellipsis: true,
+      },
+      {
+        title: 'Provider',
+        dataIndex: 'provider_id',
+        width: 160,
+        ellipsis: true,
+        renderText: (_, record) => record.provider?.name || record.provider_id,
       },
       {
         title: 'Project ID',
@@ -321,15 +340,13 @@ const GitOpsProviderPage = () => {
           <ProTable<API.GitOpsProvider>
             rowKey="id"
             actionRef={providerActionRef}
+            className={styles.table}
             columns={providerColumns}
             scroll={getComfortableTableScroll(providerColumns)}
             pagination={{ defaultPageSize: DEFAULT_PAGE_SIZE }}
             request={async (params) => {
               const res = await getGitOpsProviderList(params);
-              return {
-                data: res.data.items || [],
-                success: true,
-              };
+              return toGitOpsTableResult(res.data);
             }}
             toolBarRender={() => [
               <Button
@@ -352,15 +369,13 @@ const GitOpsProviderPage = () => {
           <ProTable<API.GitOpsRepository>
             rowKey="id"
             actionRef={repositoryActionRef}
+            className={styles.table}
             columns={repositoryColumns}
             scroll={getComfortableTableScroll(repositoryColumns)}
             pagination={{ defaultPageSize: DEFAULT_PAGE_SIZE }}
             request={async (params) => {
               const res = await getGitOpsRepositoryList(params);
-              return {
-                data: res.data.items || [],
-                success: true,
-              };
+              return toGitOpsTableResult(res.data);
             }}
             toolBarRender={() => [
               <Button
@@ -419,6 +434,16 @@ const GitOpsProviderPage = () => {
           name="webhook_secret"
           label="Webhook Secret"
           fieldProps={{ placeholder: editingProvider ? '留空表示不变' : '' }}
+        />
+        <ProFormTextArea
+          name="ca_bundle"
+          label="CA Bundle"
+          fieldProps={{
+            placeholder: editingProvider
+              ? '留空表示不变'
+              : '自签 GitLab 证书链，可留空',
+            rows: 4,
+          }}
         />
         <ProFormRadio.Group
           name="status"

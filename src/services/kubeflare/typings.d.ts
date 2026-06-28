@@ -1708,10 +1708,13 @@ declare namespace API {
   type GitOpsEnvironmentTier = 'dev' | 'production' | 'staging' | 'test'
 
   type GitOpsReleaseStatus =
+    | 'approved'
     | 'draft'
     | 'failed'
+    | 'merge_pending'
     | 'rejected'
     | 'rolled_back'
+    | 'rolling_back'
     | 'succeeded'
     | 'syncing'
     | 'waiting_approval'
@@ -1728,6 +1731,7 @@ declare namespace API {
     application_count: number
     environment_count: number
     release_count: number
+    approved_release_count: number
     waiting_approval_count: number
     syncing_release_count: number
     failed_release_count: number
@@ -1759,6 +1763,7 @@ declare namespace API {
     remarks?: string
     created_at: string
     updated_at: string
+    provider?: GitOpsProvider
   }
 
   type GitOpsApplication = {
@@ -1774,6 +1779,7 @@ declare namespace API {
     status: GitOpsStatus
     created_at: string
     updated_at: string
+    repository?: GitOpsRepository
     environments?: GitOpsEnvironment[]
   }
 
@@ -1789,10 +1795,12 @@ declare namespace API {
     flux_kustomization?: string
     flux_helm_release?: string
     auto_approve: boolean
+    allow_self_approve: boolean
     require_signed_image: boolean
     status: GitOpsStatus
     created_at: string
     updated_at: string
+    application?: GitOpsApplication
   }
 
   type GitOpsRelease = {
@@ -1806,7 +1814,9 @@ declare namespace API {
     status: GitOpsReleaseStatus
     reason?: string
     operator_id?: string
+    project_id?: string
     mr_url?: string
+    mr_iid?: number
     pipeline_url?: string
     commit_sha?: string
     flux_revision?: string
@@ -1814,6 +1824,8 @@ declare namespace API {
     created_at: string
     updated_at: string
     completed_at?: string
+    application?: GitOpsApplication
+    environment?: GitOpsEnvironment
   }
 
   type GitOpsSyncRecord = {
@@ -1831,6 +1843,8 @@ declare namespace API {
     last_sync_at?: string
     created_at: string
     updated_at: string
+    application?: GitOpsApplication
+    environment?: GitOpsEnvironment
   }
 
   type GitOpsPolicyReport = {
@@ -1858,6 +1872,7 @@ declare namespace API {
 
   type GitOpsListData<T> = {
     items: T[]
+    total: number
   }
 
   type GitOpsListParams = {
@@ -1923,6 +1938,7 @@ declare namespace API {
     flux_kustomization?: string
     flux_helm_release?: string
     auto_approve: boolean
+    allow_self_approve: boolean
     require_signed_image: boolean
     status?: GitOpsStatus
   }

@@ -10,12 +10,28 @@ import {
   getComfortableTableScroll,
   withComfortableTableColumns,
 } from '@/utils/table';
-import { PolicyStatusTag, SyncStatusTag } from '../components/status';
-import { formatDateTimeText } from '../utils';
+import {
+  POLICY_STATUS_OPTIONS,
+  PolicyStatusTag,
+  SYNC_STATUS_OPTIONS,
+  SyncStatusTag,
+} from '../components/status';
+import { useGitOpsTableStyles } from '../components/tableStyles';
+import {
+  useGitOpsApplicationOptions,
+  useGitOpsEnvironmentOptions,
+} from '../hooks/useGitOpsOptions';
+import { formatDateTimeText, toGitOpsTableResult } from '../utils';
 
 const DEFAULT_PAGE_SIZE = 10;
 
 const GitOpsSyncPage = () => {
+  const { styles } = useGitOpsTableStyles();
+  const { loading: applicationLoading, options: applicationOptions } =
+    useGitOpsApplicationOptions();
+  const { loading: environmentLoading, options: environmentOptions } =
+    useGitOpsEnvironmentOptions();
+
   const syncColumns = useMemo<ProColumns<API.GitOpsSyncRecord>[]>(
     () =>
       withComfortableTableColumns([
@@ -26,6 +42,32 @@ const GitOpsSyncPage = () => {
           fieldProps: {
             placeholder: '搜索资源 / revision / 消息',
           },
+        },
+        {
+          title: '应用',
+          dataIndex: 'application_id',
+          valueType: 'select',
+          fieldProps: {
+            allowClear: true,
+            loading: applicationLoading,
+            options: applicationOptions,
+            showSearch: true,
+            optionFilterProp: 'label',
+          },
+          hideInTable: true,
+        },
+        {
+          title: '环境',
+          dataIndex: 'environment_id',
+          valueType: 'select',
+          fieldProps: {
+            allowClear: true,
+            loading: environmentLoading,
+            options: environmentOptions,
+            showSearch: true,
+            optionFilterProp: 'label',
+          },
+          hideInTable: true,
         },
         {
           title: '资源',
@@ -42,7 +84,12 @@ const GitOpsSyncPage = () => {
         {
           title: '状态',
           dataIndex: 'status',
+          valueType: 'select',
           width: 110,
+          fieldProps: {
+            allowClear: true,
+            options: SYNC_STATUS_OPTIONS,
+          },
           render: (_, record) => <SyncStatusTag status={record.status} />,
         },
         {
@@ -68,7 +115,12 @@ const GitOpsSyncPage = () => {
           renderText: (value) => formatDateTimeText(value),
         },
       ]),
-    [],
+    [
+      applicationLoading,
+      applicationOptions,
+      environmentLoading,
+      environmentOptions,
+    ],
   );
 
   const policyColumns = useMemo<ProColumns<API.GitOpsPolicyReport>[]>(
@@ -82,7 +134,12 @@ const GitOpsSyncPage = () => {
         {
           title: '状态',
           dataIndex: 'status',
+          valueType: 'select',
           width: 110,
+          fieldProps: {
+            allowClear: true,
+            options: POLICY_STATUS_OPTIONS,
+          },
           render: (_, record) => <PolicyStatusTag status={record.status} />,
         },
         {
@@ -115,15 +172,13 @@ const GitOpsSyncPage = () => {
           <Typography.Title level={5}>同步记录</Typography.Title>
           <ProTable<API.GitOpsSyncRecord>
             rowKey="id"
+            className={styles.table}
             columns={syncColumns}
             scroll={getComfortableTableScroll(syncColumns)}
             pagination={{ defaultPageSize: DEFAULT_PAGE_SIZE }}
             request={async (params) => {
               const res = await getGitOpsSyncList(params);
-              return {
-                data: res.data.items || [],
-                success: true,
-              };
+              return toGitOpsTableResult(res.data);
             }}
           />
         </div>
@@ -131,15 +186,13 @@ const GitOpsSyncPage = () => {
           <Typography.Title level={5}>策略报告</Typography.Title>
           <ProTable<API.GitOpsPolicyReport>
             rowKey="id"
+            className={styles.table}
             columns={policyColumns}
             scroll={getComfortableTableScroll(policyColumns)}
             pagination={{ defaultPageSize: DEFAULT_PAGE_SIZE }}
             request={async (params) => {
               const res = await getGitOpsPolicyReportList(params);
-              return {
-                data: res.data.items || [],
-                success: true,
-              };
+              return toGitOpsTableResult(res.data);
             }}
           />
         </div>

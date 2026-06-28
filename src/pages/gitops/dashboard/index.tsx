@@ -9,7 +9,7 @@ import {
 import type { ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { history } from '@umijs/max';
-import { App, Card, Col, Row, Statistic, Typography } from 'antd';
+import { App, Card, Statistic, Typography } from 'antd';
 import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -22,7 +22,16 @@ import {
   withComfortableTableColumns,
 } from '@/utils/table';
 import { ReleaseStatusTag, SyncStatusTag } from '../components/status';
-import { formatDateTimeText, getGitOpsErrorMessage } from '../utils';
+import { useGitOpsTableStyles } from '../components/tableStyles';
+import {
+  formatDateTimeText,
+  getGitOpsErrorMessage,
+  toGitOpsTableResult,
+} from '../utils';
+
+const STAT_GRID_MAX_COLUMNS = 5;
+const STAT_GRID_GAP = 16;
+const STAT_CARD_MIN_WIDTH = 150;
 
 const useStyles = createStyles(({ token }) => ({
   body: {
@@ -31,6 +40,13 @@ const useStyles = createStyles(({ token }) => ({
   },
   statCard: {
     borderRadius: 8,
+  },
+  statGrid: {
+    display: 'grid',
+    gridTemplateColumns: `repeat(auto-fit, minmax(max(${STAT_CARD_MIN_WIDTH}px, calc((100% - ${
+      (STAT_GRID_MAX_COLUMNS - 1) * STAT_GRID_GAP
+    }px) / ${STAT_GRID_MAX_COLUMNS})), 1fr))`,
+    gap: STAT_GRID_GAP,
   },
   statIcon: {
     color: token.colorPrimary,
@@ -43,6 +59,7 @@ const useStyles = createStyles(({ token }) => ({
 
 const EMPTY_STATS: API.GitOpsDashboardStats = {
   application_count: 0,
+  approved_release_count: 0,
   drifted_sync_count: 0,
   environment_count: 0,
   failed_release_count: 0,
@@ -55,6 +72,7 @@ const EMPTY_STATS: API.GitOpsDashboardStats = {
 const GitOpsDashboard = () => {
   const { message } = App.useApp();
   const { styles } = useStyles();
+  const { styles: tableStyles } = useGitOpsTableStyles();
   const [stats, setStats] = useState<API.GitOpsDashboardStats>(EMPTY_STATS);
 
   useEffect(() => {
@@ -128,7 +146,7 @@ const GitOpsDashboard = () => {
   return (
     <PageContainer title="GitOps 总览">
       <div className={styles.body}>
-        <Row gutter={[16, 16]}>
+        <div className={styles.statGrid}>
           {[
             {
               icon: <BranchesOutlined className={styles.statIcon} />,
@@ -151,6 +169,11 @@ const GitOpsDashboard = () => {
               value: stats.waiting_approval_count,
             },
             {
+              icon: <BranchesOutlined className={styles.statIcon} />,
+              title: '待建 MR',
+              value: stats.approved_release_count,
+            },
+            {
               icon: <CheckCircleOutlined className={styles.statIcon} />,
               title: '同步中',
               value: stats.syncing_release_count,
@@ -161,17 +184,15 @@ const GitOpsDashboard = () => {
               value: stats.failed_release_count + stats.drifted_sync_count,
             },
           ].map((item) => (
-            <Col key={item.title} xs={24} sm={12} lg={8} xl={4}>
-              <Card className={styles.statCard}>
-                <Statistic
-                  prefix={item.icon}
-                  title={item.title}
-                  value={item.value}
-                />
-              </Card>
-            </Col>
+            <Card className={styles.statCard} key={item.title}>
+              <Statistic
+                prefix={item.icon}
+                title={item.title}
+                value={item.value}
+              />
+            </Card>
           ))}
-        </Row>
+        </div>
 
         <div>
           <Typography.Title className={styles.sectionTitle} level={5}>
@@ -179,6 +200,7 @@ const GitOpsDashboard = () => {
           </Typography.Title>
           <ProTable<API.GitOpsRelease>
             rowKey="id"
+            className={tableStyles.table}
             search={false}
             options={false}
             columns={releaseColumns}
@@ -186,10 +208,7 @@ const GitOpsDashboard = () => {
             pagination={false}
             request={async () => {
               const res = await getGitOpsReleaseList({ pageSize: 5 });
-              return {
-                data: res.data.items || [],
-                success: true,
-              };
+              return toGitOpsTableResult(res.data);
             }}
             onRow={() => ({
               onDoubleClick: () => history.push('/gitops/release'),
@@ -203,6 +222,7 @@ const GitOpsDashboard = () => {
           </Typography.Title>
           <ProTable<API.GitOpsSyncRecord>
             rowKey="id"
+            className={tableStyles.table}
             search={false}
             options={false}
             columns={syncColumns}
@@ -210,10 +230,7 @@ const GitOpsDashboard = () => {
             pagination={false}
             request={async () => {
               const res = await getGitOpsSyncList({ pageSize: 5 });
-              return {
-                data: res.data.items || [],
-                success: true,
-              };
+              return toGitOpsTableResult(res.data);
             }}
           />
         </div>

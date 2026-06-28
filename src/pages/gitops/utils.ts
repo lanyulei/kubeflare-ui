@@ -22,3 +22,9 @@ export const normalizeOptionalText = (value?: string) => {
 
 export const formatDateTimeText = (value?: string) =>
   value ? value.replace('T', ' ').replace(/\.\d+Z$/, '') : '-';
+
+export const toGitOpsTableResult = <T>(data?: API.GitOpsListData<T>) => ({
+  data: data?.items || [],
+  success: true,
+  total: data?.total || 0,
+});

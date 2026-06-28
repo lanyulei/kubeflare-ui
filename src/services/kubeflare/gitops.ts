@@ -284,6 +284,19 @@ export async function getGitOpsReleaseList(
   )
 }
 
+export async function getGitOpsReleaseDetail(
+  releaseID: string,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.GitOpsRelease>>(
+    `/api/v1/gitops/release/${pathParam(releaseID)}`,
+    {
+      method: 'GET',
+      ...(options || {}),
+    },
+  )
+}
+
 export async function createGitOpsRelease(
   body: API.CreateGitOpsReleaseParams,
   options?: { [key: string]: any },
@@ -292,6 +305,19 @@ export async function createGitOpsRelease(
     '/api/v1/gitops/release',
     {
       data: body,
+      method: 'POST',
+      ...(options || {}),
+    },
+  )
+}
+
+export async function submitGitOpsRelease(
+  releaseID: string,
+  options?: { [key: string]: any },
+) {
+  return request<API.ApiResponse<API.GitOpsRelease>>(
+    `/api/v1/gitops/release/${pathParam(releaseID)}/submit`,
+    {
       method: 'POST',
       ...(options || {}),
     },

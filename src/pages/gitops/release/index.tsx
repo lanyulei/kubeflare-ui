@@ -1,8 +1,11 @@
 import {
   CheckOutlined,
   CloseOutlined,
+  EyeOutlined,
+  LinkOutlined,
   PlusOutlined,
   RollbackOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import {
@@ -14,39 +17,48 @@ import {
   ProFormTextArea,
   ProTable,
 } from '@ant-design/pro-components';
-import { App, Button } from 'antd';
+import { App, Button, Popconfirm } from 'antd';
 import { useRef, useState } from 'react';
 import {
   approveGitOpsRelease,
   createGitOpsRelease,
+  getGitOpsReleaseDetail,
   getGitOpsReleaseList,
   rejectGitOpsRelease,
   rollbackGitOpsRelease,
+  submitGitOpsRelease,
 } from '@/services/kubeflare/gitops';
 import {
   getComfortableTableScroll,
   withComfortableTableColumns,
 } from '@/utils/table';
-import { ReleaseStatusTag } from '../components/status';
+import { RELEASE_STATUS_OPTIONS, ReleaseStatusTag } from '../components/status';
+import { useGitOpsTableStyles } from '../components/tableStyles';
 import {
   useGitOpsApplicationOptions,
   useGitOpsEnvironmentOptions,
 } from '../hooks/useGitOpsOptions';
-import { formatDateTimeText, getGitOpsErrorMessage } from '../utils';
+import {
+  formatDateTimeText,
+  getGitOpsErrorMessage,
+  toGitOpsTableResult,
+} from '../utils';
+import ReleaseDetailDrawer from './components/ReleaseDetailDrawer';
 
 const DEFAULT_PAGE_SIZE = 10;
 
-const RELEASE_STATUS_OPTIONS = [
-  { label: '待审批', value: 'waiting_approval' },
-  { label: '同步中', value: 'syncing' },
-  { label: '成功', value: 'succeeded' },
-  { label: '失败', value: 'failed' },
-  { label: '已拒绝', value: 'rejected' },
-  { label: '已回滚', value: 'rolled_back' },
+const rollbackEnabledStatuses: API.GitOpsReleaseStatus[] = [
+  'failed',
+  'succeeded',
 ];
+
+const canRollback = (release: API.GitOpsRelease) =>
+  rollbackEnabledStatuses.includes(release.status) &&
+  Boolean(release.commit_sha);
 
 const GitOpsReleasePage = () => {
   const { message } = App.useApp();
+  const { styles } = useGitOpsTableStyles();
   const actionRef = useRef<ActionType | null>(null);
   const { loading: applicationLoading, options: applicationOptions } =
     useGitOpsApplicationOptions();
@@ -57,8 +69,33 @@ const GitOpsReleasePage = () => {
   const [actionType, setActionType] = useState<
     'approve' | 'reject' | 'rollback'
   >();
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailRelease, setDetailRelease] = useState<API.GitOpsRelease>();
+  const [submittingReleaseID, setSubmittingReleaseID] = useState<string>();
 
   const reload = () => actionRef.current?.reload();
+
+  const openDetail = async (record: API.GitOpsRelease) => {
+    setDetailOpen(true);
+    setDetailRelease(record);
+    setDetailLoading(true);
+    try {
+      const res = await getGitOpsReleaseDetail(record.id, {
+        skipErrorHandler: true,
+      });
+      setDetailRelease({
+        ...record,
+        ...res.data,
+        application: res.data.application || record.application,
+        environment: res.data.environment || record.environment,
+      });
+    } catch (error) {
+      message.error(getGitOpsErrorMessage(error, '发布详情加载失败'));
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const handleCreate = async (values: API.CreateGitOpsReleaseParams) => {
     try {
@@ -70,6 +107,19 @@ const GitOpsReleasePage = () => {
     } catch (error) {
       message.error(getGitOpsErrorMessage(error, '发布单创建失败'));
       return false;
+    }
+  };
+
+  const handleSubmitRelease = async (releaseID: string) => {
+    setSubmittingReleaseID(releaseID);
+    try {
+      await submitGitOpsRelease(releaseID, { skipErrorHandler: true });
+      message.success('发布单已提交审批');
+      reload();
+    } catch (error) {
+      message.error(getGitOpsErrorMessage(error, '发布单提交失败'));
+    } finally {
+      setSubmittingReleaseID(undefined);
     }
   };
 
@@ -156,8 +206,25 @@ const GitOpsReleasePage = () => {
     {
       title: '发布单',
       dataIndex: 'title',
-      width: 220,
+      width: 240,
       ellipsis: true,
+    },
+    {
+      title: '应用',
+      dataIndex: 'application_id',
+      width: 160,
+      ellipsis: true,
+      search: false,
+      renderText: (_, record) =>
+        record.application?.display_name || record.application?.name || '-',
+    },
+    {
+      title: '环境',
+      dataIndex: 'environment_id',
+      width: 140,
+      ellipsis: true,
+      search: false,
+      renderText: (_, record) => record.environment?.name || '-',
     },
     {
       title: '状态',
@@ -183,8 +250,30 @@ const GitOpsReleasePage = () => {
     {
       title: '镜像 Digest',
       dataIndex: 'image_digest',
+      width: 240,
       ellipsis: true,
       search: false,
+    },
+    {
+      title: 'MR',
+      dataIndex: 'mr_url',
+      width: 110,
+      search: false,
+      render: (_, record) =>
+        record.mr_url ? (
+          <Button
+            href={record.mr_url}
+            icon={<LinkOutlined />}
+            rel="noreferrer"
+            size="small"
+            target="_blank"
+            type="link"
+          >
+            {record.mr_iid ? `!${record.mr_iid}` : '查看'}
+          </Button>
+        ) : (
+          '-'
+        ),
     },
     {
       title: '操作者',
@@ -202,9 +291,36 @@ const GitOpsReleasePage = () => {
     {
       title: '操作',
       valueType: 'option',
-      width: 240,
+      width: 300,
       fixed: 'right',
       render: (_, record) => [
+        <Button
+          key="detail"
+          type="link"
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => openDetail(record)}
+        >
+          详情
+        </Button>,
+        record.status === 'draft' ? (
+          <Popconfirm
+            key="submit"
+            title="确认提交该发布单进入审批吗？"
+            okText="提交"
+            cancelText="取消"
+            onConfirm={() => handleSubmitRelease(record.id)}
+          >
+            <Button
+              type="link"
+              size="small"
+              icon={<SendOutlined />}
+              loading={submittingReleaseID === record.id}
+            >
+              提交
+            </Button>
+          </Popconfirm>
+        ) : null,
         record.status === 'waiting_approval' ? (
           <Button
             key="approve"
@@ -234,18 +350,21 @@ const GitOpsReleasePage = () => {
             拒绝
           </Button>
         ) : null,
-        <Button
-          key="rollback"
-          type="link"
-          size="small"
-          icon={<RollbackOutlined />}
-          onClick={() => {
-            setActionRelease(record);
-            setActionType('rollback');
-          }}
-        >
-          回滚
-        </Button>,
+        rollbackEnabledStatuses.includes(record.status) ? (
+          <Button
+            key="rollback"
+            disabled={!canRollback(record)}
+            type="link"
+            size="small"
+            icon={<RollbackOutlined />}
+            onClick={() => {
+              setActionRelease(record);
+              setActionType('rollback');
+            }}
+          >
+            回滚
+          </Button>
+        ) : null,
       ],
     },
   ]);
@@ -255,15 +374,13 @@ const GitOpsReleasePage = () => {
       <ProTable<API.GitOpsRelease>
         rowKey="id"
         actionRef={actionRef}
+        className={styles.table}
         columns={columns}
         scroll={getComfortableTableScroll(columns)}
         pagination={{ defaultPageSize: DEFAULT_PAGE_SIZE }}
         request={async (params) => {
           const res = await getGitOpsReleaseList(params);
-          return {
-            data: res.data.items || [],
-            success: true,
-          };
+          return toGitOpsTableResult(res.data);
         }}
         toolBarRender={() => [
           <Button
@@ -316,7 +433,14 @@ const GitOpsReleasePage = () => {
           <ProFormText name="source_ref" label="Source Ref" />
           <ProFormText name="target_revision" label="目标版本" />
         </ProForm.Group>
-        <ProFormText name="image_digest" label="镜像 Digest" />
+        <ProFormText
+          name="image_digest"
+          label="镜像 Digest"
+          fieldProps={{
+            placeholder:
+              'sha256:<64 位十六进制摘要>，开启签名要求的环境必须填写',
+          }}
+        />
         <ProFormTextArea
           name="reason"
           label="发布说明"
@@ -345,6 +469,16 @@ const GitOpsReleasePage = () => {
       >
         <ProFormTextArea name="comment" label="说明" fieldProps={{ rows: 4 }} />
       </ModalForm>
+
+      <ReleaseDetailDrawer
+        loading={detailLoading}
+        open={detailOpen}
+        release={detailRelease}
+        onClose={() => {
+          setDetailOpen(false);
+          setDetailRelease(undefined);
+        }}
+      />
     </PageContainer>
   );
 };

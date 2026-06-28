@@ -29,12 +29,13 @@ import {
   withComfortableTableColumns,
 } from '@/utils/table';
 import { EnabledStatusTag, EnvironmentTierTag } from '../components/status';
+import { useGitOpsTableStyles } from '../components/tableStyles';
 import {
   invalidateGitOpsOptions,
   useGitOpsApplicationOptions,
   useGitOpsRepositoryOptions,
 } from '../hooks/useGitOpsOptions';
-import { getGitOpsErrorMessage } from '../utils';
+import { getGitOpsErrorMessage, toGitOpsTableResult } from '../utils';
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -53,6 +54,7 @@ const TIER_OPTIONS = [
 
 const GitOpsApplicationPage = () => {
   const { message } = App.useApp();
+  const { styles } = useGitOpsTableStyles();
   const applicationActionRef = useRef<ActionType | null>(null);
   const environmentActionRef = useRef<ActionType | null>(null);
   const { loading: repositoryLoading, options: repositoryOptions } =
@@ -73,6 +75,12 @@ const GitOpsApplicationPage = () => {
     applicationActionRef.current?.reload();
     environmentActionRef.current?.reload();
   };
+
+  const getApplicationLabel = (applicationID?: string) =>
+    applicationOptions.find((option) => option.value === applicationID)
+      ?.label ||
+    applicationID ||
+    '-';
 
   const handleApplicationSubmit = async (values: ApplicationFormValues) => {
     const payload = {
@@ -101,6 +109,9 @@ const GitOpsApplicationPage = () => {
   const handleEnvironmentSubmit = async (values: EnvironmentFormValues) => {
     const payload = {
       ...values,
+      allow_self_approve: Boolean(values.allow_self_approve),
+      auto_approve: Boolean(values.auto_approve),
+      require_signed_image: Boolean(values.require_signed_image),
       status: Number(values.status ?? 1) as API.GitOpsStatus,
     };
     try {
@@ -223,9 +234,30 @@ const GitOpsApplicationPage = () => {
         },
       },
       {
+        title: '应用',
+        dataIndex: 'application_id',
+        valueType: 'select',
+        fieldProps: {
+          allowClear: true,
+          loading: applicationLoading,
+          options: applicationOptions,
+          showSearch: true,
+          optionFilterProp: 'label',
+        },
+        hideInTable: true,
+      },
+      {
         title: '环境',
         dataIndex: 'name',
         ellipsis: true,
+      },
+      {
+        title: '应用',
+        dataIndex: 'application_id',
+        width: 160,
+        ellipsis: true,
+        search: false,
+        renderText: (_, record) => getApplicationLabel(record.application_id),
       },
       {
         title: '等级',
@@ -254,6 +286,21 @@ const GitOpsApplicationPage = () => {
         width: 100,
         search: false,
         renderText: (_, record) => (record.auto_approve ? '是' : '否'),
+      },
+      {
+        title: '自审批',
+        dataIndex: 'allow_self_approve',
+        width: 100,
+        search: false,
+        renderText: (_, record) => (record.allow_self_approve ? '是' : '否'),
+      },
+      {
+        title: '签名要求',
+        dataIndex: 'require_signed_image',
+        width: 110,
+        search: false,
+        renderText: (_, record) =>
+          record.require_signed_image ? '开启' : '关闭',
       },
       {
         title: '状态',
@@ -314,15 +361,13 @@ const GitOpsApplicationPage = () => {
           <ProTable<API.GitOpsApplication>
             rowKey="id"
             actionRef={applicationActionRef}
+            className={styles.table}
             columns={applicationColumns}
             scroll={getComfortableTableScroll(applicationColumns)}
             pagination={{ defaultPageSize: DEFAULT_PAGE_SIZE }}
             request={async (params) => {
               const res = await getGitOpsApplicationList(params);
-              return {
-                data: res.data.items || [],
-                success: true,
-              };
+              return toGitOpsTableResult(res.data);
             }}
             toolBarRender={() => [
               <Button
@@ -345,15 +390,13 @@ const GitOpsApplicationPage = () => {
           <ProTable<API.GitOpsEnvironment>
             rowKey="id"
             actionRef={environmentActionRef}
+            className={styles.table}
             columns={environmentColumns}
             scroll={getComfortableTableScroll(environmentColumns)}
             pagination={{ defaultPageSize: DEFAULT_PAGE_SIZE }}
             request={async (params) => {
               const res = await getGitOpsEnvironmentList(params);
-              return {
-                data: res.data.items || [],
-                success: true,
-              };
+              return toGitOpsTableResult(res.data);
             }}
             toolBarRender={() => [
               <Button
@@ -509,6 +552,7 @@ const GitOpsApplicationPage = () => {
         </ProForm.Group>
         <ProForm.Group>
           <ProFormSwitch name="auto_approve" label="自动审批" />
+          <ProFormSwitch name="allow_self_approve" label="允许自审批" />
           <ProFormSwitch
             name="require_signed_image"
             label="要求镜像签名"
