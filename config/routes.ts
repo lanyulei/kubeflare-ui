@@ -233,47 +233,6 @@ export default [
     ],
   },
   {
-    path: '/gitops',
-    name: 'gitops',
-    icon: 'deploymentUnit',
-    routes: [
-      {
-        path: '/gitops',
-        redirect: '/gitops/dashboard',
-      },
-      {
-        path: '/gitops/dashboard',
-        name: 'gitopsDashboard',
-        component: './gitops/dashboard',
-      },
-      {
-        path: '/gitops/provider',
-        name: 'gitopsProvider',
-        component: './gitops/provider',
-      },
-      {
-        path: '/gitops/application',
-        name: 'gitopsApplication',
-        component: './gitops/application',
-      },
-      {
-        path: '/gitops/release',
-        name: 'gitopsRelease',
-        component: './gitops/release',
-      },
-      {
-        path: '/gitops/sync',
-        name: 'gitopsSync',
-        component: './gitops/sync',
-      },
-      {
-        path: '/gitops/audit',
-        name: 'gitopsAudit',
-        component: './gitops/audit',
-      },
-    ],
-  },
-  {
     path: '/ai',
     name: 'systemAI',
     icon: 'robot',
