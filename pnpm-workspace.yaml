@@ -1,0 +1,37 @@
+allowBuilds:
+  core-js: false
+  core-js-pure: false
+  es5-ext: false
+  esbuild: true
+  puppeteer-core: false
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@umijs/ast@4.7.0'
+  - '@umijs/babel-preset-umi@4.7.0'
+  - '@umijs/bundler-esbuild@4.7.0'
+  - '@umijs/bundler-utils@4.7.0'
+  - '@umijs/bundler-utoopack@4.7.0'
+  - '@umijs/bundler-vite@4.7.0'
+  - '@umijs/bundler-webpack@4.7.0'
+  - '@umijs/core@4.7.0'
+  - '@umijs/lint@4.7.0'
+  - '@umijs/max@4.7.0'
+  - '@umijs/mfsu@4.7.0'
+  - '@umijs/plugin-run@4.7.0'
+  - '@umijs/plugins@4.7.0'
+  - '@umijs/preset-umi@4.7.0'
+  - '@umijs/renderer-react@4.7.0'
+  - '@umijs/server@4.7.0'
+  - '@umijs/test@4.7.0'
+  - '@umijs/utils@4.7.0'
+  - '@umijs/zod2ts@4.7.0'
+  - '@utoo/pack-darwin-arm64@1.5.0'
+  - '@utoo/pack-darwin-x64@1.5.0'
+  - '@utoo/pack-linux-arm64-gnu@1.5.0'
+  - '@utoo/pack-linux-arm64-musl@1.5.0'
+  - '@utoo/pack-linux-x64-gnu@1.5.0'
+  - '@utoo/pack-linux-x64-musl@1.5.0'
+  - '@utoo/pack-shared@1.5.0'
+  - '@utoo/pack-win32-x64-msvc@1.5.0'
+  - '@utoo/pack@1.5.0'
+  - umi@4.7.0
