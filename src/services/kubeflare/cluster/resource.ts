@@ -35,6 +35,7 @@ type KubernetesPod = {
   status?: {
     phase?: string
     reason?: string
+    hostIP?: string
     podIP?: string
     conditions?: {
       lastTransitionTime?: string
@@ -988,6 +989,7 @@ const toPodItem = (pod: KubernetesPod): API.ClusterPodItem => ({
   namespace: pod.metadata?.namespace,
   status: getPodStatus(pod),
   node_name: pod.spec?.nodeName,
+  node_ip: pod.status?.hostIP,
   pod_ip: pod.status?.podIP,
   create_time: pod.metadata?.creationTimestamp,
   update_time: getPodUpdateTime(pod),
@@ -1357,6 +1359,7 @@ export async function getClusterPodList(
         item.namespace,
         item.status,
         item.node_name,
+        item.node_ip,
         item.pod_ip,
       ]),
     ),

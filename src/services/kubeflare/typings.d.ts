@@ -1427,6 +1427,7 @@ declare namespace API {
     namespace?: string
     status?: string
     node_name?: string
+    node_ip?: string
     pod_ip?: string
     create_time?: string
     update_time?: string
